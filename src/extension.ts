@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
+import { registerDependencyCommands } from './commands/dependencyCommands';
 import { registerGroupCommands } from './commands/groupCommands';
-import { VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
+import { COMMANDS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
+import { DependencyRegistry } from './dependencies/registry';
+import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
 import { CodeCliService } from './services/codeCliService';
 import { ExtensionService } from './services/extensionService';
@@ -8,17 +11,8 @@ import { ProcessService } from './services/processService';
 import { SettingsService } from './services/settingsService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { Logger } from './util/logger';
+import { DependenciesTreeProvider } from './views/dependenciesTreeProvider';
 import { GroupsTreeProvider } from './views/groupsTreeProvider';
-
-class PlaceholderTreeProvider implements vscode.TreeDataProvider<{ label: string }> {
-  constructor(private readonly message: string) {}
-  getTreeItem(element: { label: string }): vscode.TreeItem {
-    return new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
-  }
-  getChildren(): { label: string }[] {
-    return [{ label: this.message }];
-  }
-}
 
 export const activate = (context: vscode.ExtensionContext): void => {
   const logger = new Logger('Salesforce Extensions Manager');
@@ -31,15 +25,19 @@ export const activate = (context: vscode.ExtensionContext): void => {
   const extensions = new ExtensionService(settings, codeCli, logger);
   const store = new GroupStore(settings);
 
+  const runners = new DependencyRunners(proc);
+  const registry = new DependencyRegistry(runners);
+
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
+  const dependenciesTree = new DependenciesTreeProvider(registry);
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW_GROUPS_ID, groupsTree),
-    vscode.window.registerTreeDataProvider(
-      VIEW_DEPENDENCIES_ID,
-      new PlaceholderTreeProvider('Dependency checks land in Phase 7.')
-    ),
-    settings.onDidChange(() => groupsTree.refresh())
+    vscode.window.registerTreeDataProvider(VIEW_DEPENDENCIES_ID, dependenciesTree),
+    settings.onDidChange(() => {
+      groupsTree.refresh();
+      dependenciesTree.refresh();
+    })
   );
 
   registerGroupCommands(context, {
@@ -51,9 +49,19 @@ export const activate = (context: vscode.ExtensionContext): void => {
     tree: groupsTree
   });
 
+  registerDependencyCommands(context, {
+    registry,
+    tree: dependenciesTree,
+    logger
+  });
+
   context.subscriptions.push(
-    vscode.commands.registerCommand('sfdxManager.showLog', () => logger.show())
+    vscode.commands.registerCommand(COMMANDS.showLog, () => logger.show())
   );
+
+  if (settings.getAutoRunDependencyChecks()) {
+    void dependenciesTree.runChecks();
+  }
 
   logger.info('Salesforce Extensions Manager activated.');
 };

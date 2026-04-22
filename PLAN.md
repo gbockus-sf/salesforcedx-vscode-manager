@@ -322,9 +322,9 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] `runners.test.ts`, `registry.test.ts` (mocked filesystem + child_process)
 
 ### Phase 7 — Dependency commands + tree view
-- [ ] `src/commands/dependencyCommands.ts` — show, runCheck, copyReport
-- [ ] `src/views/dependenciesTreeProvider.ts` with category grouping + status icons + remediation tooltip
-- [ ] Manual F5 smoke: render with healthy env, then break `java` and re-check
+- [x] `src/commands/dependencyCommands.ts` — show, runCheck, copyReport
+- [x] `src/views/dependenciesTreeProvider.ts` with category grouping + status icons + remediation tooltip
+- [ ] Manual F5 smoke: render with healthy env, then break `java` and re-check *(pending user smoke test)*
 
 ### Phase 8 — VSIX override
 - [ ] `src/vsix/types.ts`

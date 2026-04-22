@@ -25,20 +25,29 @@
       { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager", "icon": "$(edit)" },
       { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager", "icon": "$(trash)" },
       { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager", "icon": "$(settings-gear)" },
+      { "command": "sfdxManager.showDependencies", "title": "Show Dependencies", "category": "SFDX Manager", "icon": "$(checklist)" },
+      { "command": "sfdxManager.runDependencyCheck", "title": "Run Dependency Check", "category": "SFDX Manager", "icon": "$(refresh)" },
+      { "command": "sfdxManager.copyDependencyReport", "title": "Copy Dependency Report", "category": "SFDX Manager", "icon": "$(clippy)" },
+      { "command": "sfdxManager.openRemediationUrl", "title": "Open Remediation Link", "category": "SFDX Manager", "icon": "$(link-external)" },
       { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" }
     ],
     "menus": {
       "commandPalette": [
-        { "command": "sfdxManager.applyGroup", "when": "false" }
+        { "command": "sfdxManager.applyGroup", "when": "false" },
+        { "command": "sfdxManager.openRemediationUrl", "when": "false" }
       ],
       "view/title": [
         { "command": "sfdxManager.createCustomGroup", "when": "view == sfdxManager.groups", "group": "navigation" },
-        { "command": "sfdxManager.applyGroupQuickPick", "when": "view == sfdxManager.groups", "group": "navigation" }
+        { "command": "sfdxManager.applyGroupQuickPick", "when": "view == sfdxManager.groups", "group": "navigation" },
+        { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies", "group": "navigation" },
+        { "command": "sfdxManager.copyDependencyReport", "when": "view == sfdxManager.dependencies", "group": "navigation" }
       ],
       "view/item/context": [
         { "command": "sfdxManager.applyGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "inline" },
         { "command": "sfdxManager.editGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@1" },
-        { "command": "sfdxManager.deleteGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@2" }
+        { "command": "sfdxManager.deleteGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@2" },
+        { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies && viewItem =~ /^check/", "group": "inline" },
+        { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" }
       ]
     },
     "viewsContainers": {
