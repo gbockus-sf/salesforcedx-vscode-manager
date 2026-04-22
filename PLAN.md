@@ -302,10 +302,10 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] Unit tests with mocked `vscode` + child_process
 
 ### Phase 4 — Groups model
-- [ ] `src/groups/types.ts`, `builtInGroups.ts` (Apex + Lightning populated, React stub)
-- [ ] `src/groups/groupStore.ts` with merge-by-id semantics + refuse-remove-builtin rule
-- [ ] `src/groups/groupApplier.ts` driving `ExtensionService` based on `ApplyScope`
-- [ ] `groupStore.test.ts`, `groupApplier.test.ts`
+- [x] `src/groups/types.ts`, `builtInGroups.ts` (Apex + Lightning populated, React stub)
+- [x] `src/groups/groupStore.ts` with merge-by-id semantics + refuse-remove-builtin rule
+- [x] `src/groups/groupApplier.ts` driving `ExtensionService` based on `ApplyScope`
+- [x] `groupStore.test.ts`, `groupApplier.test.ts`
 
 ### Phase 5 — Group commands + tree view
 - [ ] `src/commands/groupCommands.ts` — apply, applyQuickPick, enableAll, disableAll, create, edit, delete, openGroupsConfig
