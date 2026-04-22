@@ -446,3 +446,32 @@ should be addressed before a real release.
   entry and the reason in the log. This removes the
   'Cannot uninstall X. Y depends on this' warnings we see today and
   turns them into explicit tree-surfaced state instead.
+- [ ] **Dedupe the Dependencies list by logical check, not just by id.**
+  Today `DependencyRegistry.collect()` dedupes on `check.id`, but two
+  different extensions can declare the same *logical* dependency
+  (e.g., Java JDK 11+) with different ids (`apex.java-jdk`,
+  `soql.java-jdk`) and both will show up in the tree. Proposal: key
+  by a content fingerprint — same `check.type` + same primary
+  arguments (command/env/path/minVersion) — and fold duplicates into
+  one row with multiple `ownerExtensionId` entries shown in the
+  tooltip. Built-in checks take precedence over shims take
+  precedence over manifest-declared when fingerprints collide.
+- [ ] **Show installed version + update indicators in the Groups tree.**
+  Each extension node should display:
+  - the currently installed version (read from
+    `ext.packageJSON.version`),
+  - an `$(arrow-circle-up)` badge when a newer version is available
+    in the marketplace,
+  - a `$(package)` badge (already present) when the currently
+    installed copy came from the VSIX override directory.
+  Add context-menu / inline-button actions for "Update this
+  extension" (per-node) and "Update All Salesforce Extensions"
+  (view-title). Marketplace version discovery: use `code
+  --show-versions --list-extensions` for a cheap local signal plus a
+  periodic fetch of the Marketplace gallery API for each managed id
+  (cache for ~1h). Updates route through
+  `CodeCliService.installExtension(id, /*force=*/ true)` so they
+  work identically whether the source is marketplace or VSIX.
+  Consider a setting `salesforcedx-vscode-manager.updateCheck` —
+  `onStartup` / `manual` / `never` — and a status-bar badge when
+  updates are waiting.
