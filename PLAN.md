@@ -458,6 +458,11 @@ should be addressed before a real release.
   one row with multiple `ownerExtensionId` entries shown in the
   tooltip. Built-in checks take precedence over shims take
   precedence over manifest-declared when fingerprints collide.
+- [ ] **Review CLAUDE.md against a second agent session.** After one new
+  agent session lands a change, audit the patterns in [`CLAUDE.md`](./CLAUDE.md)
+  — anything the agent had to be told twice in the session is a gap in the
+  file; anything the file says but the agent didn't need is probably
+  overweight. Keep the doc lean and empirically grounded.
 - [ ] **Show installed version + update indicators in the Groups tree.**
   Each extension node should display:
   - the currently installed version (read from
