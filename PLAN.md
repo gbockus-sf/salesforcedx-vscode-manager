@@ -463,22 +463,23 @@ should be addressed before a real release.
   — anything the agent had to be told twice in the session is a gap in the
   file; anything the file says but the agent didn't need is probably
   overweight. Keep the doc lean and empirically grounded.
-- [ ] **Show installed version + update indicators in the Groups tree.**
-  Each extension node should display:
+- [x] **Show installed version + update indicators in the Groups tree.**
+  Each extension node now displays:
   - the currently installed version (read from
-    `ext.packageJSON.version`),
+    `ext.packageJSON.version`, with a fallback to the parsed output
+    of `code --list-extensions --show-versions`),
   - an `$(arrow-circle-up)` badge when a newer version is available
     in the marketplace,
-  - a `$(package)` badge (already present) when the currently
-    installed copy came from the VSIX override directory.
-  Add context-menu / inline-button actions for "Update this
-  extension" (per-node) and "Update All Salesforce Extensions"
-  (view-title). Marketplace version discovery: use `code
-  --show-versions --list-extensions` for a cheap local signal plus a
-  periodic fetch of the Marketplace gallery API for each managed id
-  (cache for ~1h). Updates route through
-  `CodeCliService.installExtension(id, /*force=*/ true)` so they
-  work identically whether the source is marketplace or VSIX.
-  Consider a setting `salesforcedx-vscode-manager.updateCheck` —
-  `onStartup` / `manual` / `never` — and a status-bar badge when
-  updates are waiting.
+  - a `$(package)` badge when the currently installed copy came from
+    the VSIX override directory (with a walkthrough tooltip hint).
+  Inline `Update Extension` action (per-node, visible only when
+  `updateAvailable`) and view-title `Update All Salesforce
+  Extensions` / `Check for Extension Updates` actions routed through
+  `CodeCliService.installExtension(id, /*force=*/ true)`. Marketplace
+  version discovery lives in
+  `src/services/marketplaceVersionService.ts` (1 h in-memory cache,
+  graceful no-op when offline), gated behind the new
+  `salesforcedx-vscode-manager.updateCheck` enum setting
+  (`onStartup` / `manual` / `never`, default `manual`). A
+  periodic/background status-bar badge for pending updates is left
+  as a follow-up.

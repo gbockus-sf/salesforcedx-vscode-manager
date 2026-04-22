@@ -15,7 +15,13 @@ export const window = {
     tooltip: '',
     command: ''
   })),
-  registerTreeDataProvider: jest.fn(() => ({ dispose: jest.fn() }))
+  registerTreeDataProvider: jest.fn(() => ({ dispose: jest.fn() })),
+  withProgress: jest.fn(
+    async (
+      _options: unknown,
+      task: (progress: { report: (value: unknown) => void }) => unknown
+    ) => task({ report: () => undefined })
+  )
 };
 
 export const commands = {
@@ -73,6 +79,7 @@ export class EventEmitter<T> {
 
 export enum TreeItemCollapsibleState { None = 0, Collapsed = 1, Expanded = 2 }
 export enum StatusBarAlignment { Left = 1, Right = 2 }
+export enum ProgressLocation { SourceControl = 1, Window = 10, Notification = 15 }
 
 export class TreeItem {
   constructor(public label: string, public collapsibleState?: TreeItemCollapsibleState) {}

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { Group } from '../groups/types';
 import type { GroupStore } from '../groups/groupStore';
-import type { ExtensionService } from '../services/extensionService';
+import type { ExtensionService, NodeVersionInfo } from '../services/extensionService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
 
 export type GroupsNode = GroupNode | ExtensionNode;
@@ -20,6 +20,9 @@ interface ExtensionNode {
   enabled: boolean;
   source: 'vsix' | 'marketplace' | 'unknown';
   vsixFilename?: string;
+  installedVersion?: string;
+  latestVersion?: string;
+  updateAvailable: boolean;
 }
 
 export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
@@ -27,6 +30,8 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   readonly onDidChangeTreeData = this.emitter.event;
   private getVsixSources: (() => Record<string, 'vsix' | 'marketplace'>) | undefined;
   private getVsixOverrides: (() => Map<string, { version: string; filePath: string }>) | undefined;
+  private readonly versionInfoCache = new Map<string, NodeVersionInfo>();
+  private refreshInFlight: Promise<void> | undefined;
 
   constructor(
     private readonly store: GroupStore,
@@ -46,6 +51,42 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     this.emitter.fire(undefined);
   }
 
+  /**
+   * Re-pull installed version + latest-version state for every member of
+   * every group. Fires `onDidChangeTreeData` once complete so pre-existing
+   * items get re-rendered with update badges. Silently swallows errors —
+   * this path must never surface network failures to the user.
+   */
+  async refreshVersionInfo(): Promise<void> {
+    if (this.refreshInFlight) return this.refreshInFlight;
+    this.refreshInFlight = (async () => {
+      try {
+        await this.extensions.refreshInstalledCliVersions();
+        const ids = new Set<string>();
+        for (const group of this.store.list()) {
+          for (const id of group.extensions) ids.add(id);
+        }
+        for (const id of ids) {
+          try {
+            const info = await this.extensions.getNodeVersionInfo(id);
+            this.versionInfoCache.set(id, info);
+          } catch {
+            // Ignore — keep whatever cache entry we already had.
+          }
+        }
+      } finally {
+        this.refreshInFlight = undefined;
+        this.refresh();
+      }
+    })();
+    return this.refreshInFlight;
+  }
+
+  /** Cached version info for an id — returns `undefined` before first refresh. */
+  getVersionInfo(id: string): NodeVersionInfo | undefined {
+    return this.versionInfoCache.get(id);
+  }
+
   getTreeItem(node: GroupsNode): vscode.TreeItem {
     if (node.kind === 'group') {
       const item = new vscode.TreeItem(
@@ -61,25 +102,55 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
 
     const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
     const item = new vscode.TreeItem(short, vscode.TreeItemCollapsibleState.None);
-    item.description = !node.installed
-      ? 'not installed'
-      : !node.enabled
-        ? 'disabled'
-        : node.source === 'vsix'
-          ? 'vsix'
-          : undefined;
-    item.tooltip = node.source === 'vsix' && node.vsixFilename
-      ? `${node.extensionId} — installed from local VSIX: ${node.vsixFilename}`
-      : node.extensionId;
-    item.iconPath = !node.installed
-      ? new vscode.ThemeIcon('circle-slash')
-      : !node.enabled
-        ? new vscode.ThemeIcon('circle-outline')
-        : node.source === 'vsix'
-          ? new vscode.ThemeIcon('package')
-          : new vscode.ThemeIcon('check');
-    item.contextValue = 'extension';
+    item.description = this.formatDescription(node);
+    item.tooltip = this.buildTooltip(node);
+    item.iconPath = this.resolveIcon(node);
+    item.contextValue = this.resolveContextValue(node);
     return item;
+  }
+
+  private formatDescription(node: ExtensionNode): string {
+    if (!node.installed) return 'not installed';
+    const bits: string[] = [];
+    if (node.installedVersion) bits.push(`v${stripLeadingV(node.installedVersion)}`);
+    if (!node.enabled) bits.push('disabled');
+    if (node.source === 'vsix') bits.push('vsix');
+    if (node.updateAvailable && node.latestVersion) {
+      bits.push(`update → v${stripLeadingV(node.latestVersion)}`);
+    }
+    return bits.length > 0 ? bits.join(' · ') : '';
+  }
+
+  private buildTooltip(node: ExtensionNode): string {
+    const lines: string[] = [node.extensionId];
+    if (node.installedVersion) lines.push(`Installed: v${stripLeadingV(node.installedVersion)}`);
+    if (node.latestVersion && node.updateAvailable) {
+      lines.push(`Marketplace: v${stripLeadingV(node.latestVersion)} (update available)`);
+    }
+    if (node.source === 'vsix') {
+      lines.push(
+        node.vsixFilename
+          ? `Installed from local VSIX: ${node.vsixFilename}`
+          : 'Installed from local VSIX directory'
+      );
+      lines.push('See resources/walkthrough/vsix.md for the VSIX workflow.');
+    }
+    return lines.join('\n');
+  }
+
+  private resolveIcon(node: ExtensionNode): vscode.ThemeIcon {
+    if (!node.installed) return new vscode.ThemeIcon('circle-slash');
+    if (!node.enabled) return new vscode.ThemeIcon('circle-outline');
+    if (node.updateAvailable) return new vscode.ThemeIcon('arrow-circle-up');
+    if (node.source === 'vsix') return new vscode.ThemeIcon('package');
+    return new vscode.ThemeIcon('check');
+  }
+
+  private resolveContextValue(node: ExtensionNode): string {
+    const flags: string[] = ['extension'];
+    if (node.updateAvailable) flags.push('updateAvailable');
+    if (node.source === 'vsix') flags.push('vsix');
+    return flags.join(':');
   }
 
   getChildren(parent?: GroupsNode): GroupsNode[] {
@@ -98,15 +169,25 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     const overrides = this.getVsixOverrides?.();
     return parent.group.extensions.map(id => {
       const override = overrides?.get(id);
+      const versionInfo = this.versionInfoCache.get(id);
+      const installed = this.extensions.isInstalled(id);
+      const installedVersion =
+        versionInfo?.installedVersion ?? (installed ? this.extensions.getInstalledVersion(id) : undefined);
       return {
         kind: 'extension' as const,
         extensionId: id,
         groupId: parent.group.id,
-        installed: this.extensions.isInstalled(id),
+        installed,
         enabled: this.extensions.isEnabled(id),
         source: sources[id] ?? 'unknown',
-        vsixFilename: override?.filePath.split('/').pop()
+        vsixFilename: override?.filePath.split('/').pop(),
+        installedVersion,
+        latestVersion: versionInfo?.latestVersion,
+        updateAvailable: versionInfo?.updateAvailable ?? false
       };
     });
   }
 }
+
+const stripLeadingV = (raw: string): string =>
+  raw.startsWith('v') || raw.startsWith('V') ? raw.slice(1) : raw;

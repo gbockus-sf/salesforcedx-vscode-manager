@@ -22,7 +22,10 @@ export const COMMANDS = {
   openVsixDirectory: 'sfdxManager.openVsixDirectory',
   clearVsixOverrides: 'sfdxManager.clearVsixOverrides',
   vsixMenu: 'sfdxManager.vsixMenu',
-  showLog: 'sfdxManager.showLog'
+  showLog: 'sfdxManager.showLog',
+  updateExtension: 'sfdxManager.updateExtension',
+  updateAllSalesforce: 'sfdxManager.updateAllSalesforce',
+  checkForUpdates: 'sfdxManager.checkForUpdates'
 } as const;
 
 export const SETTINGS = {
@@ -35,8 +38,11 @@ export const SETTINGS = {
   vsixDirectory: 'vsixDirectory',
   vsixAutoReinstallOnChange: 'vsixAutoReinstallOnChange',
   statusBarShowGroup: 'statusBar.showGroup',
-  statusBarShowVsix: 'statusBar.showVsix'
+  statusBarShowVsix: 'statusBar.showVsix',
+  updateCheck: 'updateCheck'
 } as const;
+
+export type UpdateCheckMode = 'onStartup' | 'manual' | 'never';
 
 export const WORKSPACE_STATE = {
   activeGroupId: 'sfdxManager.activeGroupId',
