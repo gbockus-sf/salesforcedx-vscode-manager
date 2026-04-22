@@ -16,6 +16,30 @@
     "onStartupFinished"
   ],
   "contributes": {
+    "commands": [
+      { "command": "sfdxManager.applyGroupQuickPick", "title": "Apply Group...", "category": "SFDX Manager" },
+      { "command": "sfdxManager.applyGroup", "title": "Apply Group", "category": "SFDX Manager" },
+      { "command": "sfdxManager.enableAllSalesforce", "title": "Enable All Managed Extensions", "category": "SFDX Manager" },
+      { "command": "sfdxManager.disableAllSalesforce", "title": "Disable All Managed Extensions", "category": "SFDX Manager" },
+      { "command": "sfdxManager.createCustomGroup", "title": "Create Custom Group", "category": "SFDX Manager" },
+      { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager" },
+      { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager" },
+      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager" }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "sfdxManager.applyGroup", "when": "false" }
+      ],
+      "view/title": [
+        { "command": "sfdxManager.createCustomGroup", "when": "view == sfdxManager.groups", "group": "navigation" },
+        { "command": "sfdxManager.applyGroupQuickPick", "when": "view == sfdxManager.groups", "group": "navigation" }
+      ],
+      "view/item/context": [
+        { "command": "sfdxManager.applyGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "inline" },
+        { "command": "sfdxManager.editGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@1" },
+        { "command": "sfdxManager.deleteGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@2" }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {
