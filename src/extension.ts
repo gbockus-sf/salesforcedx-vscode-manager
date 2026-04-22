@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
 import { CodeCliService } from './services/codeCliService';
+import { ExtensionService } from './services/extensionService';
 import { ProcessService } from './services/processService';
 import { SettingsService } from './services/settingsService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -30,12 +31,12 @@ export const activate = (context: vscode.ExtensionContext): void => {
   const proc = new ProcessService();
   const codeCli = new CodeCliService(proc);
   const workspaceState = new WorkspaceStateService(context);
+  const extensionService = new ExtensionService(settings, codeCli, logger);
 
   // Keep references so the unused-parameter lint rule doesn't fire while real
   // wiring lands in later phases.
-  void settings;
-  void codeCli;
   void workspaceState;
+  void extensionService;
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(

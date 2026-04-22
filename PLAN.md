@@ -293,13 +293,13 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] `src/constants.ts` with command ids / view ids / setting keys
 - [x] `src/services/settingsService.ts`, `processService.ts`, `codeCliService.ts`, `workspaceStateService.ts` (empty typed wrappers)
 - [x] Activity-bar container + two empty view registrations (`sfdxManager.groups`, `sfdxManager.dependencies`)
-- [ ] Launch via F5, confirm container appears *(pending user smoke test)*
+- [x] Launch via F5, confirm container appears
 
 ### Phase 3 — Extension service
-- [ ] `src/services/extensionService.ts` — `managed()`, `isInstalled()`, `isEnabled()`, `readManifest()`
-- [ ] `enable()` / `disable()` via `workbench.extensions.action.*` with deep-link fallback behind `useInternalCommands`
-- [ ] `install()` / `uninstall()` via `code` CLI
-- [ ] Unit tests with mocked `vscode` + child_process
+- [x] `src/services/extensionService.ts` — `managed()`, `isInstalled()`, `isEnabled()`, `readManifest()`
+- [x] `enable()` / `disable()` via `workbench.extensions.action.*` with deep-link fallback behind `useInternalCommands`
+- [x] `install()` / `uninstall()` via `code` CLI
+- [x] Unit tests with mocked `vscode` + child_process
 
 ### Phase 4 — Groups model
 - [ ] `src/groups/types.ts`, `builtInGroups.ts` (Apex + Lightning populated, React stub)
