@@ -23,6 +23,10 @@ export class SettingsService {
     return this.config().get<boolean>(SETTINGS.useInternalCommands, true);
   }
 
+  getBackend(): 'codeCli' | 'profiles' {
+    return this.config().get<'codeCli' | 'profiles'>(SETTINGS.backend, 'codeCli');
+  }
+
   getAutoRunDependencyChecks(): boolean {
     return this.config().get<boolean>(SETTINGS.autoRunDependencyChecks, false);
   }

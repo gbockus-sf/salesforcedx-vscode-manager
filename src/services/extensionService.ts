@@ -10,6 +10,8 @@ export interface InstallOutcome {
   stderr?: string;
 }
 
+export type ToggleOutcome = 'ok' | 'manual-required';
+
 /**
  * Routes through VsixInstaller in Phase 8. Until then, install() always
  * installs from the marketplace.
@@ -20,6 +22,7 @@ export interface VsixInstallerLike {
 
 export class ExtensionService {
   private vsixInstaller: VsixInstallerLike | undefined;
+  private loggedCommandList = false;
 
   constructor(
     private readonly settings: SettingsService,
@@ -54,23 +57,48 @@ export class ExtensionService {
     return vscode.extensions.getExtension(id)?.packageJSON as T | undefined;
   }
 
-  async enable(id: string): Promise<'ok' | 'manual-required'> {
-    if (!this.isInstalled(id)) {
-      this.logger.warn(`Cannot enable ${id}: not installed.`);
+  /**
+   * Make sure an extension is installed and active in the current window.
+   * Under the codeCli backend this means `code --install-extension <id>`
+   * (a no-op if already installed and up to date).
+   */
+  async enable(id: string): Promise<ToggleOutcome> {
+    if (this.settings.getBackend() !== 'codeCli') {
+      this.logger.warn(`enable(${id}) requested but backend is not codeCli; skipping.`);
       return 'manual-required';
     }
-    if (this.settings.getUseInternalCommands() && (await this.tryInternalToggle('enable', id))) {
+    if (this.isInstalled(id)) {
+      this.logger.info(`enable(${id}): already installed; nothing to do.`);
       return 'ok';
     }
-    return 'manual-required';
+    const install = await this.install(id);
+    if (install.exitCode !== 0) {
+      this.logger.warn(`enable(${id}): install exit ${install.exitCode}; manual required.`);
+      return 'manual-required';
+    }
+    return 'ok';
   }
 
-  async disable(id: string): Promise<'ok' | 'manual-required'> {
-    if (!this.isInstalled(id)) return 'ok';
-    if (this.settings.getUseInternalCommands() && (await this.tryInternalToggle('disable', id))) {
+  /**
+   * Make sure an extension is not active in the current window. Under the
+   * codeCli backend this means `code --uninstall-extension <id>`.
+   */
+  async disable(id: string): Promise<ToggleOutcome> {
+    if (this.settings.getBackend() !== 'codeCli') {
+      this.logger.warn(`disable(${id}) requested but backend is not codeCli; skipping.`);
+      return 'manual-required';
+    }
+    if (!this.isInstalled(id)) {
+      this.logger.info(`disable(${id}): not installed; nothing to do.`);
       return 'ok';
     }
-    return 'manual-required';
+    const { exitCode, stderr } = await this.codeCli.uninstallExtension(id);
+    if (exitCode !== 0) {
+      this.logger.warn(`disable(${id}): uninstall exit ${exitCode} stderr=${stderr ?? ''}`);
+      return 'manual-required';
+    }
+    this.logger.info(`disable(${id}): uninstalled via code CLI.`);
+    return 'ok';
   }
 
   async showManualToggleHint(ids: string[], action: 'Enable' | 'Disable'): Promise<void> {
@@ -78,32 +106,12 @@ export class ExtensionService {
     await this.openExtensionsViewFor(ids, action);
   }
 
-  private async tryInternalToggle(action: 'enable' | 'disable', id: string): Promise<boolean> {
-    const command = `workbench.extensions.action.${action}Extension`;
-    const available = await vscode.commands.getCommands(true);
-    if (!available.includes(command)) {
-      this.logger.warn(
-        `Command "${command}" is not registered in this VSCode build. ` +
-          `Matching commands available: ${available.filter(c => c.startsWith('workbench.extensions.action.')).slice(0, 15).join(', ')}`
-      );
-      return false;
-    }
-    // Different VSCode versions accept different argument shapes.
-    const variants: unknown[][] = [[[id]], [{ id }], [id]];
-    const errors: string[] = [];
-    for (const args of variants) {
-      try {
-        await vscode.commands.executeCommand(command, ...args);
-        this.logger.info(`${action}(${id}) ok via ${command} args=${JSON.stringify(args)}`);
-        return true;
-      } catch (err) {
-        errors.push(err instanceof Error ? err.message : String(err));
-      }
-    }
-    this.logger.warn(
-      `No internal ${action} arg shape worked for ${id}. Errors: ${errors.join(' | ')}`
-    );
-    return false;
+  async logAvailableExtensionCommands(): Promise<void> {
+    if (this.loggedCommandList) return;
+    const all = await vscode.commands.getCommands(true);
+    const ours = all.filter(c => c.includes('extension')).sort();
+    this.logger.info(`Available extension-related commands (${ours.length}):\n  ${ours.join('\n  ')}`);
+    this.loggedCommandList = true;
   }
 
   async install(id: string): Promise<InstallOutcome> {

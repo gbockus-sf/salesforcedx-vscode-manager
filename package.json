@@ -76,10 +76,20 @@
           "default": "disableOthers",
           "description": "What to do with managed extensions not in the applied group."
         },
+        "salesforcedx-vscode-manager.backend": {
+          "type": "string",
+          "enum": ["codeCli", "profiles"],
+          "enumDescriptions": [
+            "Use the `code` CLI to install/uninstall extensions. Applying a group with scope=disableOthers uninstalls non-members.",
+            "Each group maps to a VSCode Profile; applying a group switches profiles (coarse-grained but cleanly isolated). Reserved for a future release."
+          ],
+          "default": "codeCli",
+          "description": "How apply-group changes workspace extension state."
+        },
         "salesforcedx-vscode-manager.useInternalCommands": {
           "type": "boolean",
           "default": true,
-          "description": "Use undocumented workbench.extensions.action.* commands to toggle enablement. When false, the manager opens the Extensions view with a filter and lets you toggle manually."
+          "description": "Deprecated fallback flag. VSCode does not expose a stable API to toggle extension enablement; this setting has no effect under the codeCli backend."
         },
         "salesforcedx-vscode-manager.autoRunDependencyChecks": {
           "type": "boolean",

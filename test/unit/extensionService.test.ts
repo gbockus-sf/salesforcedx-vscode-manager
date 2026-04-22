@@ -11,6 +11,7 @@ describe('ExtensionService', () => {
   const mkSettings = (overrides: Partial<Record<keyof SettingsService, unknown>> = {}): SettingsService => ({
     getThirdPartyExtensionIds: jest.fn(() => ['redhat.vscode-xml']),
     getUseInternalCommands: jest.fn(() => true),
+    getBackend: jest.fn(() => 'codeCli'),
     ...overrides
   } as unknown as SettingsService);
 
@@ -43,50 +44,72 @@ describe('ExtensionService', () => {
     ]);
   });
 
-  it('enable() invokes the internal workbench command when setting allows', async () => {
+  it('enable() is a no-op when the extension is already installed', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
-    const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+    const cli = mkCodeCli();
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
     const outcome = await svc.enable('salesforce.foo');
     expect(outcome).toBe('ok');
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      'workbench.extensions.action.enableExtension',
-      ['salesforce.foo']
-    );
+    expect(cli.installExtension).not.toHaveBeenCalled();
   });
 
-  it('enable() returns manual-required when useInternalCommands is false', async () => {
-    (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
+  it('enable() installs via code CLI when the extension is missing', async () => {
+    (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
+    const cli = mkCodeCli();
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    const outcome = await svc.enable('salesforce.foo');
+    expect(outcome).toBe('ok');
+    expect(cli.installExtension).toHaveBeenCalledWith('salesforce.foo');
+  });
+
+  it('enable() returns manual-required when install fails', async () => {
+    (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
+    const cli = {
+      installExtension: jest.fn(async () => ({ stdout: '', stderr: 'network', exitCode: 1 })),
+      uninstallExtension: jest.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 }))
+    } as unknown as CodeCliService;
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    const outcome = await svc.enable('salesforce.foo');
+    expect(outcome).toBe('manual-required');
+  });
+
+  it('enable() returns manual-required when backend is not codeCli', async () => {
     const svc = new ExtensionService(
-      mkSettings({ getUseInternalCommands: jest.fn(() => false) } as Partial<Record<keyof SettingsService, unknown>>),
+      mkSettings({ getBackend: jest.fn(() => 'profiles') } as Partial<Record<keyof SettingsService, unknown>>),
       mkCodeCli(),
       mkLogger()
     );
     const outcome = await svc.enable('salesforce.foo');
     expect(outcome).toBe('manual-required');
-    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  it('enable() tries alternate arg shapes before giving up', async () => {
+  it('disable() uninstalls via the code CLI when the extension is installed', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
-    const attempts: unknown[][] = [];
-    (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (...args: unknown[]) => {
-      attempts.push(args);
-      throw new Error('nope');
-    });
-    const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
-    const outcome = await svc.enable('salesforce.foo');
-    expect(outcome).toBe('manual-required');
-    expect(attempts.length).toBeGreaterThan(1);
+    const cli = mkCodeCli();
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    const outcome = await svc.disable('salesforce.foo');
+    expect(outcome).toBe('ok');
+    expect(cli.uninstallExtension).toHaveBeenCalledWith('salesforce.foo');
   });
 
-  it('enable() short-circuits when the extension is not installed', async () => {
+  it('disable() is a no-op when the extension is not installed', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
-    const logger = mkLogger();
-    const svc = new ExtensionService(mkSettings(), mkCodeCli(), logger);
-    const outcome = await svc.enable('salesforce.missing');
+    const cli = mkCodeCli();
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    const outcome = await svc.disable('salesforce.foo');
+    expect(outcome).toBe('ok');
+    expect(cli.uninstallExtension).not.toHaveBeenCalled();
+  });
+
+  it('disable() reports manual-required when uninstall fails', async () => {
+    (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
+    const cli = {
+      installExtension: jest.fn(async () => ({ stdout: '', stderr: '', exitCode: 0 })),
+      uninstallExtension: jest.fn(async () => ({ stdout: '', stderr: 'err', exitCode: 1 }))
+    } as unknown as CodeCliService;
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    const outcome = await svc.disable('salesforce.foo');
     expect(outcome).toBe('manual-required');
-    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalled();
   });
 
   it('showManualToggleHint() opens the extensions view with a combined filter', async () => {
