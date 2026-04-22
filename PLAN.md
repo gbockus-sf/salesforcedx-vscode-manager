@@ -289,11 +289,11 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] `npm run compile && npm test` green
 
 ### Phase 2 — Activation skeleton
-- [ ] `src/extension.ts` with `activate()` / `deactivate()` and an OutputChannel logger
-- [ ] `src/constants.ts` with command ids / view ids / setting keys
-- [ ] `src/services/settingsService.ts`, `processService.ts`, `codeCliService.ts`, `workspaceStateService.ts` (empty typed wrappers)
-- [ ] Activity-bar container + two empty view registrations (`sfdxManager.groups`, `sfdxManager.dependencies`)
-- [ ] Launch via F5, confirm container appears
+- [x] `src/extension.ts` with `activate()` / `deactivate()` and an OutputChannel logger
+- [x] `src/constants.ts` with command ids / view ids / setting keys
+- [x] `src/services/settingsService.ts`, `processService.ts`, `codeCliService.ts`, `workspaceStateService.ts` (empty typed wrappers)
+- [x] Activity-bar container + two empty view registrations (`sfdxManager.groups`, `sfdxManager.dependencies`)
+- [ ] Launch via F5, confirm container appears *(pending user smoke test)*
 
 ### Phase 3 — Extension service
 - [ ] `src/services/extensionService.ts` — `managed()`, `isInstalled()`, `isEnabled()`, `readManifest()`

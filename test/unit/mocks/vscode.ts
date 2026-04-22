@@ -6,6 +6,7 @@ export const window = {
   showInformationMessage: jest.fn(),
   showWarningMessage: jest.fn(),
   showErrorMessage: jest.fn(),
+  showQuickPick: jest.fn(),
   createStatusBarItem: jest.fn(() => ({
     show: jest.fn(),
     hide: jest.fn(),
@@ -13,7 +14,8 @@ export const window = {
     text: '',
     tooltip: '',
     command: ''
-  }))
+  })),
+  registerTreeDataProvider: jest.fn(() => ({ dispose: jest.fn() }))
 };
 
 export const commands = {
@@ -23,7 +25,7 @@ export const commands = {
 
 export const workspace = {
   getConfiguration: jest.fn(() => ({
-    get: jest.fn(),
+    get: jest.fn((_key: string, def?: unknown) => def),
     update: jest.fn()
   })),
   onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() })),
@@ -34,6 +36,8 @@ export const workspace = {
     dispose: jest.fn()
   }))
 };
+
+export enum ConfigurationTarget { Global = 1, Workspace = 2, WorkspaceFolder = 3 }
 
 export const extensions = {
   all: [] as unknown[],

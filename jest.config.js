@@ -9,7 +9,7 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/test/unit/**/?(*.)+(spec|test).[t]s?(x)'],
-  resetMocks: true,
+  clearMocks: true,
   restoreMocks: true,
   modulePathIgnorePatterns: ['.vscode-test'],
   moduleNameMapper: {

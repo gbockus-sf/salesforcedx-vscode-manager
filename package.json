@@ -15,7 +15,87 @@
   "activationEvents": [
     "onStartupFinished"
   ],
-  "contributes": {},
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sfdxManager",
+          "title": "Salesforce Extensions Manager",
+          "icon": "resources/icons/sfdx-manager.svg"
+        }
+      ]
+    },
+    "views": {
+      "sfdxManager": [
+        {
+          "id": "sfdxManager.groups",
+          "name": "Groups"
+        },
+        {
+          "id": "sfdxManager.dependencies",
+          "name": "Dependencies"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Salesforce Extensions Manager",
+      "properties": {
+        "salesforcedx-vscode-manager.groups": {
+          "type": "object",
+          "default": {},
+          "description": "User-defined extension groups (merged with built-ins by id)."
+        },
+        "salesforcedx-vscode-manager.applyScope": {
+          "type": "string",
+          "enum": ["disableOthers", "enableOnly", "ask"],
+          "default": "disableOthers",
+          "description": "What to do with managed extensions not in the applied group."
+        },
+        "salesforcedx-vscode-manager.useInternalCommands": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use undocumented workbench.extensions.action.* commands to toggle enablement. When false, the manager opens the Extensions view with a filter and lets you toggle manually."
+        },
+        "salesforcedx-vscode-manager.autoRunDependencyChecks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run dependency checks automatically on startup."
+        },
+        "salesforcedx-vscode-manager.thirdPartyExtensionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [
+            "redhat.vscode-xml",
+            "dbaeumer.vscode-eslint",
+            "esbenp.prettier-vscode",
+            "salesforce.lightning-design-system-vscode"
+          ],
+          "description": "Non-Salesforce extensions the manager may enable/disable as part of a group."
+        },
+        "salesforcedx-vscode-manager.vsixDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "description": "Absolute path to a directory of local .vsix files. When a managed extension has a matching vsix, it is installed from there instead of the marketplace."
+        },
+        "salesforcedx-vscode-manager.vsixAutoReinstallOnChange": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically reinstall a managed extension when a new matching vsix appears in the vsix directory."
+        },
+        "salesforcedx-vscode-manager.statusBar.showGroup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the active group in the status bar."
+        },
+        "salesforcedx-vscode-manager.statusBar.showVsix": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the VSIX override indicator in the status bar when a vsix directory is set."
+        }
+      }
+    }
+  },
   "scripts": {
     "compile": "tsc --noEmit && node ./esbuild.js",
     "watch": "tsc --noEmit --watch",

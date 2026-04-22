@@ -7,7 +7,11 @@ describe('extension entry point', () => {
   });
 
   it('activate runs without error with a minimal context', () => {
-    const fakeContext = { subscriptions: [] } as unknown as Parameters<typeof extension.activate>[0];
+    const fakeContext = {
+      subscriptions: [],
+      workspaceState: { get: jest.fn(), update: jest.fn() },
+      globalState: { get: jest.fn(), update: jest.fn() }
+    } as unknown as Parameters<typeof extension.activate>[0];
     expect(() => extension.activate(fakeContext)).not.toThrow();
   });
 });
