@@ -273,10 +273,10 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 > Check items off by editing `PLAN.md` in the new repo as each lands. Each phase is sized for a single PR.
 
 ### Phase 0 — Bootstrap the repo
-- [ ] `git init /Users/gbockus/github/IDEx/salesforcedx-vscode-manager`
-- [ ] Copy `PLAN.md` from `~/.claude/plans/i-want-to-build-keen-quill.md` into the new repo root
-- [ ] Add `.gitignore`, `LICENSE` (BSD-3), empty `CHANGELOG.md`, skeleton `README.md`
-- [ ] First commit: `chore: initial scaffold + PLAN.md`
+- [x] `git init /Users/gbockus/github/IDEx/salesforcedx-vscode-manager`
+- [x] Copy `PLAN.md` from `~/.claude/plans/i-want-to-build-keen-quill.md` into the new repo root
+- [x] Add `.gitignore`, `LICENSE` (BSD-3), empty `CHANGELOG.md`, skeleton `README.md`
+- [x] First commit: `chore: initial scaffold + PLAN.md`
 
 ### Phase 1 — Build & test scaffolding
 - [ ] `package.json` with metadata, scripts, devDeps (typescript, esbuild, jest, ts-jest, @types/vscode, @types/node)
