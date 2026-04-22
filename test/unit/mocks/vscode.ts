@@ -40,7 +40,8 @@ export const workspace = {
     onDidDelete: jest.fn(() => ({ dispose: jest.fn() })),
     onDidChange: jest.fn(() => ({ dispose: jest.fn() })),
     dispose: jest.fn()
-  }))
+  })),
+  workspaceFolders: undefined as { uri: { fsPath: string } }[] | undefined
 };
 
 export enum ConfigurationTarget { Global = 1, Workspace = 2, WorkspaceFolder = 3 }
