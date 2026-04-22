@@ -1,6 +1,8 @@
 # salesforcedx-vscode-manager — Implementation Plan
 
 > **This document is the source of truth for the build.** The very first implementation step copies this file into the new repo as `PLAN.md`. From that point on, the in-repo `PLAN.md` is the authoritative, version-controlled tracker — every phase below has checkboxes that get marked as work lands, and the file travels with the PR history.
+>
+> **Effort ledger:** see [`TRACKING.md`](./TRACKING.md) for per-phase LoC, commit counts, and token usage (where measured). Update that file's "Summary" block whenever a row lands.
 
 ---
 
@@ -426,9 +428,9 @@ should be addressed before a real release.
 - [ ] **Empty group -> no-op apply.** Applying the React group (empty
   members) with `disableOthers` will happily uninstall every managed
   extension. Guard against this with a confirmation prompt.
-- [ ] **Worktree-based parallel agents.** Works but requires disabling
-  gpg signing in the worktree. Document the recipe in CONTRIBUTING
-  once we have one.
+- [x] **Worktree-based parallel agents.** Works but requires disabling
+  gpg signing in the worktree. Recipe documented in
+  [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 - [ ] **Show each extension's VSCode `extensionDependencies` +
   `extensionPack` members in the Groups tree.** Today the tree shows
   only the ids declared in a group. Proposal: expand each extension
