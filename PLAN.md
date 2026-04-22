@@ -337,11 +337,11 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [ ] Manual F5 smoke: populate a folder with one real VSIX, set the setting, apply a group that includes it, verify provenance + tooltip *(pending user smoke test)*
 
 ### Phase 9 — Status bar
-- [ ] `src/statusBar/groupStatusBarItem.ts` — reads active group from workspace state, click → `applyGroupQuickPick`
-- [ ] `src/statusBar/vsixStatusBarItem.ts` — visible only when `vsixDirectory` set; count + warning background; click → `vsixMenu`
-- [ ] Respect `statusBar.showGroup` / `statusBar.showVsix` toggles
-- [ ] Update on: group apply, VSIX install, setting change, FS watcher event
-- [ ] Manual F5 smoke: switch groups, observe both items update live
+- [x] `src/statusBar/groupStatusBarItem.ts` — reads active group from workspace state, click → `applyGroupQuickPick`
+- [x] `src/statusBar/vsixStatusBarItem.ts` — visible only when `vsixDirectory` set; count + warning background; click → `vsixMenu`
+- [x] Respect `statusBar.showGroup` / `statusBar.showVsix` toggles
+- [x] Update on: group apply, VSIX install, setting change, FS watcher event
+- [ ] Manual F5 smoke: switch groups, observe both items update live *(pending user smoke test)*
 
 ### Phase 10 — Polish
 - [ ] `contributes.walkthroughs` with 4 steps (group, deps, vsix, status bar)
@@ -429,3 +429,20 @@ should be addressed before a real release.
 - [ ] **Worktree-based parallel agents.** Works but requires disabling
   gpg signing in the worktree. Document the recipe in CONTRIBUTING
   once we have one.
+- [ ] **Show each extension's VSCode `extensionDependencies` +
+  `extensionPack` members in the Groups tree.** Today the tree shows
+  only the ids declared in a group. Proposal: expand each extension
+  node to list (a) its `extensionDependencies` (installed state
+  indicator per dep), (b) if it's a pack, its `extensionPack`
+  members as children. This is read-only visualization sourced from
+  `ext.packageJSON.extensionDependencies` / `.extensionPack`. Helps
+  the user understand why a disable got blocked (see the topological
+  uninstall TODO above).
+- [ ] **Apply-group should honor extension-dependency graph.** Before
+  enabling a member, ensure each of its `extensionDependencies` is
+  also enabled (or auto-add them to the effective install list).
+  Before disabling a non-member, check whether any currently-enabled
+  extension depends on it; if so, skip with a `needsManualDisable`
+  entry and the reason in the log. This removes the
+  'Cannot uninstall X. Y depends on this' warnings we see today and
+  turns them into explicit tree-surfaced state instead.

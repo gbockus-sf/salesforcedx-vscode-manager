@@ -16,6 +16,7 @@ interface Deps {
   workspaceState: WorkspaceStateService;
   logger: Logger;
   tree: GroupsTreeProvider;
+  onAfterApply?: () => void;
 }
 
 interface GroupTreeContext {
@@ -58,6 +59,7 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   const result = await applyGroup(group, scope, managedIds, deps.extensions);
   await deps.workspaceState.setActiveGroupId(group.id);
   deps.tree.refresh();
+  deps.onAfterApply?.();
 
   deps.logger.info(
     `Apply result: enabled=${result.enabled.length} disabled=${result.disabled.length} ` +

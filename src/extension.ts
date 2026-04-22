@@ -12,6 +12,8 @@ import { ProcessService } from './services/processService';
 import { SettingsService } from './services/settingsService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { Logger } from './util/logger';
+import { GroupStatusBarItem } from './statusBar/groupStatusBarItem';
+import { VsixStatusBarItem } from './statusBar/vsixStatusBarItem';
 import { VsixInstaller } from './vsix/vsixInstaller';
 import { VsixScanner } from './vsix/vsixScanner';
 import { DependenciesTreeProvider } from './views/dependenciesTreeProvider';
@@ -40,7 +42,14 @@ export const activate = (context: vscode.ExtensionContext): void => {
   groupsTree.setVsixOverrides(() => installer.vsixOverrides());
   const dependenciesTree = new DependenciesTreeProvider(registry);
 
-  let vsixWatcher: vscode.Disposable | undefined = scanner.watch(() => groupsTree.refresh());
+  const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings);
+  const vsixStatusBar = new VsixStatusBarItem(settings, installer);
+  context.subscriptions.push(groupStatusBar, vsixStatusBar);
+
+  let vsixWatcher: vscode.Disposable | undefined = scanner.watch(() => {
+    groupsTree.refresh();
+    vsixStatusBar.update();
+  });
   if (vsixWatcher) context.subscriptions.push(vsixWatcher);
 
   if (scanner.isConfigured() && !scanner.exists()) {
@@ -70,11 +79,17 @@ export const activate = (context: vscode.ExtensionContext): void => {
         extensions.setVsixInstaller(installer);
         groupsTree.setVsixSources(() => installer.currentSources());
         groupsTree.setVsixOverrides(() => installer.vsixOverrides());
-        vsixWatcher = scanner.watch(() => groupsTree.refresh());
+        vsixStatusBar.setInstaller(installer);
+        vsixWatcher = scanner.watch(() => {
+          groupsTree.refresh();
+          vsixStatusBar.update();
+        });
         if (vsixWatcher) context.subscriptions.push(vsixWatcher);
       }
       groupsTree.refresh();
       dependenciesTree.refresh();
+      groupStatusBar.update();
+      vsixStatusBar.update();
     })
   );
 
@@ -84,7 +99,11 @@ export const activate = (context: vscode.ExtensionContext): void => {
     settings,
     workspaceState,
     logger,
-    tree: groupsTree
+    tree: groupsTree,
+    onAfterApply: () => {
+      groupStatusBar.update();
+      vsixStatusBar.update();
+    }
   });
 
   registerDependencyCommands(context, {
