@@ -55,11 +55,22 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   const result = await applyGroup(group, scope, managedIds, deps.extensions);
   await deps.workspaceState.setActiveGroupId(group.id);
   deps.tree.refresh();
+
   const parts: string[] = [`${group.label} applied.`, `Enabled: ${result.enabled.length}`];
   if (result.disabled.length) parts.push(`Disabled: ${result.disabled.length}`);
   if (result.installedFromVsix.length) parts.push(`VSIX: ${result.installedFromVsix.length}`);
+  if (result.needsManualEnable.length) parts.push(`Manual enable: ${result.needsManualEnable.length}`);
+  if (result.needsManualDisable.length) parts.push(`Manual disable: ${result.needsManualDisable.length}`);
   if (result.skipped.length) parts.push(`Skipped: ${result.skipped.length}`);
   void vscode.window.showInformationMessage(parts.join(' · '));
+
+  // Consolidate the manual-toggle hints so the user gets at most one prompt
+  // per action kind, not one per extension.
+  if (result.needsManualDisable.length) {
+    await deps.extensions.showManualToggleHint(result.needsManualDisable, 'Disable');
+  } else if (result.needsManualEnable.length) {
+    await deps.extensions.showManualToggleHint(result.needsManualEnable, 'Enable');
+  }
 };
 
 const pickGroup = async (deps: Deps, placeholder: string): Promise<Group | undefined> => {

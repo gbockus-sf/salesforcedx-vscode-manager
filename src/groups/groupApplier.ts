@@ -6,6 +6,8 @@ export interface ApplyResult {
   disabled: string[];
   installedFromVsix: string[];
   skipped: { id: string; reason: string }[];
+  needsManualEnable: string[];
+  needsManualDisable: string[];
 }
 
 export const applyGroup = async (
@@ -14,7 +16,14 @@ export const applyGroup = async (
   managedIds: string[],
   svc: ExtensionService
 ): Promise<ApplyResult> => {
-  const result: ApplyResult = { enabled: [], disabled: [], installedFromVsix: [], skipped: [] };
+  const result: ApplyResult = {
+    enabled: [],
+    disabled: [],
+    installedFromVsix: [],
+    skipped: [],
+    needsManualEnable: [],
+    needsManualDisable: []
+  };
   const memberSet = new Set(group.extensions);
 
   for (const id of group.extensions) {
@@ -27,16 +36,24 @@ export const applyGroup = async (
         continue;
       }
     }
-    await svc.enable(id);
-    result.enabled.push(id);
+    const outcome = await svc.enable(id);
+    if (outcome === 'ok') {
+      result.enabled.push(id);
+    } else {
+      result.needsManualEnable.push(id);
+    }
   }
 
   if (scope === 'disableOthers') {
     for (const id of managedIds) {
       if (memberSet.has(id)) continue;
       if (!svc.isInstalled(id)) continue;
-      await svc.disable(id);
-      result.disabled.push(id);
+      const outcome = await svc.disable(id);
+      if (outcome === 'ok') {
+        result.disabled.push(id);
+      } else {
+        result.needsManualDisable.push(id);
+      }
     }
   }
 

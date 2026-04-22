@@ -17,14 +17,14 @@
   ],
   "contributes": {
     "commands": [
-      { "command": "sfdxManager.applyGroupQuickPick", "title": "Apply Group...", "category": "SFDX Manager" },
-      { "command": "sfdxManager.applyGroup", "title": "Apply Group", "category": "SFDX Manager" },
-      { "command": "sfdxManager.enableAllSalesforce", "title": "Enable All Managed Extensions", "category": "SFDX Manager" },
-      { "command": "sfdxManager.disableAllSalesforce", "title": "Disable All Managed Extensions", "category": "SFDX Manager" },
-      { "command": "sfdxManager.createCustomGroup", "title": "Create Custom Group", "category": "SFDX Manager" },
-      { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager" },
-      { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager" },
-      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager" }
+      { "command": "sfdxManager.applyGroupQuickPick", "title": "Apply Group...", "category": "SFDX Manager", "icon": "$(play)" },
+      { "command": "sfdxManager.applyGroup", "title": "Apply Group", "category": "SFDX Manager", "icon": "$(play)" },
+      { "command": "sfdxManager.enableAllSalesforce", "title": "Enable All Managed Extensions", "category": "SFDX Manager", "icon": "$(check-all)" },
+      { "command": "sfdxManager.disableAllSalesforce", "title": "Disable All Managed Extensions", "category": "SFDX Manager", "icon": "$(circle-slash)" },
+      { "command": "sfdxManager.createCustomGroup", "title": "Create Custom Group", "category": "SFDX Manager", "icon": "$(add)" },
+      { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager", "icon": "$(edit)" },
+      { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager", "icon": "$(trash)" },
+      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager", "icon": "$(settings-gear)" }
     ],
     "menus": {
       "commandPalette": [

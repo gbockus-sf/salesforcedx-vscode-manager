@@ -27,6 +27,7 @@ describe('ExtensionService', () => {
     (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
     (vscode.extensions.getExtension as jest.Mock).mockReset();
     (vscode.commands.executeCommand as jest.Mock).mockReset();
+    (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('managed() returns salesforce publisher + listed third parties', () => {
@@ -45,47 +46,57 @@ describe('ExtensionService', () => {
   it('enable() invokes the internal workbench command when setting allows', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
     const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
-    await svc.enable('salesforce.foo');
+    const outcome = await svc.enable('salesforce.foo');
+    expect(outcome).toBe('ok');
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
       'workbench.extensions.action.enableExtension',
-      'salesforce.foo'
+      ['salesforce.foo']
     );
   });
 
-  it('enable() falls back to the extensions-view deep link when setting is false', async () => {
+  it('enable() returns manual-required when useInternalCommands is false', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
     const svc = new ExtensionService(
       mkSettings({ getUseInternalCommands: jest.fn(() => false) } as Partial<Record<keyof SettingsService, unknown>>),
       mkCodeCli(),
       mkLogger()
     );
-    await svc.enable('salesforce.foo');
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      'workbench.extensions.search',
-      '@installed salesforce.foo'
-    );
+    const outcome = await svc.enable('salesforce.foo');
+    expect(outcome).toBe('manual-required');
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
   });
 
-  it('enable() falls back when the internal command throws', async () => {
+  it('enable() tries alternate arg shapes before giving up', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
-    (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (cmd: string) => {
-      if (cmd === 'workbench.extensions.action.enableExtension') throw new Error('not available');
+    const attempts: unknown[][] = [];
+    (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (...args: unknown[]) => {
+      attempts.push(args);
+      throw new Error('nope');
     });
     const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
-    await svc.enable('salesforce.foo');
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      'workbench.extensions.search',
-      '@installed salesforce.foo'
-    );
+    const outcome = await svc.enable('salesforce.foo');
+    expect(outcome).toBe('manual-required');
+    expect(attempts.length).toBeGreaterThan(1);
   });
 
   it('enable() short-circuits when the extension is not installed', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
     const logger = mkLogger();
     const svc = new ExtensionService(mkSettings(), mkCodeCli(), logger);
-    await svc.enable('salesforce.missing');
+    const outcome = await svc.enable('salesforce.missing');
+    expect(outcome).toBe('manual-required');
     expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('showManualToggleHint() opens the extensions view with a combined filter', async () => {
+    const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+    await svc.showManualToggleHint(['salesforce.a', 'salesforce.b'], 'Disable');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      'workbench.extensions.search',
+      '@installed salesforce.a @installed salesforce.b'
+    );
+    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
   });
 
   it('install() routes through VsixInstaller when a local vsix matches', async () => {

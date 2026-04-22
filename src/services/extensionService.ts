@@ -54,35 +54,45 @@ export class ExtensionService {
     return vscode.extensions.getExtension(id)?.packageJSON as T | undefined;
   }
 
-  async enable(id: string): Promise<void> {
+  async enable(id: string): Promise<'ok' | 'manual-required'> {
     if (!this.isInstalled(id)) {
       this.logger.warn(`Cannot enable ${id}: not installed.`);
-      return;
+      return 'manual-required';
     }
-    if (this.settings.getUseInternalCommands()) {
-      try {
-        await vscode.commands.executeCommand('workbench.extensions.action.enableExtension', id);
-        return;
-      } catch (err) {
-        this.logger.warn(`Internal enable command failed for ${id}; falling back to deep link.`);
-        this.logger.error('enable error', err);
-      }
+    if (this.settings.getUseInternalCommands() && (await this.tryInternalToggle('enable', id))) {
+      return 'ok';
     }
-    await this.openExtensionsViewFor([id], 'Enable');
+    return 'manual-required';
   }
 
-  async disable(id: string): Promise<void> {
-    if (!this.isInstalled(id)) return;
-    if (this.settings.getUseInternalCommands()) {
+  async disable(id: string): Promise<'ok' | 'manual-required'> {
+    if (!this.isInstalled(id)) return 'ok';
+    if (this.settings.getUseInternalCommands() && (await this.tryInternalToggle('disable', id))) {
+      return 'ok';
+    }
+    return 'manual-required';
+  }
+
+  async showManualToggleHint(ids: string[], action: 'Enable' | 'Disable'): Promise<void> {
+    if (ids.length === 0) return;
+    await this.openExtensionsViewFor(ids, action);
+  }
+
+  private async tryInternalToggle(action: 'enable' | 'disable', id: string): Promise<boolean> {
+    const command = `workbench.extensions.action.${action}Extension`;
+    // Different VSCode versions accept different argument shapes for these
+    // internal commands. Try the known variants in order.
+    const variants: unknown[][] = [[[id]], [{ id }], [id]];
+    for (const args of variants) {
       try {
-        await vscode.commands.executeCommand('workbench.extensions.action.disableExtension', id);
-        return;
-      } catch (err) {
-        this.logger.warn(`Internal disable command failed for ${id}; falling back to deep link.`);
-        this.logger.error('disable error', err);
+        await vscode.commands.executeCommand(command, ...args);
+        return true;
+      } catch {
+        // try next variant
       }
     }
-    await this.openExtensionsViewFor([id], 'Disable');
+    this.logger.warn(`No internal ${action} command shape worked for ${id}; manual toggle required.`);
+    return false;
   }
 
   async install(id: string): Promise<InstallOutcome> {

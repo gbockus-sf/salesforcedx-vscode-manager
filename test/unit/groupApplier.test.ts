@@ -5,8 +5,8 @@ import type { Group } from '../../src/groups/types';
 const mkSvc = (overrides: Partial<Record<keyof ExtensionService, unknown>> = {}): ExtensionService => ({
   isInstalled: jest.fn((_id: string) => true),
   install: jest.fn(async (): Promise<InstallOutcome> => ({ source: 'marketplace', exitCode: 0 })),
-  enable: jest.fn(async () => undefined),
-  disable: jest.fn(async () => undefined),
+  enable: jest.fn(async () => 'ok'),
+  disable: jest.fn(async () => 'ok'),
   ...overrides
 } as unknown as ExtensionService);
 
