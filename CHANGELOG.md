@@ -5,6 +5,10 @@ All notable changes to `salesforcedx-vscode-manager` will be documented in this 
 ## [Unreleased]
 
 - Groups tree now shows each extension's installed version, an `$(arrow-circle-up)` update badge when the marketplace has a newer build, and a `$(package)` badge (with a VSIX-walkthrough tooltip hint) when the extension came from the local VSIX override directory. New commands `SFDX Manager: Update Extension` (inline, per node) and `SFDX Manager: Update All Salesforce Extensions` (view-title) route through `code --install-extension --force`. Marketplace discovery is gated behind the new `salesforcedx-vscode-manager.updateCheck` setting (`onStartup` / `manual` / `never`, default `manual`) and caches results for 1 hour in memory.
+- Activity-bar icon swapped from a padlock to a stacked-layers glyph matching the status-bar `$(layers)` icon.
+- Apply-group now skips an install attempt when the marketplace probe can confirm the id isn't published (e.g., `salesforce.lightning-design-system-vscode`); offline machines still attempt the install as before. Probe result cached 1 h per id.
+- Empty user groups can no longer be saved — `Create Custom Group` and `Edit Group` now surface an error before writing.
+- Removed the dead `salesforcedx-vscode-manager.useInternalCommands` setting. It had no runtime effect under the `codeCli` backend.
 
 ## [0.1.0] — Unreleased
 

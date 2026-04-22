@@ -401,41 +401,40 @@ should be addressed before a real release.
   uninstall 'X'. 'Y' extension depends on this.` Fix: sort the disable
   list by reverse-dependency so packs come off before their members,
   and consider offering to uninstall the containing pack when blocked.
-- [ ] **Skip unresolvable marketplace ids.** `salesforce.lightning-design-system-vscode`
-  appears in the Lightning built-in but isn't actually published at
-  that id in the marketplace, so `code --install-extension` fails. Fix:
-  before install, probe the marketplace (or add a known-bad allowlist)
-  and surface these as `skipped` with a clearer reason in the summary
-  toast.
+- [x] **Skip unresolvable marketplace ids.** `ExtensionService.install()`
+  now probes `MarketplaceVersionService.resolveExistence()` before the
+  CLI attempt; a `'missing'` result short-circuits with exit 2 and a
+  "not published" stderr. `'unknown'` (offline / timeout) falls through
+  so disconnected machines keep working. Result cached per id for 1 h.
 - [ ] **React group contents.** Ship empty; user will fill via
   `Edit Group` per the plan. Confirm contents and repopulate before
   tagging v0.1.0.
-- [ ] **Activity bar icon visual — swap padlock for a layers glyph.**
-  Current `resources/icons/sfdx-manager.svg` renders as a padlock; the
-  stack icon we use in the status bar (`$(layers)` codicon) reads much
-  better. Author a new SVG that mimics the codicon layers shape:
-  three offset parallelograms, 24×24 `viewBox`, **filled paths with
-  `fill="currentColor"`** (not stroked — stroked SVGs render nearly
-  invisible in the activity bar; we confirmed this during Phase 2).
-  Keep the file at the same path so `package.json`'s
-  `contributes.viewsContainers.activitybar[0].icon` needs no change.
-  Verify at both light and dark theme backgrounds (the theme engine
-  applies the foreground color to the fill automatically).
+- [x] **Activity bar icon visual — swap padlock for a layers glyph.**
+  `resources/icons/sfdx-manager.svg` is now three filled rhombi forming
+  a stacked-layers shape mirroring the status-bar `$(layers)` codicon.
+  Filled paths (`fill="currentColor"`), 24×24 viewBox; same file path
+  so `package.json` didn't need to change.
 - [ ] **Reload prompt fatigue.** Each uninstall triggers a reload prompt.
   Investigate batching or auto-reload after a full apply completes.
-- [ ] **GPG signing during local development.** Our git repo signs by
-  default; every AI-agent commit pops pinentry. Consider adding
-  `commit.gpgsign=false` to `.git/config` in checkout instructions so
-  contributors aren't blocked (signing can be re-enabled at PR/tag
-  time).
-- [ ] **`useInternalCommands` setting is now dead.** Kept for backward
-  compat; remove in v0.2 or the first breaking release.
-- [ ] **Dep checks never auto-run.** `autoRunDependencyChecks` setting
-  is wired but not yet honored on activation (waiting on Phase 7 tree
-  view). Verify this fires after Phase 7 lands.
-- [ ] **Empty group -> no-op apply.** Applying the React group (empty
-  members) with `disableOthers` will happily uninstall every managed
-  extension. Guard against this with a confirmation prompt.
+- [x] **GPG signing during local development.** Full recipe
+  documented in [`CONTRIBUTING.md`](./CONTRIBUTING.md) — each parallel
+  agent worktree runs `git config commit.gpgsign false` locally so
+  signing is bypassed only in the feature worktree, then the merge
+  commit back to `main` is signed normally.
+- [x] **`useInternalCommands` setting is now dead.** Removed from
+  `package.json`, `src/constants.ts`, `src/services/settingsService.ts`,
+  and the test mock. Users who had it set in `settings.json` will see
+  VSCode surface it as "unknown setting" — harmless, and the cleanup
+  pass can scrub it on next save.
+- [x] **Dep checks never auto-run.** Verified: `extension.ts` line 144
+  reads `settings.getAutoRunDependencyChecks()` and calls
+  `dependenciesTree.runChecks()` when true. No change needed.
+- [x] **Empty group -> no-op apply.** Handled at the save layer:
+  `GroupStore.upsert()` now runs a new `validateGroup()` helper that
+  refuses to save a user group with zero members (built-in overrides
+  are still allowed to be empty since the built-in default merges in).
+  This prevents an empty user group from ever being saved, so
+  `applyGroup` can't be invoked against one. Three new unit tests.
 - [x] **Worktree-based parallel agents.** Works but requires disabling
   gpg signing in the worktree. Recipe documented in
   [`CONTRIBUTING.md`](./CONTRIBUTING.md).
@@ -466,11 +465,22 @@ should be addressed before a real release.
   one row with multiple `ownerExtensionId` entries shown in the
   tooltip. Built-in checks take precedence over shims take
   precedence over manifest-declared when fingerprints collide.
-- [ ] **Review CLAUDE.md against a second agent session.** After one new
-  agent session lands a change, audit the patterns in [`CLAUDE.md`](./CLAUDE.md)
-  — anything the agent had to be told twice in the session is a gap in the
-  file; anything the file says but the agent didn't need is probably
-  overweight. Keep the doc lean and empirically grounded.
+- [x] **Review CLAUDE.md against a second agent session.** Audit
+  completed: added a concrete "Subagent environment caveats" block
+  distinguishing the three failure modes we hit this session
+  (full-Bash denial, sibling-worktree-git denial, gpg-pinentry wall).
+  Added a briefing template requirement and an overlap-check step.
+- [ ] **Wire `sfdxManager.checkForUpdates` through VSCode's native
+  `workbench.extensions.action.checkForUpdates` command** rather than
+  relying solely on our custom `MarketplaceVersionService` probe. The
+  native command is on the verified-available list from the Phase 5
+  diagnostic dump; invoking it asks VSCode to refresh its own internal
+  "updates available" state so users see VSCode's familiar Extensions-view
+  Update badges alongside our tree's arrow indicators. Our own probe
+  stays as the structured data source (VSCode doesn't expose per-id
+  results to callers); this just adds a complementary trigger. Pattern:
+  `await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates')`
+  then `await groupsTree.refreshVersionInfo()`.
 - [ ] **Externalize all user-facing strings** from both `package.json` and
   the extension source, following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/` (which in

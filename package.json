@@ -106,11 +106,6 @@
           "default": "codeCli",
           "description": "How apply-group changes workspace extension state."
         },
-        "salesforcedx-vscode-manager.useInternalCommands": {
-          "type": "boolean",
-          "default": true,
-          "description": "Deprecated fallback flag. VSCode does not expose a stable API to toggle extension enablement; this setting has no effect under the codeCli backend."
-        },
         "salesforcedx-vscode-manager.autoRunDependencyChecks": {
           "type": "boolean",
           "default": false,

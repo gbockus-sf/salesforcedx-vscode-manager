@@ -84,17 +84,34 @@ explicit user request:
 
 ## Working with subagents
 
-- Split along file boundaries, not phase boundaries. Two agents can safely
-  work on non-overlapping files in parallel worktrees.
-- High-friction files: `PLAN.md`, `TRACKING.md`, `package.json`,
-  `src/views/groupsTreeProvider.ts`, `src/services/extensionService.ts`.
-  Agents editing these concurrently will produce merge conflicts.
-- When a subagent can't complete because of environment limits (it hit the
-  gpg wall during Phase 6), the foreground agent picks up the commit from
-  the worktree's working tree.
-- Every subagent brief should include: its workspace path, the exact
-  commit-signing bypass command, the files it IS allowed to touch, and the
-  quality gates it must pass before its final commit.
+- Split along **file boundaries, not phase boundaries**. Two agents can
+  safely work on non-overlapping files in parallel worktrees.
+- High-friction files (expect merge conflicts if two agents touch these
+  concurrently): `PLAN.md`, `TRACKING.md`, `package.json`,
+  `src/views/groupsTreeProvider.ts`, `src/services/extensionService.ts`,
+  `src/groups/groupApplier.ts`, `CHANGELOG.md`.
+- **Subagent environment caveats observed this session:**
+  - Some subagent environments disable `git` commands entirely against
+    sibling worktree paths, even with `dangerouslyDisableSandbox`. Agents
+    in this mode can still `Read`/`Edit`/`Write` and (sometimes) run
+    `npm`; the foreground agent must commit on their behalf from the
+    worktree.
+  - Other subagent environments disable Bash completely. Those agents
+    cannot `npm run compile`, `git config`, or `ls` — they're dead on
+    arrival for code tasks. Detect this early by asking the agent to
+    run `git status` as its first call; if it's denied, bail out and
+    do the work foreground.
+  - The gpg-pinentry wall blocks ANY commit in a worktree unless the
+    foreground agent runs `git config commit.gpgsign false` in that
+    worktree first. Bake this into the brief.
+- **Briefing template** — every subagent prompt should include: its
+  workspace path, the commit-signing bypass command, an explicit
+  allowlist/denylist of writable files, the three quality gates, and a
+  word-capped report format.
+- **Overlap check before launch.** Grep for the files each agent would
+  touch. If two agents need the same file, serialize them or split the
+  responsibilities inside the file (e.g., "agent A owns `applyGroup`,
+  agent B owns `ApplyResult.skipped`").
 
 ## Diagnostic-first debugging
 

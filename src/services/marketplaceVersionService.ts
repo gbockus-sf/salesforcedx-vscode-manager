@@ -52,8 +52,16 @@ export interface MarketplaceVersionServiceOptions {
   timeoutMs?: number;
 }
 
+export type Existence = 'found' | 'missing' | 'unknown';
+
+interface ExistenceEntry {
+  state: Existence;
+  fetchedAt: number;
+}
+
 export class MarketplaceVersionService {
   private readonly cache = new Map<string, CacheEntry>();
+  private readonly existenceCache = new Map<string, ExistenceEntry>();
   private readonly logger: Logger | undefined;
   private readonly cacheTtlMs: number;
   private readonly fetchImpl: FetchLike | undefined;
@@ -84,6 +92,58 @@ export class MarketplaceVersionService {
   /** Discard cached probe results so the next call hits the network. */
   clearCache(): void {
     this.cache.clear();
+    this.existenceCache.clear();
+  }
+
+  /**
+   * Returns `'found'` if the id resolves on the marketplace, `'missing'` if
+   * the gallery responds with zero matches (the id is bogus), or `'unknown'`
+   * if the probe is unavailable (no fetch impl, network error, timeout).
+   * Cached per id for the same TTL as version lookups.
+   *
+   * Callers use this to skip a `code --install-extension` attempt on an id
+   * that definitely isn't published (e.g., the historically-bad
+   * `salesforce.lightning-design-system-vscode`). Offline users always see
+   * `'unknown'`, which is the safe default — installs still go through.
+   */
+  async resolveExistence(extensionId: string): Promise<Existence> {
+    const cached = this.existenceCache.get(extensionId);
+    if (cached && Date.now() - cached.fetchedAt < this.cacheTtlMs) {
+      return cached.state;
+    }
+    const state = await this.probeExistence(extensionId);
+    this.existenceCache.set(extensionId, { state, fetchedAt: Date.now() });
+    return state;
+  }
+
+  private async probeExistence(extensionId: string): Promise<Existence> {
+    const fetchImpl = this.fetchImpl;
+    if (!fetchImpl) return 'unknown';
+    const body = JSON.stringify({
+      filters: [{ criteria: [{ filterType: 7, value: extensionId }] }],
+      flags: 0x1
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const response = await fetchImpl(MARKETPLACE_URL, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json;api-version=3.0-preview.1',
+          'Content-Type': 'application/json'
+        },
+        body,
+        signal: controller.signal
+      });
+      if (!response.ok) return 'unknown';
+      const payload = (await response.json()) as GalleryResponse;
+      const match = payload.results?.[0]?.extensions?.[0];
+      return match ? 'found' : 'missing';
+    } catch {
+      return 'unknown';
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private async probe(extensionId: string): Promise<string | undefined> {

@@ -28,6 +28,12 @@ export interface VsixInstallerLike {
 export interface MarketplaceVersionProbe {
   getLatestVersion(extensionId: string): Promise<string | undefined>;
   clearCache(): void;
+  /**
+   * Distinguishes "id doesn't exist on the marketplace" from "probe
+   * unavailable (offline, etc.)". Used by `install()` to avoid waste on
+   * known-bad ids. Optional for backward compat with existing mocks.
+   */
+  resolveExistence?(extensionId: string): Promise<'found' | 'missing' | 'unknown'>;
 }
 
 export interface NodeVersionInfo {
@@ -152,6 +158,20 @@ export class ExtensionService {
       if (result === 'skipped') {
         // A local vsix matched but failed — don't silently swap to marketplace.
         return { source: 'vsix', exitCode: 1, stderr: 'local vsix install failed' };
+      }
+    }
+    // Skip a marketplace install when the probe can confirm the id doesn't
+    // exist. An 'unknown' result (offline, timeout) falls through so we stay
+    // safe when the probe is unavailable.
+    if (this.marketplaceProbe?.resolveExistence) {
+      const existence = await this.marketplaceProbe.resolveExistence(id);
+      if (existence === 'missing') {
+        this.logger.warn(`install(${id}): skipped — id is not published on the marketplace.`);
+        return {
+          source: 'marketplace',
+          exitCode: 2,
+          stderr: 'not published on the marketplace'
+        };
       }
     }
     const { exitCode, stderr } = options.force

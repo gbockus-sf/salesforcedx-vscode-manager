@@ -62,6 +62,27 @@ describe('GroupStore', () => {
     expect(store.get('my')?.extensions).toEqual(['a.b']);
   });
 
+  it('upsert() rejects an empty user group with a helpful message', async () => {
+    const store = new GroupStore(mkSettings());
+    await expect(store.upsert({ id: 'empty', label: 'Empty', extensions: [] })).rejects.toThrow(
+      /empty/i
+    );
+  });
+
+  it('upsert() allows an empty override for a built-in group', async () => {
+    const settings = mkSettings();
+    const store = new GroupStore(settings);
+    await store.upsert({ id: 'apex', label: 'Apex', extensions: [], builtIn: true });
+    expect(settings.updateGroupsRaw).toHaveBeenCalled();
+  });
+
+  it('upsert() rejects a malformed id', async () => {
+    const store = new GroupStore(mkSettings());
+    await expect(store.upsert({ id: '9bad', label: 'x', extensions: ['a.b'] })).rejects.toThrow(
+      /id/i
+    );
+  });
+
   it('remove() on a built-in clears the user override (but the group stays visible)', async () => {
     const settings = mkSettings({
       apex: { label: 'overridden', extensions: [] }

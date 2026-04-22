@@ -31,7 +31,6 @@ export const COMMANDS = {
 export const SETTINGS = {
   groups: 'groups',
   applyScope: 'applyScope',
-  useInternalCommands: 'useInternalCommands',
   backend: 'backend',
   autoRunDependencyChecks: 'autoRunDependencyChecks',
   thirdPartyExtensionIds: 'thirdPartyExtensionIds',

@@ -82,4 +82,51 @@ describe('MarketplaceVersionService', () => {
     await svc.getLatestVersion('salesforce.foo');
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
+
+  describe('resolveExistence', () => {
+    it('returns "found" when the gallery returns a matching extension', async () => {
+      const fetchImpl = mkFetch({
+        results: [{ extensions: [{ versions: [{ version: '1.0.0' }] }] }]
+      });
+      const svc = new MarketplaceVersionService({ fetchImpl });
+      expect(await svc.resolveExistence('salesforce.foo')).toBe('found');
+    });
+
+    it('returns "missing" when the gallery returns zero extensions', async () => {
+      const fetchImpl = mkFetch({ results: [{ extensions: [] }] });
+      const svc = new MarketplaceVersionService({ fetchImpl });
+      expect(await svc.resolveExistence('salesforce.bogus')).toBe('missing');
+    });
+
+    it('returns "unknown" when the probe fails (offline)', async () => {
+      const impl: FetchImpl = async () => {
+        throw new Error('network unreachable');
+      };
+      const svc = new MarketplaceVersionService({ fetchImpl: jest.fn(impl) });
+      expect(await svc.resolveExistence('salesforce.foo')).toBe('unknown');
+    });
+
+    it('returns "unknown" when the response is not ok', async () => {
+      const fetchImpl = mkFetch({}, false, 503);
+      const svc = new MarketplaceVersionService({ fetchImpl });
+      expect(await svc.resolveExistence('salesforce.foo')).toBe('unknown');
+    });
+
+    it('caches results within the TTL', async () => {
+      const fetchImpl = mkFetch({ results: [{ extensions: [] }] });
+      const svc = new MarketplaceVersionService({ fetchImpl, cacheTtlMs: 1_000_000 });
+      await svc.resolveExistence('salesforce.bogus');
+      await svc.resolveExistence('salesforce.bogus');
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    it('clearCache clears both version and existence caches', async () => {
+      const fetchImpl = mkFetch({ results: [{ extensions: [] }] });
+      const svc = new MarketplaceVersionService({ fetchImpl, cacheTtlMs: 1_000_000 });
+      await svc.resolveExistence('salesforce.bogus');
+      svc.clearCache();
+      await svc.resolveExistence('salesforce.bogus');
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+  });
 });

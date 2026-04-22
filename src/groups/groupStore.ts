@@ -2,6 +2,27 @@ import type { SettingsService } from '../services/settingsService';
 import { BUILT_IN_GROUPS } from './builtInGroups';
 import type { Group } from './types';
 
+/**
+ * Validates a group prior to persistence. Returns a human-readable reason
+ * when the group would be unsafe or surprising to save, otherwise undefined.
+ * Empty user groups are rejected because applying one with
+ * `scope=disableOthers` would uninstall every managed extension. Empty
+ * built-in overrides are allowed because the built-in default may still
+ * be non-empty after merge (and the override could be a deliberate clear).
+ */
+export const validateGroup = (group: Group): string | undefined => {
+  if (!group.id || !/^[a-z][a-z0-9-]*$/.test(group.id)) {
+    return 'Group id must start with a letter and contain only lowercase letters, digits, and dashes.';
+  }
+  if (!group.label || group.label.trim().length === 0) {
+    return 'Group label is required.';
+  }
+  if (group.extensions.length === 0 && group.builtIn !== true) {
+    return `Group "${group.label}" is empty. Add at least one extension before saving.`;
+  }
+  return undefined;
+};
+
 const isValidGroup = (id: string, raw: unknown): raw is Group => {
   if (!raw || typeof raw !== 'object') return false;
   const r = raw as Record<string, unknown>;
@@ -51,7 +72,8 @@ export class GroupStore {
   }
 
   async upsert(group: Group): Promise<void> {
-    if (!group.id) throw new Error('Group id is required');
+    const reason = validateGroup(group);
+    if (reason) throw new Error(reason);
     const raw = { ...this.settings.getGroupsRaw() };
     raw[group.id] = { ...group, id: undefined, builtIn: undefined };
     await this.settings.updateGroupsRaw(raw);

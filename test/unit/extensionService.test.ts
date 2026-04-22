@@ -15,7 +15,6 @@ const makeExt = (id: string, pkg: Record<string, unknown> = {}): vscode.Extensio
 describe('ExtensionService', () => {
   const mkSettings = (overrides: Partial<Record<keyof SettingsService, unknown>> = {}): SettingsService => ({
     getThirdPartyExtensionIds: jest.fn(() => ['redhat.vscode-xml']),
-    getUseInternalCommands: jest.fn(() => true),
     getBackend: jest.fn(() => 'codeCli'),
     getUpdateCheck: jest.fn(() => 'manual' as const),
     ...overrides
@@ -155,6 +154,35 @@ describe('ExtensionService', () => {
     const svc = new ExtensionService(mkSettings(), cli, mkLogger());
     const result = await svc.install('salesforce.foo');
     expect(result.source).toBe('marketplace');
+    expect(cli.installExtension).toHaveBeenCalledWith('salesforce.foo');
+  });
+
+  it('install() skips the marketplace attempt when the probe says the id is missing', async () => {
+    const cli = mkCodeCli();
+    const probe: MarketplaceVersionProbe = {
+      getLatestVersion: jest.fn(async () => undefined),
+      clearCache: jest.fn(),
+      resolveExistence: jest.fn(async () => 'missing')
+    };
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    svc.setMarketplaceProbe(probe);
+    const result = await svc.install('salesforce.does-not-exist');
+    expect(cli.installExtension).not.toHaveBeenCalled();
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain('not published');
+  });
+
+  it('install() proceeds when the probe returns "unknown" (offline-safe)', async () => {
+    const cli = mkCodeCli();
+    const probe: MarketplaceVersionProbe = {
+      getLatestVersion: jest.fn(async () => undefined),
+      clearCache: jest.fn(),
+      resolveExistence: jest.fn(async () => 'unknown')
+    };
+    const svc = new ExtensionService(mkSettings(), cli, mkLogger());
+    svc.setMarketplaceProbe(probe);
+    const result = await svc.install('salesforce.foo');
+    expect(result.exitCode).toBe(0);
     expect(cli.installExtension).toHaveBeenCalledWith('salesforce.foo');
   });
 

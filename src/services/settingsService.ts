@@ -19,10 +19,6 @@ export class SettingsService {
     return this.config().get<ApplyScope>(SETTINGS.applyScope, 'disableOthers');
   }
 
-  getUseInternalCommands(): boolean {
-    return this.config().get<boolean>(SETTINGS.useInternalCommands, true);
-  }
-
   getBackend(): 'codeCli' | 'profiles' {
     return this.config().get<'codeCli' | 'profiles'>(SETTINGS.backend, 'codeCli');
   }
