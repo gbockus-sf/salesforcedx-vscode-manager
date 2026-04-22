@@ -42,4 +42,8 @@ export class CodeCliService {
   uninstallExtension(id: string) {
     return this.proc.run(this.resolve(), ['--uninstall-extension', id], 30_000);
   }
+
+  listInstalledWithVersions() {
+    return this.proc.run(this.resolve(), ['--list-extensions', '--show-versions'], 30_000);
+  }
 }

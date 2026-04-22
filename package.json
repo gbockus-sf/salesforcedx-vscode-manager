@@ -33,16 +33,22 @@
       { "command": "sfdxManager.openVsixDirectory", "title": "Open VSIX Directory", "category": "SFDX Manager", "icon": "$(folder-opened)" },
       { "command": "sfdxManager.clearVsixOverrides", "title": "Clear VSIX Overrides", "category": "SFDX Manager", "icon": "$(clear-all)" },
       { "command": "sfdxManager.vsixMenu", "title": "VSIX Management...", "category": "SFDX Manager", "icon": "$(package)" },
-      { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" }
+      { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" },
+      { "command": "sfdxManager.updateExtension", "title": "Update Extension", "category": "SFDX Manager", "icon": "$(arrow-circle-up)" },
+      { "command": "sfdxManager.updateAllSalesforce", "title": "Update All Salesforce Extensions", "category": "SFDX Manager", "icon": "$(sync)" },
+      { "command": "sfdxManager.checkForUpdates", "title": "Check for Extension Updates", "category": "SFDX Manager", "icon": "$(search-refresh)" }
     ],
     "menus": {
       "commandPalette": [
         { "command": "sfdxManager.applyGroup", "when": "false" },
-        { "command": "sfdxManager.openRemediationUrl", "when": "false" }
+        { "command": "sfdxManager.openRemediationUrl", "when": "false" },
+        { "command": "sfdxManager.updateExtension", "when": "false" }
       ],
       "view/title": [
         { "command": "sfdxManager.createCustomGroup", "when": "view == sfdxManager.groups", "group": "navigation" },
         { "command": "sfdxManager.applyGroupQuickPick", "when": "view == sfdxManager.groups", "group": "navigation" },
+        { "command": "sfdxManager.updateAllSalesforce", "when": "view == sfdxManager.groups", "group": "navigation" },
+        { "command": "sfdxManager.checkForUpdates", "when": "view == sfdxManager.groups", "group": "navigation" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies", "group": "navigation" },
         { "command": "sfdxManager.copyDependencyReport", "when": "view == sfdxManager.dependencies", "group": "navigation" }
       ],
@@ -50,6 +56,7 @@
         { "command": "sfdxManager.applyGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "inline" },
         { "command": "sfdxManager.editGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@1" },
         { "command": "sfdxManager.deleteGroup", "when": "view == sfdxManager.groups && viewItem =~ /^group:/", "group": "1_modify@2" },
+        { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /updateAvailable/", "group": "inline" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies && viewItem =~ /^check/", "group": "inline" },
         { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" }
       ]
@@ -140,6 +147,17 @@
           "type": "boolean",
           "default": true,
           "description": "Show the VSIX override indicator in the status bar when a vsix directory is set."
+        },
+        "salesforcedx-vscode-manager.updateCheck": {
+          "type": "string",
+          "enum": ["onStartup", "manual", "never"],
+          "enumDescriptions": [
+            "Probe the Marketplace for newer versions of managed extensions shortly after activation.",
+            "Only check when the user explicitly invokes the 'Check for Extension Updates' command or expands the tree after a refresh.",
+            "Never contact the Marketplace; only show the locally installed version."
+          ],
+          "default": "manual",
+          "description": "When the manager should probe the VSCode Marketplace for newer versions of managed extensions. Results are cached in memory for ~1 hour."
         }
       }
     },

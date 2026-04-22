@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { registerDependencyCommands } from './commands/dependencyCommands';
 import { registerGroupCommands } from './commands/groupCommands';
+import { registerUpdateCommands } from './commands/updateCommands';
 import { registerVsixCommands } from './commands/vsixCommands';
 import { COMMANDS, CONFIG_NAMESPACE, SETTINGS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
 import { DependencyRegistry } from './dependencies/registry';
@@ -8,6 +9,7 @@ import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
 import { CodeCliService } from './services/codeCliService';
 import { ExtensionService } from './services/extensionService';
+import { MarketplaceVersionService } from './services/marketplaceVersionService';
 import { ProcessService } from './services/processService';
 import { SettingsService } from './services/settingsService';
 import { WorkspaceStateService } from './services/workspaceStateService';
@@ -36,6 +38,10 @@ export const activate = (context: vscode.ExtensionContext): void => {
   let scanner = new VsixScanner(settings.getVsixDirectory());
   let installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
   extensions.setVsixInstaller(installer);
+
+  const marketplaceProbe = new MarketplaceVersionService({ logger });
+  extensions.setMarketplaceProbe(marketplaceProbe);
+  extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');
 
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
   groupsTree.setVsixSources(() => installer.currentSources());
@@ -77,6 +83,7 @@ export const activate = (context: vscode.ExtensionContext): void => {
         scanner = new VsixScanner(settings.getVsixDirectory());
         installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
         extensions.setVsixInstaller(installer);
+        extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');
         groupsTree.setVsixSources(() => installer.currentSources());
         groupsTree.setVsixOverrides(() => installer.vsixOverrides());
         vsixStatusBar.setInstaller(installer);
@@ -122,12 +129,32 @@ export const activate = (context: vscode.ExtensionContext): void => {
     groupsTree
   });
 
+  registerUpdateCommands(context, {
+    codeCli,
+    extensions,
+    settings,
+    logger,
+    tree: groupsTree
+  });
+
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.showLog, () => logger.show())
   );
 
   if (settings.getAutoRunDependencyChecks()) {
     void dependenciesTree.runChecks();
+  }
+
+  // Populate installed-version descriptions immediately (no network), and
+  // optionally probe the marketplace for update availability on startup.
+  void groupsTree.refreshVersionInfo();
+  if (settings.getUpdateCheck() === 'onStartup') {
+    // refreshVersionInfo above already calls the marketplace probe when
+    // `updateCheck !== 'never'`; rerun after a tick so the user sees the
+    // badges without blocking activation.
+    setTimeout(() => {
+      void groupsTree.refreshVersionInfo();
+    }, 0);
   }
 
   logger.info('Salesforce Extensions Manager activated.');

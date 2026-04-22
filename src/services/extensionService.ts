@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { EXTENSION_ID, SALESFORCE_PUBLISHER } from '../constants';
+import { compare as compareVersions } from '../dependencies/versionCompare';
 import type { CodeCliService } from './codeCliService';
 import type { SettingsService } from './settingsService';
 import type { Logger } from '../util/logger';
@@ -20,8 +21,27 @@ export interface VsixInstallerLike {
   tryInstall(extensionId: string): Promise<'vsix' | 'marketplace' | 'skipped'>;
 }
 
+/**
+ * Optional marketplace-version probe. Kept as an interface so tests (and the
+ * `updateCheck = never` setting) can plug in a no-op.
+ */
+export interface MarketplaceVersionProbe {
+  getLatestVersion(extensionId: string): Promise<string | undefined>;
+  clearCache(): void;
+}
+
+export interface NodeVersionInfo {
+  installedVersion: string | undefined;
+  latestVersion: string | undefined;
+  updateAvailable: boolean;
+  source: 'vsix' | 'marketplace' | 'unknown';
+}
+
 export class ExtensionService {
   private vsixInstaller: VsixInstallerLike | undefined;
+  private marketplaceProbe: MarketplaceVersionProbe | undefined;
+  private getInstallSource: ((id: string) => 'vsix' | 'marketplace' | 'unknown') | undefined;
+  private cliVersionCache: Map<string, string> | undefined;
   private loggedCommandList = false;
 
   constructor(
@@ -32,6 +52,14 @@ export class ExtensionService {
 
   setVsixInstaller(installer: VsixInstallerLike): void {
     this.vsixInstaller = installer;
+  }
+
+  setMarketplaceProbe(probe: MarketplaceVersionProbe | undefined): void {
+    this.marketplaceProbe = probe;
+  }
+
+  setInstallSourceLookup(fn: (id: string) => 'vsix' | 'marketplace' | 'unknown'): void {
+    this.getInstallSource = fn;
   }
 
   managed(): vscode.Extension<unknown>[] {
@@ -115,7 +143,7 @@ export class ExtensionService {
     this.loggedCommandList = true;
   }
 
-  async install(id: string): Promise<InstallOutcome> {
+  async install(id: string, options: { force?: boolean } = {}): Promise<InstallOutcome> {
     if (this.vsixInstaller) {
       const result = await this.vsixInstaller.tryInstall(id);
       if (result === 'vsix') {
@@ -126,7 +154,9 @@ export class ExtensionService {
         return { source: 'vsix', exitCode: 1, stderr: 'local vsix install failed' };
       }
     }
-    const { exitCode, stderr } = await this.codeCli.installExtension(id);
+    const { exitCode, stderr } = options.force
+      ? await this.codeCli.installExtension(id, true)
+      : await this.codeCli.installExtension(id);
     if (exitCode !== 0) {
       this.logger.error(`Install failed for ${id}`, stderr);
     } else if (this.vsixInstaller && 'recordMarketplaceInstall' in this.vsixInstaller) {
@@ -152,4 +182,85 @@ export class ExtensionService {
       `${action} the ${ids.length} extension(s) shown in the Extensions view.`
     );
   }
+
+  /**
+   * Returns the currently installed version of `id`, read statically from
+   * `vscode.extensions.getExtension(id).packageJSON.version`. Does not
+   * activate the extension.
+   */
+  getInstalledVersion(id: string): string | undefined {
+    const ext = vscode.extensions.getExtension(id);
+    const version = (ext?.packageJSON as { version?: unknown } | undefined)?.version;
+    return typeof version === 'string' ? version : undefined;
+  }
+
+  /**
+   * Runs `code --list-extensions --show-versions` once per session and
+   * caches the parsed `id -> version` map. Subsequent calls are no-ops
+   * until `clearCliVersionCache()` is called (e.g. after an install).
+   * Silently no-ops when the CLI invocation fails.
+   */
+  async refreshInstalledCliVersions(): Promise<void> {
+    if (this.cliVersionCache) return;
+    try {
+      const { exitCode, stdout } = await this.codeCli.listInstalledWithVersions();
+      if (exitCode !== 0) {
+        this.cliVersionCache = new Map();
+        return;
+      }
+      this.cliVersionCache = parseCliVersions(stdout);
+    } catch (err) {
+      this.logger.warn(`list-extensions failed: ${err instanceof Error ? err.message : String(err)}`);
+      this.cliVersionCache = new Map();
+    }
+  }
+
+  clearCliVersionCache(): void {
+    this.cliVersionCache = undefined;
+  }
+
+  /** Cached `code --list-extensions --show-versions` lookup. */
+  getCliInstalledVersion(id: string): string | undefined {
+    return this.cliVersionCache?.get(id);
+  }
+
+  /**
+   * Aggregates installed version, marketplace version (when probe is wired
+   * and returns a value), update-available flag, and install provenance for
+   * a single extension id. Used by the Groups tree to render per-node state
+   * without doing its own network calls.
+   */
+  async getNodeVersionInfo(id: string): Promise<NodeVersionInfo> {
+    const installedVersion = this.getInstalledVersion(id) ?? this.getCliInstalledVersion(id);
+    let latestVersion: string | undefined;
+    if (this.marketplaceProbe && this.settings.getUpdateCheck() !== 'never') {
+      try {
+        latestVersion = await this.marketplaceProbe.getLatestVersion(id);
+      } catch {
+        latestVersion = undefined;
+      }
+    }
+    const updateAvailable =
+      !!installedVersion && !!latestVersion && compareVersions(installedVersion, latestVersion) < 0;
+    const source = this.getInstallSource?.(id) ?? 'unknown';
+    return { installedVersion, latestVersion, updateAvailable, source };
+  }
 }
+
+/**
+ * Parses `publisher.name@version` lines emitted by
+ * `code --list-extensions --show-versions`. Exported for unit testing.
+ */
+export const parseCliVersions = (stdout: string): Map<string, string> => {
+  const out = new Map<string, string>();
+  for (const rawLine of stdout.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const at = line.lastIndexOf('@');
+    if (at <= 0) continue;
+    const id = line.slice(0, at).trim();
+    const version = line.slice(at + 1).trim();
+    if (id && version) out.set(id, version);
+  }
+  return out;
+};

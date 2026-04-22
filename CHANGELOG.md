@@ -2,6 +2,10 @@
 
 All notable changes to `salesforcedx-vscode-manager` will be documented in this file.
 
+## [Unreleased]
+
+- Groups tree now shows each extension's installed version, an `$(arrow-circle-up)` update badge when the marketplace has a newer build, and a `$(package)` badge (with a VSIX-walkthrough tooltip hint) when the extension came from the local VSIX override directory. New commands `SFDX Manager: Update Extension` (inline, per node) and `SFDX Manager: Update All Salesforce Extensions` (view-title) route through `code --install-extension --force`. Marketplace discovery is gated behind the new `salesforcedx-vscode-manager.updateCheck` setting (`onStartup` / `manual` / `never`, default `manual`) and caches results for 1 hour in memory.
+
 ## [0.1.0] — Unreleased
 
 Initial release.

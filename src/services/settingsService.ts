@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CONFIG_NAMESPACE, DEFAULT_THIRD_PARTY_EXTENSION_IDS, SETTINGS } from '../constants';
+import { CONFIG_NAMESPACE, DEFAULT_THIRD_PARTY_EXTENSION_IDS, SETTINGS, UpdateCheckMode } from '../constants';
 import type { ApplyScope } from '../groups/types';
 
 export class SettingsService {
@@ -51,6 +51,10 @@ export class SettingsService {
 
   getStatusBarShowVsix(): boolean {
     return this.config().get<boolean>(SETTINGS.statusBarShowVsix, true);
+  }
+
+  getUpdateCheck(): UpdateCheckMode {
+    return this.config().get<UpdateCheckMode>(SETTINGS.updateCheck, 'manual');
   }
 
   onDidChange(listener: (e: vscode.ConfigurationChangeEvent) => void): vscode.Disposable {
