@@ -314,12 +314,12 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [ ] Manual F5 smoke: apply Apex, apply Lightning, create custom, edit, delete *(pending user smoke test)*
 
 ### Phase 6 — Dependency engine
-- [ ] `src/dependencies/types.ts`
-- [ ] `src/dependencies/runners.ts` — `exec`, `env`, `file`, `nodeVersion`, `extensionInstalled`
-- [ ] `src/dependencies/versionCompare.ts` (inline semver compare; no external dep)
-- [ ] `src/dependencies/shimCatalog.ts` — ports Java check from `requirements.ts`; adds shims for `-apex`, `-lwc`, `-core`
-- [ ] `src/dependencies/registry.ts` — static scan of `ext.packageJSON.salesforceDependencies` + shim merge
-- [ ] `runners.test.ts`, `registry.test.ts` (mocked filesystem + child_process)
+- [x] `src/dependencies/types.ts`
+- [x] `src/dependencies/runners.ts` — `exec`, `env`, `file`, `nodeVersion`, `extensionInstalled`
+- [x] `src/dependencies/versionCompare.ts` (inline semver compare; no external dep)
+- [x] `src/dependencies/shimCatalog.ts` — ports Java check from `requirements.ts`; adds shims for `-apex`, `-lwc`, `-core`
+- [x] `src/dependencies/registry.ts` — static scan of `ext.packageJSON.salesforceDependencies` + shim merge
+- [x] `runners.test.ts`, `registry.test.ts` (mocked filesystem + child_process)
 
 ### Phase 7 — Dependency commands + tree view
 - [ ] `src/commands/dependencyCommands.ts` — show, runCheck, copyReport
