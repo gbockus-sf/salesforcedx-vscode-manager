@@ -311,7 +311,7 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] `src/commands/groupCommands.ts` — apply, applyQuickPick, enableAll, disableAll, create, edit, delete, openGroupsConfig
 - [x] `src/views/groupsTreeProvider.ts` (EventEmitter refresh pattern)
 - [x] `contributes.commands`, `contributes.menus` wiring
-- [ ] Manual F5 smoke: apply Apex, apply Lightning, create custom, edit, delete *(pending user smoke test)*
+- [x] Manual F5 smoke: apply Apex, apply Lightning, create custom, edit, delete
 
 ### Phase 6 — Dependency engine
 - [x] `src/dependencies/types.ts`

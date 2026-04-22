@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SALESFORCE_PUBLISHER } from '../constants';
+import { EXTENSION_ID, SALESFORCE_PUBLISHER } from '../constants';
 import type { CodeCliService } from './codeCliService';
 import type { SettingsService } from './settingsService';
 import type { Logger } from '../util/logger';
@@ -38,6 +38,7 @@ export class ExtensionService {
     const thirdParty = new Set(this.settings.getThirdPartyExtensionIds());
     return vscode.extensions.all.filter(ext => {
       const id = ext.id;
+      if (id === EXTENSION_ID) return false; // never toggle self
       const publisher = id.split('.')[0];
       return publisher === SALESFORCE_PUBLISHER || thirdParty.has(id);
     });
