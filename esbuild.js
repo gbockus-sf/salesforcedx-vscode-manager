@@ -9,7 +9,9 @@ const fs = require('fs');
 const path = require('path');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.argv.includes('--production');
-const destDir = isProduction ? 'dist' : 'out';
+// Always emit to dist/; VSIX packaging + F5 both read from there. Sourcemaps
+// are on in dev, off in production.
+const destDir = 'dist';
 
 const extensionConfig = {
   bundle: true,

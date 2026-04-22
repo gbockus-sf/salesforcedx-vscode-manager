@@ -11,7 +11,7 @@
   "categories": [
     "Other"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -142,14 +142,48 @@
           "description": "Show the VSIX override indicator in the status bar when a vsix directory is set."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "sfdxManager.getStarted",
+        "title": "Get Started with the Salesforce Extensions Manager",
+        "description": "Switch between extension groups, verify dependencies, and swap in local VSIX builds.",
+        "steps": [
+          {
+            "id": "sfdxManager.walkthrough.applyGroup",
+            "title": "Apply an extension group",
+            "description": "Quickly enable the set of Salesforce extensions you need for the task at hand.\n[Apply a Group](command:sfdxManager.applyGroupQuickPick)",
+            "media": { "markdown": "resources/walkthrough/apply-group.md" }
+          },
+          {
+            "id": "sfdxManager.walkthrough.dependencies",
+            "title": "Verify dependencies",
+            "description": "See which external prerequisites (Salesforce CLI, Java, Node) are healthy.\n[Check Dependencies](command:sfdxManager.runDependencyCheck)",
+            "media": { "markdown": "resources/walkthrough/dependencies.md" }
+          },
+          {
+            "id": "sfdxManager.walkthrough.vsix",
+            "title": "Use a local VSIX directory",
+            "description": "Point at a folder of .vsix files to test unreleased builds without leaving the marketplace install for production.\n[Open VSIX Setting](command:workbench.action.openSettings?%22salesforcedx-vscode-manager.vsixDirectory%22)",
+            "media": { "markdown": "resources/walkthrough/vsix.md" }
+          },
+          {
+            "id": "sfdxManager.walkthrough.statusBar",
+            "title": "Status bar indicators",
+            "description": "The status bar shows the active group and any VSIX overrides; click either to manage.",
+            "media": { "markdown": "resources/walkthrough/status-bar.md" }
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc --noEmit && node ./esbuild.js",
     "watch": "tsc --noEmit --watch",
     "clean": "rimraf out dist coverage",
     "bundle:extension": "node ./esbuild.js --production",
-    "bundle:vsix": "npm run compile && vsce package",
+    "bundle:vsix": "npm run bundle:extension && npx -y @vscode/vsce package --allow-missing-repository --baseContentUrl https://example.invalid/",
+    "vscode:prepublish": "npm run bundle:extension",
     "lint": "eslint .",
     "lint-fix": "eslint --fix .",
     "test": "jest --coverage",

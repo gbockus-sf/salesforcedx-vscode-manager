@@ -1,10 +1,10 @@
+.github/**
 .vscode/**
 .vscode-test/**
 out/**
 src/**
 test/**
 node_modules/**
-!node_modules/whatever-we-actually-need/**
 .gitignore
 .eslintrc*
 eslint.config.mjs
@@ -17,3 +17,4 @@ jest.config.js
 coverage/**
 PLAN.md
 **/*.test.ts
+dist/extension-esbuild-metafile.json

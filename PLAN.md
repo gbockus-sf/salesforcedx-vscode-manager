@@ -344,11 +344,11 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [ ] Manual F5 smoke: switch groups, observe both items update live *(pending user smoke test)*
 
 ### Phase 10 — Polish
-- [ ] `contributes.walkthroughs` with 4 steps (group, deps, vsix, status bar)
-- [ ] README: user guide + `salesforceDependencies` contract spec + VSIX workflow section
-- [ ] CHANGELOG 0.1.0 entry
-- [ ] `npx @vscode/vsce package` produces a clean `.vsix`
-- [ ] Install into a fresh VSCode, run through §7 verification list
+- [x] `contributes.walkthroughs` with 4 steps (group, deps, vsix, status bar)
+- [x] README: user guide + `salesforceDependencies` contract spec + VSIX workflow section
+- [x] CHANGELOG 0.1.0 entry
+- [x] `npx @vscode/vsce package` produces a clean `.vsix`
+- [ ] Install into a fresh VSCode, run through §7 verification list *(pending user smoke test)*
 
 ### Phase 11 (nice-to-have v0.1.1)
 - [ ] Import / export group JSON
