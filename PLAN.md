@@ -410,9 +410,17 @@ should be addressed before a real release.
 - [ ] **React group contents.** Ship empty; user will fill via
   `Edit Group` per the plan. Confirm contents and repopulate before
   tagging v0.1.0.
-- [ ] **Activity bar icon visual.** Current SVG renders as a padlock.
-  Swap for a Salesforce-cloud-and-gear once marketing assets are
-  available; current icon is placeholder.
+- [ ] **Activity bar icon visual — swap padlock for a layers glyph.**
+  Current `resources/icons/sfdx-manager.svg` renders as a padlock; the
+  stack icon we use in the status bar (`$(layers)` codicon) reads much
+  better. Author a new SVG that mimics the codicon layers shape:
+  three offset parallelograms, 24×24 `viewBox`, **filled paths with
+  `fill="currentColor"`** (not stroked — stroked SVGs render nearly
+  invisible in the activity bar; we confirmed this during Phase 2).
+  Keep the file at the same path so `package.json`'s
+  `contributes.viewsContainers.activitybar[0].icon` needs no change.
+  Verify at both light and dark theme backgrounds (the theme engine
+  applies the foreground color to the fill automatically).
 - [ ] **Reload prompt fatigue.** Each uninstall triggers a reload prompt.
   Investigate batching or auto-reload after a full apply completes.
 - [ ] **GPG signing during local development.** Our git repo signs by
