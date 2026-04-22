@@ -20,7 +20,13 @@ export const window = {
 
 export const commands = {
   registerCommand: jest.fn(),
-  executeCommand: jest.fn()
+  executeCommand: jest.fn(),
+  getCommands: jest.fn(async () => [
+    'workbench.extensions.action.enableExtension',
+    'workbench.extensions.action.disableExtension',
+    'workbench.extensions.search',
+    'workbench.action.openSettings'
+  ])
 };
 
 export const workspace = {

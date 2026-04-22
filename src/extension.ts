@@ -51,6 +51,10 @@ export const activate = (context: vscode.ExtensionContext): void => {
     tree: groupsTree
   });
 
+  context.subscriptions.push(
+    vscode.commands.registerCommand('sfdxManager.showLog', () => logger.show())
+  );
+
   logger.info('Salesforce Extensions Manager activated.');
 };
 

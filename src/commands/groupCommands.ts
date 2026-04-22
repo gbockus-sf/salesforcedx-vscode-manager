@@ -52,9 +52,18 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   const scope = await resolveScope(group, deps.settings, deps.workspaceState);
   if (!scope) return;
   const managedIds = deps.extensions.managed().map(e => e.id);
+  deps.logger.info(
+    `Applying "${group.label}" (scope=${scope}). Members=${group.extensions.length}, managedIds=${managedIds.length}`
+  );
   const result = await applyGroup(group, scope, managedIds, deps.extensions);
   await deps.workspaceState.setActiveGroupId(group.id);
   deps.tree.refresh();
+
+  deps.logger.info(
+    `Apply result: enabled=${result.enabled.length} disabled=${result.disabled.length} ` +
+      `vsix=${result.installedFromVsix.length} manualEnable=${result.needsManualEnable.length} ` +
+      `manualDisable=${result.needsManualDisable.length} skipped=${result.skipped.length}`
+  );
 
   const parts: string[] = [`${group.label} applied.`, `Enabled: ${result.enabled.length}`];
   if (result.disabled.length) parts.push(`Disabled: ${result.disabled.length}`);
@@ -62,10 +71,15 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   if (result.needsManualEnable.length) parts.push(`Manual enable: ${result.needsManualEnable.length}`);
   if (result.needsManualDisable.length) parts.push(`Manual disable: ${result.needsManualDisable.length}`);
   if (result.skipped.length) parts.push(`Skipped: ${result.skipped.length}`);
-  void vscode.window.showInformationMessage(parts.join(' · '));
 
-  // Consolidate the manual-toggle hints so the user gets at most one prompt
-  // per action kind, not one per extension.
+  const hasFollowUp = result.needsManualEnable.length + result.needsManualDisable.length > 0;
+  const logAction = 'Show log';
+  const choice = await vscode.window.showInformationMessage(
+    parts.join(' · '),
+    ...(hasFollowUp ? [logAction] : [logAction])
+  );
+  if (choice === logAction) deps.logger.show();
+
   if (result.needsManualDisable.length) {
     await deps.extensions.showManualToggleHint(result.needsManualDisable, 'Disable');
   } else if (result.needsManualEnable.length) {

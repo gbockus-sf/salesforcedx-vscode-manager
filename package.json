@@ -24,7 +24,8 @@
       { "command": "sfdxManager.createCustomGroup", "title": "Create Custom Group", "category": "SFDX Manager", "icon": "$(add)" },
       { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager", "icon": "$(edit)" },
       { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager", "icon": "$(trash)" },
-      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager", "icon": "$(settings-gear)" }
+      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager", "icon": "$(settings-gear)" },
+      { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" }
     ],
     "menus": {
       "commandPalette": [

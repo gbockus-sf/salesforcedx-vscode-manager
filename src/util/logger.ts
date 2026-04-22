@@ -18,6 +18,13 @@ export class Logger {
   error(message: string, err?: unknown): void {
     const detail = err instanceof Error ? `: ${err.message}` : err ? `: ${String(err)}` : '';
     this.channel.appendLine(`[error] ${message}${detail}`);
+    if (err instanceof Error && err.stack) {
+      this.channel.appendLine(err.stack);
+    }
+  }
+
+  show(): void {
+    this.channel.show(true);
   }
 
   dispose(): void {

@@ -21,7 +21,8 @@ export const COMMANDS = {
   refreshFromVsixDirectory: 'sfdxManager.refreshFromVsixDirectory',
   openVsixDirectory: 'sfdxManager.openVsixDirectory',
   clearVsixOverrides: 'sfdxManager.clearVsixOverrides',
-  vsixMenu: 'sfdxManager.vsixMenu'
+  vsixMenu: 'sfdxManager.vsixMenu',
+  showLog: 'sfdxManager.showLog'
 } as const;
 
 export const SETTINGS = {

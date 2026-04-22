@@ -80,18 +80,29 @@ export class ExtensionService {
 
   private async tryInternalToggle(action: 'enable' | 'disable', id: string): Promise<boolean> {
     const command = `workbench.extensions.action.${action}Extension`;
-    // Different VSCode versions accept different argument shapes for these
-    // internal commands. Try the known variants in order.
+    const available = await vscode.commands.getCommands(true);
+    if (!available.includes(command)) {
+      this.logger.warn(
+        `Command "${command}" is not registered in this VSCode build. ` +
+          `Matching commands available: ${available.filter(c => c.startsWith('workbench.extensions.action.')).slice(0, 15).join(', ')}`
+      );
+      return false;
+    }
+    // Different VSCode versions accept different argument shapes.
     const variants: unknown[][] = [[[id]], [{ id }], [id]];
+    const errors: string[] = [];
     for (const args of variants) {
       try {
         await vscode.commands.executeCommand(command, ...args);
+        this.logger.info(`${action}(${id}) ok via ${command} args=${JSON.stringify(args)}`);
         return true;
-      } catch {
-        // try next variant
+      } catch (err) {
+        errors.push(err instanceof Error ? err.message : String(err));
       }
     }
-    this.logger.warn(`No internal ${action} command shape worked for ${id}; manual toggle required.`);
+    this.logger.warn(
+      `No internal ${action} arg shape worked for ${id}. Errors: ${errors.join(' | ')}`
+    );
     return false;
   }
 
