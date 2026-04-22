@@ -384,3 +384,48 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - **v0.3** — Adoption PRs in the IDEx monorepo adding `salesforceDependencies` to each Salesforce extension; retire shim catalog as coverage grows. Optional VSCode Profiles backend (`backend: "profiles"`).
 - **v0.4** — Telemetry via `@vscode/extension-telemetry`, `l10n/` localization, Playwright E2E mirroring `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/playwright.config.ts`.
 - **v0.5** — Auto-download VSIXes from a configurable URL (e.g., CI artifact feed); signed/checksummed VSIX verification.
+
+---
+
+## 9. TODOs surfaced during build
+
+These were discovered during implementation and aren't blocking v0.1 but
+should be addressed before a real release.
+
+- [ ] **Topological uninstall order.** Apply-with-`disableOthers` currently
+  fails for extensions that are members of an installed `extensionPack`
+  or are declared as `extensionDependencies` of another installed
+  extension. VSCode refuses the uninstall and we log `[warn] Cannot
+  uninstall 'X'. 'Y' extension depends on this.` Fix: sort the disable
+  list by reverse-dependency so packs come off before their members,
+  and consider offering to uninstall the containing pack when blocked.
+- [ ] **Skip unresolvable marketplace ids.** `salesforce.lightning-design-system-vscode`
+  appears in the Lightning built-in but isn't actually published at
+  that id in the marketplace, so `code --install-extension` fails. Fix:
+  before install, probe the marketplace (or add a known-bad allowlist)
+  and surface these as `skipped` with a clearer reason in the summary
+  toast.
+- [ ] **React group contents.** Ship empty; user will fill via
+  `Edit Group` per the plan. Confirm contents and repopulate before
+  tagging v0.1.0.
+- [ ] **Activity bar icon visual.** Current SVG renders as a padlock.
+  Swap for a Salesforce-cloud-and-gear once marketing assets are
+  available; current icon is placeholder.
+- [ ] **Reload prompt fatigue.** Each uninstall triggers a reload prompt.
+  Investigate batching or auto-reload after a full apply completes.
+- [ ] **GPG signing during local development.** Our git repo signs by
+  default; every AI-agent commit pops pinentry. Consider adding
+  `commit.gpgsign=false` to `.git/config` in checkout instructions so
+  contributors aren't blocked (signing can be re-enabled at PR/tag
+  time).
+- [ ] **`useInternalCommands` setting is now dead.** Kept for backward
+  compat; remove in v0.2 or the first breaking release.
+- [ ] **Dep checks never auto-run.** `autoRunDependencyChecks` setting
+  is wired but not yet honored on activation (waiting on Phase 7 tree
+  view). Verify this fires after Phase 7 lands.
+- [ ] **Empty group -> no-op apply.** Applying the React group (empty
+  members) with `disableOthers` will happily uninstall every managed
+  extension. Guard against this with a confirmation prompt.
+- [ ] **Worktree-based parallel agents.** Works but requires disabling
+  gpg signing in the worktree. Document the recipe in CONTRIBUTING
+  once we have one.
