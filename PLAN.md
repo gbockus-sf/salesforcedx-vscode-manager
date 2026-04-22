@@ -279,14 +279,14 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [x] First commit: `chore: initial scaffold + PLAN.md`
 
 ### Phase 1 — Build & test scaffolding
-- [ ] `package.json` with metadata, scripts, devDeps (typescript, esbuild, jest, ts-jest, @types/vscode, @types/node)
-- [ ] `tsconfig.json` (strict, ES2021, ESNext, outDir `out`)
-- [ ] `esbuild.js` bundling `src/extension.ts` → `out/extension.js`, externals: `vscode`
-- [ ] `jest.config.js` + sample passing test
-- [ ] `eslint.config.mjs`
-- [ ] `.vscode/launch.json` for F5 Extension Host
-- [ ] `.github/workflows/ci.yml` running lint + test + compile
-- [ ] `npm run compile && npm test` green
+- [x] `package.json` with metadata, scripts, devDeps (typescript, esbuild, jest, ts-jest, @types/vscode, @types/node)
+- [x] `tsconfig.json` (strict, ES2021, ESNext, outDir `out`)
+- [x] `esbuild.js` bundling `src/extension.ts` → `out/extension.js`, externals: `vscode`
+- [x] `jest.config.js` + sample passing test
+- [x] `eslint.config.mjs`
+- [x] `.vscode/launch.json` for F5 Extension Host
+- [x] `.github/workflows/ci.yml` running lint + test + compile
+- [x] `npm run compile && npm test` green
 
 ### Phase 2 — Activation skeleton
 - [ ] `src/extension.ts` with `activate()` / `deactivate()` and an OutputChannel logger
