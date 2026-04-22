@@ -132,13 +132,14 @@ describe('ExtensionService', () => {
     expect(cli.installExtension).not.toHaveBeenCalled();
   });
 
-  it('install() falls through to the marketplace when the VsixInstaller says skipped', async () => {
+  it('install() surfaces a vsix failure when the VsixInstaller says skipped, without silently hitting marketplace', async () => {
     const vsix: VsixInstallerLike = { tryInstall: jest.fn(async () => 'skipped') };
     const cli = mkCodeCli();
     const svc = new ExtensionService(mkSettings(), cli, mkLogger());
     svc.setVsixInstaller(vsix);
     const result = await svc.install('salesforce.foo');
-    expect(result.source).toBe('marketplace');
+    expect(result.source).toBe('vsix');
+    expect(result.exitCode).not.toBe(0);
     expect(cli.installExtension).not.toHaveBeenCalled();
   });
 

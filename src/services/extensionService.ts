@@ -122,12 +122,17 @@ export class ExtensionService {
         return { source: 'vsix', exitCode: 0 };
       }
       if (result === 'skipped') {
-        return { source: 'marketplace', exitCode: 0 };
+        // A local vsix matched but failed — don't silently swap to marketplace.
+        return { source: 'vsix', exitCode: 1, stderr: 'local vsix install failed' };
       }
     }
     const { exitCode, stderr } = await this.codeCli.installExtension(id);
     if (exitCode !== 0) {
       this.logger.error(`Install failed for ${id}`, stderr);
+    } else if (this.vsixInstaller && 'recordMarketplaceInstall' in this.vsixInstaller) {
+      await (this.vsixInstaller as unknown as {
+        recordMarketplaceInstall: (id: string) => Promise<void>;
+      }).recordMarketplaceInstall(id);
     }
     return { source: 'marketplace', exitCode, stderr };
   }

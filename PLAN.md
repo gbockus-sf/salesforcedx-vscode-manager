@@ -327,14 +327,14 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [ ] Manual F5 smoke: render with healthy env, then break `java` and re-check *(pending user smoke test)*
 
 ### Phase 8 — VSIX override
-- [ ] `src/vsix/types.ts`
-- [ ] `src/vsix/vsixScanner.ts` — scan, filename parser (`<publisher>.<name>-<version>.vsix`), `FileSystemWatcher`
-- [ ] `src/vsix/vsixInstaller.ts` — `tryInstall()` routes to `code --install-extension <path> --force` when match found, otherwise marketplace id; records provenance in `workspaceStateService`
-- [ ] Rewire `ExtensionService.install()` to consult `VsixInstaller` first
-- [ ] `src/commands/vsixCommands.ts` — `refreshFromVsixDirectory`, `openVsixDirectory`, `clearVsixOverrides`, `vsixMenu`
-- [ ] Groups tree labels gain `$(package)` + tooltip for VSIX-sourced extensions
-- [ ] `vsixScanner.test.ts`, `vsixInstaller.test.ts`
-- [ ] Manual F5 smoke: populate a folder with one real VSIX, set the setting, apply a group that includes it, verify provenance + tooltip
+- [x] `src/vsix/types.ts`
+- [x] `src/vsix/vsixScanner.ts` — scan, filename parser (`<publisher>.<name>-<version>.vsix`), `FileSystemWatcher`
+- [x] `src/vsix/vsixInstaller.ts` — `tryInstall()` routes to `code --install-extension <path> --force` when match found, otherwise marketplace id; records provenance in `workspaceStateService`
+- [x] Rewire `ExtensionService.install()` to consult `VsixInstaller` first
+- [x] `src/commands/vsixCommands.ts` — `refreshFromVsixDirectory`, `openVsixDirectory`, `clearVsixOverrides`, `vsixMenu`
+- [x] Groups tree labels gain `$(package)` + tooltip for VSIX-sourced extensions
+- [x] `vsixScanner.test.ts`, `vsixInstaller.test.ts`
+- [ ] Manual F5 smoke: populate a folder with one real VSIX, set the setting, apply a group that includes it, verify provenance + tooltip *(pending user smoke test)*
 
 ### Phase 9 — Status bar
 - [ ] `src/statusBar/groupStatusBarItem.ts` — reads active group from workspace state, click → `applyGroupQuickPick`

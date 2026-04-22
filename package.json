@@ -29,6 +29,10 @@
       { "command": "sfdxManager.runDependencyCheck", "title": "Run Dependency Check", "category": "SFDX Manager", "icon": "$(refresh)" },
       { "command": "sfdxManager.copyDependencyReport", "title": "Copy Dependency Report", "category": "SFDX Manager", "icon": "$(clippy)" },
       { "command": "sfdxManager.openRemediationUrl", "title": "Open Remediation Link", "category": "SFDX Manager", "icon": "$(link-external)" },
+      { "command": "sfdxManager.refreshFromVsixDirectory", "title": "Refresh from VSIX Directory", "category": "SFDX Manager", "icon": "$(cloud-download)" },
+      { "command": "sfdxManager.openVsixDirectory", "title": "Open VSIX Directory", "category": "SFDX Manager", "icon": "$(folder-opened)" },
+      { "command": "sfdxManager.clearVsixOverrides", "title": "Clear VSIX Overrides", "category": "SFDX Manager", "icon": "$(clear-all)" },
+      { "command": "sfdxManager.vsixMenu", "title": "VSIX Management...", "category": "SFDX Manager", "icon": "$(package)" },
       { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" }
     ],
     "menus": {

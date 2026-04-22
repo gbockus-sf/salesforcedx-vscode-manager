@@ -25,12 +25,22 @@ interface ExtensionNode {
 export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   private readonly emitter = new vscode.EventEmitter<GroupsNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
+  private getVsixSources: (() => Record<string, 'vsix' | 'marketplace'>) | undefined;
+  private getVsixOverrides: (() => Map<string, { version: string; filePath: string }>) | undefined;
 
   constructor(
     private readonly store: GroupStore,
     private readonly extensions: ExtensionService,
     private readonly workspaceState: WorkspaceStateService
   ) {}
+
+  setVsixSources(fn: () => Record<string, 'vsix' | 'marketplace'>): void {
+    this.getVsixSources = fn;
+  }
+
+  setVsixOverrides(fn: () => Map<string, { version: string; filePath: string }>): void {
+    this.getVsixOverrides = fn;
+  }
 
   refresh(): void {
     this.emitter.fire(undefined);
@@ -82,14 +92,21 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       }));
     }
     if (parent.kind !== 'group') return [];
-    const sources = this.workspaceState.getInstallSources();
-    return parent.group.extensions.map(id => ({
-      kind: 'extension' as const,
-      extensionId: id,
-      groupId: parent.group.id,
-      installed: this.extensions.isInstalled(id),
-      enabled: this.extensions.isEnabled(id),
-      source: sources[id] ?? 'unknown'
-    }));
+    const sources = this.getVsixSources
+      ? this.getVsixSources()
+      : this.workspaceState.getInstallSources();
+    const overrides = this.getVsixOverrides?.();
+    return parent.group.extensions.map(id => {
+      const override = overrides?.get(id);
+      return {
+        kind: 'extension' as const,
+        extensionId: id,
+        groupId: parent.group.id,
+        installed: this.extensions.isInstalled(id),
+        enabled: this.extensions.isEnabled(id),
+        source: sources[id] ?? 'unknown',
+        vsixFilename: override?.filePath.split('/').pop()
+      };
+    });
   }
 }
