@@ -18,6 +18,7 @@ Initial release.
 - Fallback shim catalog for extensions that haven't adopted the contract.
 - Check types: `exec`, `env`, `file`, `nodeVersion`, `extensionInstalled`.
 - Commands: Show, Run, Copy Report.
+- Dedupe by logical-check fingerprint: declarations pointing at the same underlying prerequisite (e.g., `JAVA_HOME`) fold into a single row whose tooltip lists every contributing extension.
 
 ### VSIX override
 - `salesforcedx-vscode-manager.vsixDirectory` setting.
