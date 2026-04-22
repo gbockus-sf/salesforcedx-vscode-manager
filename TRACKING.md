@@ -32,13 +32,14 @@ at the bottom whenever a row is added.
 | **Docs / TODOs follow-ups** | — | 3 | 74 | 0 | 74 | — | `PLAN.md` §9 TODOs (topological uninstall, id-dedup, installed-version/update indicators, etc.). |
 | **Docs: TRACKING + CONTRIBUTING + CLAUDE** | ~15 min | 2 | 285 | 3 | 282 | — | `TRACKING.md` effort ledger, `CONTRIBUTING.md` worktree/gpg recipe, `CLAUDE.md` agent directions. Ran in parallel with two backgrounded subagents. |
 | **Feature: Dependencies tree dedup by fingerprint** | ~5 min setup + ~5 min subagent | 2 (subagent commit + merge) | 321 | 24 | 297 | **75,771** (subagent) | Backgrounded subagent in `feat/deps-dedup-fingerprint` worktree. Sandbox blocked the subagent's `git commit`; main session committed in the worktree and merged. Added fingerprint-based folding (built-in > shim > manifest precedence); tooltip lists multiple owners. 93 → 100 tests. |
+| **Feature: Groups tree version + update indicators** | ~5 min setup + ~10 min subagent + ~3 min merge | 2 (subagent commit + merge w/ conflict resolution) | ~850 | ~50 | ~800 | **132,302** (subagent) | Backgrounded subagent in `feat/groups-version-indicators` worktree, ran concurrently with the dedup subagent. Same sandbox-blocks-commit pattern; main session committed + merged. Added `MarketplaceVersionService` (1h-cached probe), `ExtensionService.getNodeVersionInfo`, three new commands, one new setting. PLAN.md had a real merge conflict (both branches edited the same TODO block) resolved by keeping both checkboxes. 100 → 124 tests. |
 
 ## Summary (keep up to date)
 
-- **Total repository** (all non-merge commits, excluding `package-lock.json`): **+5,032 / −297 lines (net +4,735)**.
-- **Total commits**: 24 on `main` (including 2 merges), plus 2 commits on retired feature branches (`phase-6-deps`, `feat/deps-dedup-fingerprint`) that were merged and cleaned up.
-- **Tests**: **100 passing** across 12 suites.
-- **Packaged VSIX**: 12 files, ~22 KB.
-- **Known token usage**: 73,214 for the Phase 6 subagent + 75,771 for the dedup subagent = **148,985 measured**. Main-session totals are unmeasured in this ledger; populate from your transcript / harness telemetry. The `feat/groups-version-indicators` subagent is still running.
-- **Phases complete**: 0 through 10 (all v0.1 scope) plus the §9 fingerprint-dedup TODO. Manual F5 smoke-test checkboxes are pending for Phases 2, 5, 7, 8, 9 — code gates (compile + lint + jest) are all green.
-- **Open follow-ups**: See `PLAN.md` §9 — notably the dep-graph honoring on apply, visualizing `extensionDependencies`/`extensionPack` in the tree, and showing installed version + update indicators (in flight via a background subagent).
+- **Total repository** (all non-merge commits, excluding `package-lock.json`): **~+5,900 / −350 lines (net ~+5,550)**.
+- **Total commits**: 27 on `main` (including 3 merges), plus 3 commits on retired feature branches that were merged and cleaned up.
+- **Tests**: **124 passing** across 14 suites.
+- **Packaged VSIX**: 12 files, ~22 KB (unchanged — new code fits within bundled budget).
+- **Known token usage**: 73,214 (Phase 6) + 75,771 (dedup) + 132,302 (versions/updates) = **281,287 measured across three subagents**. Main-session totals are unmeasured; populate from your transcript / harness telemetry when available.
+- **Phases complete**: 0 through 10 (all v0.1 scope) plus two §9 TODOs delivered via parallel subagents: fingerprint-dedup and installed-version-and-update-indicators. Manual F5 smoke-test checkboxes are pending for Phases 2, 5, 7, 8, 9 — code gates (compile + lint + jest) are all green.
+- **Open follow-ups**: See `PLAN.md` §9 — notably the dep-graph honoring on apply, visualizing `extensionDependencies`/`extensionPack` in the tree, and the new CLAUDE.md-audit TODO.
