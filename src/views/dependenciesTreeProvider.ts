@@ -105,7 +105,13 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
       : new vscode.ThemeIcon(ICON_BY_STATE[status.state]);
     const tooltipLines = [node.check.label];
     if (status.detail) tooltipLines.push(status.detail);
-    if (node.check.ownerExtensionId) tooltipLines.push(`Required by: ${node.check.ownerExtensionId}`);
+    const owners =
+      node.check.ownerExtensionIds && node.check.ownerExtensionIds.length > 0
+        ? node.check.ownerExtensionIds
+        : node.check.ownerExtensionId
+          ? [node.check.ownerExtensionId]
+          : [];
+    if (owners.length > 0) tooltipLines.push(`Required by: ${owners.join(', ')}`);
     if (node.check.remediation) tooltipLines.push(`Fix: ${node.check.remediation}`);
     if (node.check.remediationUrl) tooltipLines.push(node.check.remediationUrl);
     item.tooltip = tooltipLines.join('\n');

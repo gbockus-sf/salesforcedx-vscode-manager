@@ -446,7 +446,7 @@ should be addressed before a real release.
   entry and the reason in the log. This removes the
   'Cannot uninstall X. Y depends on this' warnings we see today and
   turns them into explicit tree-surfaced state instead.
-- [ ] **Dedupe the Dependencies list by logical check, not just by id.**
+- [x] **Dedupe the Dependencies list by logical check, not just by id.**
   Today `DependencyRegistry.collect()` dedupes on `check.id`, but two
   different extensions can declare the same *logical* dependency
   (e.g., Java JDK 11+) with different ids (`apex.java-jdk`,

@@ -78,6 +78,33 @@ describe('DependenciesTreeProvider', () => {
     expect(item.contextValue).toBe('check:withRemediationUrl');
     expect(item.description).toBe('nope');
   });
+
+  it('getTreeItem tooltip lists a single owner when only ownerExtensionId is set', async () => {
+    const tree = new DependenciesTreeProvider(mkRegistry([]));
+    const item = tree.getTreeItem({
+      kind: 'check',
+      check: mkCheck({ id: 'a', ownerExtensionId: 'salesforce.apex' }),
+      status: { state: 'ok', version: '1.0.0' }
+    });
+    expect(String(item.tooltip)).toContain('Required by: salesforce.apex');
+  });
+
+  it('getTreeItem tooltip lists multiple owners when ownerExtensionIds has more than one entry', async () => {
+    const tree = new DependenciesTreeProvider(mkRegistry([]));
+    const item = tree.getTreeItem({
+      kind: 'check',
+      check: mkCheck({
+        id: 'java',
+        label: 'Java JDK 11+',
+        ownerExtensionId: 'salesforce.apex',
+        ownerExtensionIds: ['salesforce.apex', 'salesforce.soql', 'salesforce.visualforce']
+      }),
+      status: { state: 'ok', version: '17.0.1' }
+    });
+    expect(String(item.tooltip)).toContain(
+      'Required by: salesforce.apex, salesforce.soql, salesforce.visualforce'
+    );
+  });
 });
 
 describe('formatReport', () => {
