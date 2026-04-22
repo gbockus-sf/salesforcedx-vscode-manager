@@ -463,6 +463,41 @@ should be addressed before a real release.
   — anything the agent had to be told twice in the session is a gap in the
   file; anything the file says but the agent didn't need is probably
   overweight. Keep the doc lean and empirically grounded.
+- [ ] **Externalize all user-facing strings** from both `package.json` and
+  the extension source, following the Agentforce Vibes pattern at
+  `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/` (which in
+  turn follows VSCode's official `vscode.l10n` flow). Concretely:
+  - `package.nls.json` at the repo root holds English defaults for every
+    `%key%` reference in `package.json` (command titles, view names,
+    configuration descriptions, walkthrough steps, etc.). Replace inline
+    strings in `package.json` with `%salesforcedx-vscode-manager.<key>%`
+    placeholders. Add `"l10n": "./l10n"` to the extension manifest.
+  - `src/localization/{localizationKeys.ts, localizationValues.ts,
+    getLocalization.ts, index.ts}` mirroring AFV: a `LocalizationKeys`
+    enum, a `localizationValues` map, and a `getLocalization(key, ...args)`
+    helper that calls `vscode.l10n.t(localizationValues[key], args)`. Every
+    `vscode.window.show*Message`, `QuickPick` placeholder, status-bar
+    tooltip, tree-item label fallback, and log message in `src/` routes
+    through this helper.
+  - `l10n/bundle.l10n.json` captures the same strings keyed by the
+    English source (per the VSCode l10n tooling). Add a script
+    (`npm run l10n`) that runs `npx @vscode/l10n-dev export --outDir
+    ./l10n ./src` to regenerate the bundle from source comments
+    (`vscode.l10n.t('...')`).
+  - A sweep of `src/` that audits every string literal: UI copy gets
+    externalized; log tags and internal identifiers stay inline.
+  - Unit test that imports every `LocalizationKeys` entry and asserts
+    `localizationValues[key]` is defined, so missing entries fail CI.
+  - Update `CONTRIBUTING.md` with a "Translating" section pointing at
+    the `package.nls.*.json` / `bundle.l10n.*.json` file pair
+    convention, and add the recipe to `CLAUDE.md` so future agents
+    don't regress by inlining strings.
+
+  Reference files in AFV worth copying structurally:
+  `package.nls.json`, `l10n/bundle.l10n.ja.json`,
+  `src/localization/localizationKeys.ts`,
+  `src/localization/localizationValues.ts`,
+  `src/localization/getLocalization.ts`.
 - [x] **Show installed version + update indicators in the Groups tree.**
   Each extension node now displays:
   - the currently installed version (read from
