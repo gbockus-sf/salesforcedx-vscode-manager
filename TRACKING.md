@@ -30,13 +30,15 @@ at the bottom whenever a row is added.
 | **Phase 9 — Status bar** | ~6 min | 1 | 245 | 8 | 237 | — | Two left-aligned items with warning background when VSIX active; wires through `onAfterApply` callback. 7 unit tests. |
 | **Phase 10 — Polish** | ~15 min | 1 | 322 | 20 | 302 | — | Walkthrough (4 steps), README rewrite, CHANGELOG, VSIX packaging (`dist/` output + `.vscodeignore` tuning). Clean 12-file 22 KB `.vsix`. |
 | **Docs / TODOs follow-ups** | — | 3 | 74 | 0 | 74 | — | `PLAN.md` §9 TODOs (topological uninstall, id-dedup, installed-version/update indicators, etc.). |
+| **Docs: TRACKING + CONTRIBUTING + CLAUDE** | ~15 min | 2 | 285 | 3 | 282 | — | `TRACKING.md` effort ledger, `CONTRIBUTING.md` worktree/gpg recipe, `CLAUDE.md` agent directions. Ran in parallel with two backgrounded subagents. |
+| **Feature: Dependencies tree dedup by fingerprint** | ~5 min setup + ~5 min subagent | 2 (subagent commit + merge) | 321 | 24 | 297 | **75,771** (subagent) | Backgrounded subagent in `feat/deps-dedup-fingerprint` worktree. Sandbox blocked the subagent's `git commit`; main session committed in the worktree and merged. Added fingerprint-based folding (built-in > shim > manifest precedence); tooltip lists multiple owners. 93 → 100 tests. |
 
 ## Summary (keep up to date)
 
-- **Total repository** (all non-merge commits, excluding `package-lock.json`): **+4,426 / −270 lines (net +4,156)**.
-- **Total commits**: 20 on `main` (including 1 merge), plus 1 commit on the retired `phase-6-deps` branch that was squash-merged.
-- **Tests**: **93 passing** across 12 suites.
+- **Total repository** (all non-merge commits, excluding `package-lock.json`): **+5,032 / −297 lines (net +4,735)**.
+- **Total commits**: 24 on `main` (including 2 merges), plus 2 commits on retired feature branches (`phase-6-deps`, `feat/deps-dedup-fingerprint`) that were merged and cleaned up.
+- **Tests**: **100 passing** across 12 suites.
 - **Packaged VSIX**: 12 files, ~22 KB.
-- **Known token usage**: 73,214 for the Phase 6 subagent. Main-session totals are unmeasured in this ledger; populate from your transcript / harness telemetry.
-- **Phases complete**: 0 through 10 (all v0.1 scope). Manual F5 smoke-test checkboxes are pending for Phases 2, 5, 7, 8, 9 — code gates (compile + lint + jest) are all green.
-- **Open follow-ups**: See `PLAN.md` §9 — notably the dep-graph honoring on apply, visualizing `extensionDependencies`/`extensionPack` in the tree, showing installed version + update indicators, and deduping the Dependencies list by logical-check fingerprint.
+- **Known token usage**: 73,214 for the Phase 6 subagent + 75,771 for the dedup subagent = **148,985 measured**. Main-session totals are unmeasured in this ledger; populate from your transcript / harness telemetry. The `feat/groups-version-indicators` subagent is still running.
+- **Phases complete**: 0 through 10 (all v0.1 scope) plus the §9 fingerprint-dedup TODO. Manual F5 smoke-test checkboxes are pending for Phases 2, 5, 7, 8, 9 — code gates (compile + lint + jest) are all green.
+- **Open follow-ups**: See `PLAN.md` §9 — notably the dep-graph honoring on apply, visualizing `extensionDependencies`/`extensionPack` in the tree, and showing installed version + update indicators (in flight via a background subagent).
