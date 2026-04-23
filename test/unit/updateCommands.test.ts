@@ -15,7 +15,8 @@ const mkContext = (): vscode.ExtensionContext =>
   ({ subscriptions: [] } as unknown as vscode.ExtensionContext);
 
 const mkTree = (): GroupsTreeProvider => ({
-  refreshVersionInfo: jest.fn(async () => undefined)
+  refreshVersionInfo: jest.fn(async () => undefined),
+  refresh: jest.fn()
 } as unknown as GroupsTreeProvider);
 
 const mkSettings = (): SettingsService => ({
@@ -161,13 +162,21 @@ describe('update commands', () => {
     expect(vscode.window.showInformationMessage).toHaveBeenCalled();
   });
 
+  // Shared test doubles for the dep-graph surface that uninstallExtension
+  // now consults. Tests can override `dependents` or `graph` via spread.
+  const mkExtensionsForUninstall = (overrides: Record<string, unknown> = {}): ExtensionService => ({
+    isInstalled: jest.fn(() => true),
+    uninstall: jest.fn(async () => ({ exitCode: 0 })),
+    clearCliVersionCache: jest.fn(),
+    getDependencyGraph: jest.fn(() => new Map()),
+    transitiveDependents: jest.fn(() => new Set<string>()),
+    topologicalUninstallOrder: jest.fn((ids: readonly string[]) => [...ids]),
+    ...overrides
+  } as unknown as ExtensionService);
+
   it('uninstallExtension confirms, then delegates to ExtensionService.uninstall', async () => {
     const cmds = captureCommands();
-    const extensions = {
-      isInstalled: jest.fn(() => true),
-      uninstall: jest.fn(async () => ({ exitCode: 0 })),
-      clearCliVersionCache: jest.fn()
-    } as unknown as ExtensionService;
+    const extensions = mkExtensionsForUninstall();
     const tree = {
       refreshVersionInfo: jest.fn(async () => undefined),
       refresh: jest.fn()
@@ -185,13 +194,64 @@ describe('update commands', () => {
     expect(tree.refresh).toHaveBeenCalled();
   });
 
-  it('uninstallExtension bails when the user dismisses the confirm dialog', async () => {
+  it('uninstallExtension cascades to transitive dependents in topological order', async () => {
+    // Regression for: "Cannot uninstall 'Apex' extension. 'Apex OpenAPI
+    // Specification' and 'Apex Replay Debugger' extensions depend on this."
+    // Uninstalling apex must first remove its dependents.
     const cmds = captureCommands();
-    const extensions = {
-      isInstalled: jest.fn(() => true),
-      uninstall: jest.fn(),
-      clearCliVersionCache: jest.fn()
-    } as unknown as ExtensionService;
+    const uninstallCalls: string[] = [];
+    const extensions = mkExtensionsForUninstall({
+      transitiveDependents: jest.fn(
+        () => new Set(['salesforce.apex-oas', 'salesforce.apex-replay-debugger'])
+      ),
+      topologicalUninstallOrder: jest.fn((ids: readonly string[]) => {
+        // Simulate the real topological ordering: dependents come off
+        // before the root. Root is the last id passed to victims above.
+        const rooted = new Set(ids);
+        const order: string[] = [];
+        for (const id of ['salesforce.apex-oas', 'salesforce.apex-replay-debugger', 'salesforce.apex']) {
+          if (rooted.has(id)) order.push(id);
+        }
+        return order;
+      }),
+      uninstall: jest.fn(async (id: string) => { uninstallCalls.push(id); return { exitCode: 0 }; })
+    });
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue('Uninstall');
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.apex' });
+    expect(uninstallCalls).toEqual([
+      'salesforce.apex-oas',
+      'salesforce.apex-replay-debugger',
+      'salesforce.apex'
+    ]);
+  });
+
+  it('uninstallExtension bails when the user dismisses the cascade confirm dialog', async () => {
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall({
+      transitiveDependents: jest.fn(() => new Set(['salesforce.dependent']))
+    });
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.apex' });
+    expect(extensions.uninstall).not.toHaveBeenCalled();
+  });
+
+  it('uninstallExtension bails when the user dismisses the confirm dialog (no dependents)', async () => {
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall({ uninstall: jest.fn() });
     (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
     registerUpdateCommands(mkContext(), {
       codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,

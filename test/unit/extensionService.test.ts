@@ -214,6 +214,29 @@ describe('ExtensionService', () => {
       expect(graph.get('salesforce.junk')!.dependsOn).toEqual([]);
     });
 
+    it('transitiveDependents() walks the reverse edges', () => {
+      const graph = new Map([
+        ['apex', { id: 'apex', dependsOn: [], packMembers: [] }],
+        ['apex-oas', { id: 'apex-oas', dependsOn: ['apex'], packMembers: [] }],
+        ['apex-replay', { id: 'apex-replay', dependsOn: ['apex'], packMembers: [] }],
+        ['unrelated', { id: 'unrelated', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect([...svc.transitiveDependents(['apex'], graph)].sort()).toEqual([
+        'apex-oas',
+        'apex-replay'
+      ]);
+    });
+
+    it('transitiveDependents() treats extensionPack membership as a reverse edge', () => {
+      const graph = new Map([
+        ['pack', { id: 'pack', dependsOn: [], packMembers: ['member'] }],
+        ['member', { id: 'member', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect([...svc.transitiveDependents(['member'], graph)]).toEqual(['pack']);
+    });
+
     it('transitiveDependencies() walks extensionDependencies edges', () => {
       const graph = new Map([
         ['a', { id: 'a', dependsOn: ['b'], packMembers: [] }],

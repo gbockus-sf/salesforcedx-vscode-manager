@@ -183,6 +183,32 @@ export class ExtensionService {
   }
 
   /**
+   * Reverse direction of `transitiveDependencies`: the set of ids that
+   * depend on any of `roots` — directly or transitively. Used by the
+   * single-extension uninstall command to enumerate the cascade VSCode
+   * would otherwise refuse mid-way with "Cannot uninstall, X depends on
+   * this". Does NOT include the roots themselves. `extensionPack`
+   * membership is treated the same as `extensionDependencies` because a
+   * pack functionally depends on its members.
+   */
+  transitiveDependents(roots: readonly string[], graph: DependencyGraph): Set<string> {
+    const out = new Set<string>();
+    const stack = [...roots];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      for (const [otherId, node] of graph) {
+        if (out.has(otherId)) continue;
+        if (roots.includes(otherId)) continue; // roots themselves aren't dependents-of-themselves
+        if (node.dependsOn.includes(id) || node.packMembers.includes(id)) {
+          out.add(otherId);
+          stack.push(otherId);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
    * Returns the set of ids that `roots` transitively depend on (via
    * `extensionDependencies`). Does NOT include the roots themselves. Stops at
    * ids missing from the provided graph (e.g., not installed).

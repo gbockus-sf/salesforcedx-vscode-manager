@@ -136,27 +136,68 @@ export const registerUpdateCommands = (
         );
         return;
       }
+
+      // Enumerate transitive dependents so the uninstall cascades properly
+      // instead of erroring with "Cannot uninstall X. Y depends on this."
+      const graph = deps.extensions.getDependencyGraph();
+      const dependents = deps.extensions.transitiveDependents([id], graph);
+      const installedDependents = [...dependents].filter(d => deps.extensions.isInstalled(d));
+
+      // One modal: either a plain "Uninstall?" or the cascade warning.
       const proceed = getLocalization(LocalizationKeys.uninstallExtensionProceed);
+      const prompt = installedDependents.length === 0
+        ? getLocalization(LocalizationKeys.uninstallExtensionConfirm, id)
+        : getLocalization(
+            LocalizationKeys.uninstallExtensionCascadeConfirm,
+            id,
+            installedDependents.length,
+            installedDependents.join(', ')
+          );
       const confirm = await vscode.window.showWarningMessage(
-        getLocalization(LocalizationKeys.uninstallExtensionConfirm, id),
+        prompt,
         { modal: true },
         proceed
       );
       if (confirm !== proceed) return;
-      const result = await deps.extensions.uninstall(id);
-      if (result.exitCode !== 0) {
-        deps.logger.error(`uninstall(${id}): exit ${result.exitCode}`, result.stderr);
-        void vscode.window.showErrorMessage(
-          getLocalization(LocalizationKeys.uninstallExtensionFailed, id)
-        );
-        return;
+
+      // Uninstall dependents BEFORE the root so VSCode doesn't refuse any
+      // step. topologicalUninstallOrder orders dependents-first for us.
+      const victims = [id, ...installedDependents];
+      const order = deps.extensions.topologicalUninstallOrder(victims, graph);
+      const uninstalled: string[] = [];
+      let failed = 0;
+      for (const victim of order) {
+        const result = await deps.extensions.uninstall(victim);
+        if (result.exitCode !== 0) {
+          failed++;
+          deps.logger.error(`uninstall(${victim}): exit ${result.exitCode}`, result.stderr);
+          continue;
+        }
+        uninstalled.push(victim);
+        deps.logger.info(`uninstall(${victim}): ok.`);
       }
-      deps.logger.info(`uninstall(${id}): ok.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       deps.tree.refresh();
+
+      if (failed > 0) {
+        void vscode.window.showErrorMessage(
+          getLocalization(
+            LocalizationKeys.uninstallExtensionPartialCascade,
+            uninstalled.length,
+            order.length
+          )
+        );
+        return;
+      }
       void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.uninstallExtensionSucceeded, id)
+        installedDependents.length === 0
+          ? getLocalization(LocalizationKeys.uninstallExtensionSucceeded, id)
+          : getLocalization(
+              LocalizationKeys.uninstallExtensionSucceededCascade,
+              id,
+              installedDependents.length
+            )
       );
     }),
 

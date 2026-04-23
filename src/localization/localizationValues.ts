@@ -168,7 +168,12 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.uninstallExtensionProceed]: 'Uninstall',
   [LocalizationKeys.uninstallExtensionFailed]: 'Failed to uninstall {0}. See SFDX Manager log.',
   [LocalizationKeys.uninstallExtensionSucceeded]: 'Uninstalled {0}.',
+  [LocalizationKeys.uninstallExtensionSucceededCascade]: 'Uninstalled {0} and {1} dependent extension(s).',
   [LocalizationKeys.uninstallExtensionNotInstalled]: '{0} is not installed.',
+  [LocalizationKeys.uninstallExtensionCascadeConfirm]:
+    '{0} is required by {1} other installed extension(s): {2}. Uninstalling it will also uninstall those. Continue?',
+  [LocalizationKeys.uninstallExtensionPartialCascade]:
+    'Uninstalled {0} of {1} extensions. Some uninstalls failed — see SFDX Manager log.',
 
   [LocalizationKeys.catalogCannotApplyAsGroup]: 'The marketplace catalog has too many extensions to apply as a single group. Install what you need via the Install button on each extension, or use "SFDX Manager: Browse Salesforce Extensions..." for a filtered Quick Pick.'
 };

@@ -187,7 +187,10 @@ export enum LocalizationKeys {
   uninstallExtensionProceed = 'uninstallExtensionProceed',
   uninstallExtensionFailed = 'uninstallExtensionFailed',
   uninstallExtensionSucceeded = 'uninstallExtensionSucceeded',
+  uninstallExtensionSucceededCascade = 'uninstallExtensionSucceededCascade',
   uninstallExtensionNotInstalled = 'uninstallExtensionNotInstalled',
+  uninstallExtensionCascadeConfirm = 'uninstallExtensionCascadeConfirm',
+  uninstallExtensionPartialCascade = 'uninstallExtensionPartialCascade',
 
   // catalog bulk-apply guard
   catalogCannotApplyAsGroup = 'catalogCannotApplyAsGroup'
