@@ -1,170 +1,128 @@
 # Salesforce Extensions Manager
 
-A VSCode extension for managing which Salesforce VSCode extensions are active
-in your workspace, verifying external prerequisites, and running
-unreleased VSIX builds without leaving the marketplace install for
-production.
+Switch between curated sets of Salesforce VSCode extensions for the
+task at hand, verify your external prerequisites, and test unreleased
+builds against a real workspace — all from a single activity-bar view.
 
-## Features
+## Overview
 
-### Extension groups
+The Salesforce Extensions Manager is a companion to the [Salesforce
+Extensions for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=salesforce.salesforcedx-vscode)
+pack. Salesforce ships around two dozen first-party extensions, and
+most developers only need a subset active at any one time — Apex
+today, Lightning tomorrow, a lightweight "just the CLI" loadout
+while reviewing a pull request. Keeping every extension enabled all
+the time slows VSCode activation and clutters menus with features
+you aren't using.
 
-Named sets of extensions you can flip between from the Command Palette,
-the Groups tree view, or the status bar.
+The manager adds three things on top of the extension pack:
 
-- Built-ins: **Apex**, **Lightning**, **React** *(empty stub — edit to fill)*.
-- Create custom groups via `SFDX Manager: Create Custom Group`.
-- Edit or delete groups (deleting a built-in resets it to defaults).
-- Apply scope is user-configurable: enable-only, or enable-members +
-  uninstall-others.
+1. **Extension groups** — named sets you can apply with one click,
+   shipped built-ins for Apex / Lightning / React plus dynamic groups
+   for every Salesforce-published extension pack.
+2. **A Dependencies tree** — live status of the external
+   prerequisites your Salesforce extensions need (Salesforce CLI,
+   Java, Node, Git), with one-click remediation links.
+3. **A VSIX override directory** — point the manager at a folder of
+   local `.vsix` files and they take priority over the marketplace
+   version on install.
 
-### Dependency validation
+<!-- TODO: add overview GIF showing the activity bar, Groups tree, and a group-apply flow. -->
 
-A Dependencies tree in the activity bar that verifies external
-prerequisites for the extensions you have installed — Salesforce CLI,
-Java, Node, etc.
+## Prerequisites
 
-Driven by a new declarative contract: each extension can add a top-level
-`salesforceDependencies` array to its `package.json`. The manager reads it
-statically (no activation required), so disabled extensions still declare
-their needs. A shim catalog fills in known checks for extensions that
-haven't adopted the contract yet.
+Before installing the manager, make sure you have:
 
-See the "Verify dependencies" walkthrough step for the full schema.
+- **[Visual Studio Code](https://code.visualstudio.com/download)**
+  version 1.90 or later.
+- **[Salesforce Extensions for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=salesforce.salesforcedx-vscode)**
+  and its prerequisites (Salesforce CLI, a Salesforce DX project,
+  JDK 11+). The manager declares `salesforcedx-vscode-core` as an
+  `extensionDependencies` entry, so installing the manager
+  force-installs the core extension automatically.
 
-### Local VSIX override directory
+## What can the Extensions Manager do?
 
-Set `salesforcedx-vscode-manager.vsixDirectory` to a folder of `.vsix` files
-(named `<publisher>.<name>-<version>.vsix`) and the manager will install
-those local builds in place of the marketplace version. Perfect for
-testing unreleased extensions against a real workspace.
+### Switch between extension sets
 
-Install provenance (`vsix` vs `marketplace`) is tracked per extension.
-The Groups tree and the status bar both surface which extensions are
-currently running from a local VSIX.
+Apply a group and the manager flips the installed / enabled state of
+every managed extension to match — optionally uninstalling anything
+not in the group to keep your editor lean. Ships with built-in groups
+for **Apex**, **Lightning**, and **React**, plus dynamic groups for
+the **Salesforce Extension Pack**, the **Expanded** pack, and the
+**Anypoint Extension Pack**. Create your own with **SFDX Manager:
+Create Custom Group**, or pick from every Salesforce-published
+extension via **Browse Salesforce Extensions...**.
 
-### Status bar
+<!-- TODO: GIF showing the Groups tree, applying Apex, then applying Lightning — rows flip state. -->
 
-Two items on the left side:
+### Verify your development prerequisites
 
-- **Active group** (`$(layers) Apex`) — click to switch.
-- **VSIX count** (`$(package) VSIX: 3`) — visible only when the VSIX
-  directory is configured; click for the management menu.
+The **Dependencies** tree in the activity bar lives-checks the
+external prerequisites each installed Salesforce extension needs —
+Salesforce CLI, Java, Node, Git, etc. Rows turn green when happy;
+red/yellow rows surface a remediation tooltip and a one-click link
+to the fix (Adoptium downloads, nvm, CLI setup guide).
 
-## Commands
+Extension authors can declare their own prerequisites via a top-level
+`salesforceDependencies` field in `package.json`; see the
+[extension-author contracts](./docs/extension-author-contracts.md)
+doc.
 
-All commands live under the `SFDX Manager:` category in the palette.
+<!-- TODO: screenshot of the Dependencies tree with a mix of green + failing rows. -->
 
-| Command | What it does |
-|---|---|
-| Apply Group... | Pick a group to apply |
-| Create Custom Group | Walk through id, label, and member selection |
-| Edit Group / Delete Group | Modify or reset a group |
-| Enable All Managed Extensions | Install every managed extension |
-| Disable All Managed Extensions | Uninstall every managed extension |
-| Open Groups Setting | Jump to the groups entry in settings.json |
-| Show Dependencies | Focus the Dependencies tree |
-| Run Dependency Check | Re-run every registered check |
-| Copy Dependency Report | Markdown report to clipboard |
-| Refresh from VSIX Directory | Reinstall every managed extension from local VSIX |
-| Open VSIX Directory | Open the folder in the OS file manager |
-| Clear VSIX Overrides | Uninstall vsix-sourced, reinstall from marketplace |
-| VSIX Management... | Central Quick Pick for the vsix commands |
-| Show Log | Open the extension's output channel |
+### Test unreleased builds with local VSIX
 
-## Settings
+Set `salesforcedx-vscode-manager.vsixDirectory` to a folder of
+`.vsix` files (named `<publisher>.<name>-<version>.vsix`) and those
+local builds take priority over the marketplace version at install
+time. The Groups tree tags every VSIX-sourced extension with a
+`$(package)` badge so you can tell at a glance which rows are
+running a local build.
 
-| Setting | Default | Description |
-|---|---|---|
-| `salesforcedx-vscode-manager.groups` | `{}` | User-defined groups (merged with built-ins by id) |
-| `salesforcedx-vscode-manager.applyScope` | `disableOthers` | `disableOthers` / `enableOnly` / `ask` |
-| `salesforcedx-vscode-manager.backend` | `codeCli` | Reserved for a future Profiles backend |
-| `salesforcedx-vscode-manager.autoRunDependencyChecks` | `false` | Run checks on activation |
-| `salesforcedx-vscode-manager.thirdPartyExtensionIds` | *(see package.json)* | Non-Salesforce extensions the manager may toggle |
-| `salesforcedx-vscode-manager.vsixDirectory` | `""` | Directory of local `.vsix` files |
-| `salesforcedx-vscode-manager.statusBar.showGroup` | `true` | Show group in status bar |
-| `salesforcedx-vscode-manager.statusBar.showVsix` | `true` | Show VSIX count in status bar |
+Useful for QA engineers, release testing, and pre-release developer
+previews — no more manually juggling `code --install-extension` for
+a dozen `.vsix` files.
 
-## Declaring dependencies in your Salesforce extension
+<!-- TODO: screenshot of the Groups tree with a row showing the $(package) VSIX badge + tooltip. -->
 
-Add a top-level `salesforceDependencies` array to your `package.json`:
+## Documentation
 
-```jsonc
-{
-  "name": "salesforcedx-vscode-apex",
-  "salesforceDependencies": [
-    {
-      "id": "java-jdk",
-      "label": "Java JDK 11+",
-      "category": "runtime",
-      "check": {
-        "type": "env",
-        "env": "JAVA_HOME",
-        "fallback": { "type": "exec", "command": "java", "args": ["-version"], "minVersion": "11.0.0" }
-      },
-      "remediation": "Install Temurin 17+ and set JAVA_HOME",
-      "remediationUrl": "https://adoptium.net/"
-    }
-  ]
-}
-```
-
-Supported `check.type` values:
-
-- `exec` — run a command and parse its version (`versionRegex` optional,
-  `minVersion` optional).
-- `env` — check an environment variable; supports a nested `fallback`
-  check for when the env var is unset.
-- `file` — check a path exists (`${HOME}` / `${workspaceFolder}` / leading `~` are expanded).
-- `nodeVersion` — compare against `process.versions.node`.
-- `extensionInstalled` — `vscode.extensions.getExtension(extensionId)`.
+- [Apply a group walkthrough](./resources/walkthrough/apply-group.md)
+- [Verify dependencies walkthrough](./resources/walkthrough/dependencies.md)
+- [VSIX override walkthrough](./resources/walkthrough/vsix.md)
+- [Status bar indicators](./resources/walkthrough/status-bar.md)
+- [Contracts for extension authors](./docs/extension-author-contracts.md)
+- [Telemetry event catalog](./docs/telemetry-events.md)
+- [Notification catalog](./docs/notifications.md)
 
 ## Telemetry
 
 The manager emits a small set of events through the shared
-`salesforcedx-vscode-core` telemetry pipeline (the same one every
-Salesforce extension uses). Events:
+`salesforcedx-vscode-core` telemetry pipeline — the same one every
+Salesforce extension uses — so maintainers can see activation
+counts, group applies, and error rates. **No PII is transmitted:**
+payloads carry extension ids, group ids, durations, and exit codes
+only. File paths, workspace names, and user identifiers are never
+sent.
 
-- `sfdxManager_activation` / `sfdxManager_deactivation` — startup +
-  shutdown lifecycle with activation duration.
-- `sfdxManager_group_apply` — `groupId`, `source` (`code` / `pack` /
-  `catalog` / `user`), `scope`, plus result counts (enabled, disabled,
-  dep-blocked, manual enable/disable, skipped, installed-from-VSIX).
-- `sfdxManager_extension_install` / `_uninstall` / `_update` —
-  `extensionId`, `source` (`marketplace` / `vsix`), `exitCode`.
-- `sfdxManager_catalog_refresh` — marketplace catalog probe: entry
-  count + duration.
-- `sfdxManager_dependency_check` — `ok` / `warn` / `fail` / `unknown`
-  counts from the Dependencies tree.
-- `sfdxManager_error` — caught exceptions (name + message, no stack
-  data carrying file paths).
+The global VSCode `telemetry.telemetryLevel` setting gates everything
+downstream. To opt out of just manager events while leaving VSCode
+telemetry on, set
+`salesforcedx-vscode-manager.telemetry.enabled` to `false`.
 
-**No PII is sent.** Payloads include extension ids (public marketplace
-metadata), group ids, scope enums, durations in milliseconds, and exit
-codes. File paths, workspace names, and user identifiers are never
-transmitted. The global `telemetry.telemetryLevel` setting still gates
-everything downstream through VSCode's core pipeline.
+Full event list: [`docs/telemetry-events.md`](./docs/telemetry-events.md).
 
-**To disable just the manager's events without turning off telemetry
-globally**, set `salesforcedx-vscode-manager.telemetry.enabled` to
-`false`. The global `telemetry.telemetryLevel` takes precedence — if
-VSCode telemetry is off, manager events never fire regardless of this
-setting.
+## Bugs and Feedback
 
-## Dependency on `salesforcedx-vscode-core`
+To report issues with the Salesforce Extensions Manager, open a
+[bug on GitHub](https://github.com/forcedotcom/salesforcedx-vscode-manager/issues/new?template=Bug_report.md).
+If you'd like to suggest a feature, create a
+[feature request on GitHub](https://github.com/forcedotcom/salesforcedx-vscode-manager/issues/new?template=Feature_request.md).
 
-The manager lists `salesforce.salesforcedx-vscode-core` in its
-`extensionDependencies`, so installing the manager force-installs core
-(and, transitively, `salesforcedx-vscode-services`). Both extensions
-show up in the Groups tree like any other managed extension — with a
-`required` badge and no Install/Uninstall buttons, since VSCode itself
-refuses to uninstall them while the manager is present. `Update
-Extension` and `Open in Marketplace` remain available on those rows.
+## Open Source
 
-## Status
+- [GitHub Repository](https://github.com/forcedotcom/salesforcedx-vscode-manager)
+- License: BSD-3-Clause — see [LICENSE.txt](./LICENSE.txt).
 
-Pre-release. See [`PLAN.md`](./PLAN.md) for phase progress and open TODOs.
-
-## License
-
-BSD-3-Clause — see [LICENSE.txt](./LICENSE.txt).
+<!-- TODO: add the SHA verification boilerplate once the extension is signed and published. -->
