@@ -67,7 +67,10 @@ describe('catalog commands', () => {
     );
   });
 
-  it('refreshSalesforceCatalog refreshes, refreshes the tree, and reports the count', async () => {
+  it('refreshSalesforceCatalog refreshes the tree and stays silent on success', async () => {
+    // Per the default-no-toast rule: the catalog group re-renders with
+    // its new member count, so no notification is needed. The user hit
+    // "refresh", the tree updates — that's the feedback.
     const cmds = captureCommands();
     const catalog = mkCatalog([entry('salesforce.a'), entry('salesforce.b')]);
     const tree = mkTree();
@@ -80,10 +83,13 @@ describe('catalog commands', () => {
     await cmds[COMMANDS.refreshSalesforceCatalog]();
     expect(catalog.refresh).toHaveBeenCalledWith({ force: true });
     expect(tree.refresh).toHaveBeenCalled();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
   });
 
-  it('refreshSalesforceCatalog reports empty when the marketplace returns nothing', async () => {
+  it('refreshSalesforceCatalog warns when the marketplace returns nothing', async () => {
+    // Empty result usually means offline / network failure — keep a
+    // toast so the user knows the tree didn't refresh meaningfully.
     const cmds = captureCommands();
     const catalog = mkCatalog([]);
     registerCatalogCommands(mkContext(), {
@@ -93,7 +99,7 @@ describe('catalog commands', () => {
       tree: mkTree()
     });
     await cmds[COMMANDS.refreshSalesforceCatalog]();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+    expect(vscode.window.showWarningMessage).toHaveBeenCalled();
   });
 
   it('browseSalesforceExtensions prompts with every catalog entry and installs the picks', async () => {

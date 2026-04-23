@@ -99,6 +99,7 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.depsProgressTitle]: 'Checking dependencies…',
   [LocalizationKeys.depsSummary]: 'Dependencies: {0}',
   [LocalizationKeys.depReportCopied]: 'Dependency report copied to clipboard.',
+  [LocalizationKeys.depsShowAction]: 'Show Dependencies',
 
   [LocalizationKeys.depCategoryCli]: 'CLIs',
   [LocalizationKeys.depCategoryRuntime]: 'Runtimes',

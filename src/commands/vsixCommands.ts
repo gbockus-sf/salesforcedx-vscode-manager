@@ -62,11 +62,15 @@ export const registerVsixCommands = (
         }
       );
       deps.groupsTree.refresh();
-      void vscode.window.showInformationMessage(
-        failed
-          ? getLocalization(LocalizationKeys.vsixRefreshSummaryFailed, ok, failed)
-          : getLocalization(LocalizationKeys.vsixRefreshSummaryOk, ok)
-      );
+      if (failed) {
+        void vscode.window.showWarningMessage(
+          getLocalization(LocalizationKeys.vsixRefreshSummaryFailed, ok, failed)
+        );
+      } else {
+        // Success: the tree re-renders with `$(package)` badges on every
+        // VSIX-sourced row. No toast needed.
+        deps.logger.info(`vsixRefresh: reinstalled ${ok} from VSIX directory.`);
+      }
     }),
 
     vscode.commands.registerCommand(COMMANDS.openVsixDirectory, async () => {
@@ -97,9 +101,10 @@ export const registerVsixCommands = (
       if (confirm !== proceed) return;
       const ids = await deps.installer.clearAllOverrides();
       deps.groupsTree.refresh();
-      void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.vsixReinstalledFromMarketplace, ids.length)
-      );
+      // Success: VSIX badges disappear from the tree and the status-bar
+      // VSIX item hides itself. The modal above already asked for
+      // explicit confirmation.
+      deps.logger.info(`clearVsixOverrides: reinstalled ${ids.length} from marketplace.`);
     }),
 
     vscode.commands.registerCommand(COMMANDS.vsixMenu, async () => {

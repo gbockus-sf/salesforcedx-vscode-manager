@@ -106,6 +106,7 @@ export enum LocalizationKeys {
   depsProgressTitle = 'depsProgressTitle',
   depsSummary = 'depsSummary',
   depReportCopied = 'depReportCopied',
+  depsShowAction = 'depsShowAction',
 
   // dependencies tree
   depCategoryCli = 'depCategoryCli',

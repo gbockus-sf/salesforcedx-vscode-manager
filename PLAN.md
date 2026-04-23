@@ -573,7 +573,7 @@ should be addressed before a real release.
   when known, and still falls back to the id when
   `getDisplayName` returns undefined.
 
-- [ ] **Notification audit — only notify when there's an action,
+- [x] **Notification audit — only notify when there's an action,
   error, or progress to report.** The extension is noisy today: every
   command and most settled async ops toss a toast, and VSCode stacks
   them at the bottom-right where they compete with our own "update

@@ -10,7 +10,7 @@ import {
 import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
-import { notifyInfo, notifyWarn } from '../util/notify';
+import { notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
@@ -110,7 +110,22 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   if (result.needsManualDisable.length) parts.push(getLocalization(LocalizationKeys.applySummaryManualDisable, result.needsManualDisable.length));
   if (result.skipped.length) parts.push(getLocalization(LocalizationKeys.applySummarySkipped, result.skipped.length));
 
-  await notifyInfo(parts.join(' · '), { logger: deps.logger });
+  const summary = parts.join(' · ');
+  deps.logger.info(summary);
+  // Only notify when the apply result contains something the user needs
+  // to know about that isn't visible in the tree: anything blocked by
+  // dependents, extensions needing manual enable/disable, or skipped ids.
+  // The reload prompt (maybeReloadAfterApply) handles the "touched, go
+  // reload" path separately, so clean applies stay silent.
+  const hasActionable =
+    result.dependencyBlocked.length +
+      result.needsManualEnable.length +
+      result.needsManualDisable.length +
+      result.skipped.length >
+    0;
+  if (hasActionable) {
+    await notifyWarn(summary, { logger: deps.logger });
+  }
 
   if (result.needsManualDisable.length) {
     await deps.extensions.showManualToggleHint(result.needsManualDisable, 'Disable');
@@ -203,10 +218,8 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       const ids = deps.extensions.managed().map(e => e.id);
       for (const id of ids) await deps.extensions.enable(id);
       deps.tree.refresh();
-      void notifyInfo(
-        getLocalization(LocalizationKeys.enableAllDone, ids.length),
-        { logger: deps.logger }
-      );
+      // Toast suppressed: the tree rows flip from disabled to enabled.
+      deps.logger.info(`enableAllSalesforce: enabled ${ids.length} managed extensions.`);
     }),
 
     vscode.commands.registerCommand(COMMANDS.disableAllSalesforce, async () => {
@@ -214,10 +227,8 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       for (const id of ids) await deps.extensions.disable(id);
       await deps.workspaceState.setActiveGroupId(undefined);
       deps.tree.refresh();
-      void notifyInfo(
-        getLocalization(LocalizationKeys.disableAllDone, ids.length),
-        { logger: deps.logger }
-      );
+      // Toast suppressed: the tree and status bar reflect the state change.
+      deps.logger.info(`disableAllSalesforce: disabled ${ids.length} managed extensions.`);
     }),
 
     vscode.commands.registerCommand(COMMANDS.createCustomGroup, async () => {
@@ -239,9 +250,8 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       if (members === undefined) return;
       await deps.store.upsert({ id, label, extensions: members });
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.createGroupSuccess, label, members.length)
-      );
+      // Toast suppressed: the new group appears in the tree.
+      deps.logger.info(`createCustomGroup: "${label}" (${id}) with ${members.length} members.`);
     }),
 
     vscode.commands.registerCommand(
@@ -257,9 +267,8 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         if (members === undefined) return;
         await deps.store.upsert({ ...group, extensions: members });
         deps.tree.refresh();
-        void vscode.window.showInformationMessage(
-          getLocalization(LocalizationKeys.editGroupSuccess, group.label)
-        );
+        // Toast suppressed: the tree refreshes with the new member list.
+        deps.logger.info(`editGroup: "${group.label}" now has ${members.length} members.`);
       }
     ),
 
@@ -282,10 +291,11 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         if (confirm !== verb) return;
         await deps.store.remove(group.id);
         deps.tree.refresh();
-        void vscode.window.showInformationMessage(
-          group.builtIn
-            ? getLocalization(LocalizationKeys.deleteGroupDoneReset, group.label)
-            : getLocalization(LocalizationKeys.deleteGroupDoneDelete, group.label)
+        // Toast suppressed: the group disappears from the tree (user
+        // groups) or reverts to its built-in defaults. The modal above
+        // already asked for explicit confirmation.
+        deps.logger.info(
+          `deleteGroup: "${group.label}" ${group.builtIn ? 'reset to default' : 'removed'}.`
         );
       }
     ),
@@ -323,13 +333,9 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         if (!pick) return;
         await deps.store.moveToScope(group.id, pick.target);
         deps.tree.refresh();
-        const scopeName =
-          pick.target === 'workspace'
-            ? getLocalization(LocalizationKeys.scopeBadgeWorkspace)
-            : getLocalization(LocalizationKeys.scopeBadgeUser);
-        void vscode.window.showInformationMessage(
-          getLocalization(LocalizationKeys.moveGroupScopeDone, group.label, scopeName)
-        );
+        // Toast suppressed: the tree badge flips between "user" and
+        // "workspace". Log so the provenance is auditable.
+        deps.logger.info(`moveGroupScope: "${group.label}" moved to ${pick.target} scope.`);
       }
     ),
 

@@ -76,6 +76,30 @@ explicit user request:
   auto-dismiss the toast before the user notices. Raw `show*Message`
   is only acceptable for modal confirmation prompts where the user's
   response is the point.
+- **Default to no toast on success.** Notifications are for action,
+  error, or progress — nothing else. If the tree, Problems view, or
+  status bar already reflects the outcome of a command, do not fire a
+  toast; log the result through `deps.logger.info(...)` so the output
+  channel still has a trail. The rule of thumb:
+  - **Drop** the success toast when the user can see the outcome in
+    the tree / status bar (install, uninstall, update, create-group,
+    edit-group, delete-group, move-scope, enable-all, disable-all,
+    check-for-updates, refresh-catalog on success, clear-vsix-
+    overrides, dep-check when everything is green, copy-dep-report).
+  - **Keep** a toast when there's something the tree can't show: an
+    error, a partial failure, a bulk op with no per-row visual
+    (update-all-failed, browse-install-summary-failed), a needs-
+    action prompt (reload-after-apply, vsix-dir-missing), a modal
+    confirmation, or an empty-state response to a user-initiated
+    command that would otherwise look like nothing happened
+    (browse-empty, refresh-catalog-empty, vsix-no-files).
+  - **Always** use `withProgress` for long-running operations —
+    that's the intentional progress channel; no change needed.
+  - If a new command would toss a toast on success, first ask:
+    "does the tree / status bar / Problems view already show this
+    outcome?" If yes, log instead. Do NOT add a per-command
+    `suppressSuccessToast` flag — the rule is the default, not a
+    toggle.
 - **`getDependencyGraph` reads disk for mid-session installs.**
   `vscode.extensions.all` only refreshes on reload, so
   `ExtensionService.augmentGraphFromDisk` scans

@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { COMMANDS, VIEW_DEPENDENCIES_ID } from '../constants';
 import type { DependencyRegistry } from '../dependencies/registry';
 import { getLocalization, LocalizationKeys } from '../localization';
-import { notifyInfo, notifyWarn } from '../util/notify';
 import type { Logger } from '../util/logger';
 import {
   DependenciesTreeProvider,
@@ -43,21 +42,24 @@ export const registerDependencyCommands = (
           const statuses = await deps.tree.runChecks();
           const counts = { ok: 0, warn: 0, fail: 0, unknown: 0 };
           for (const s of statuses.values()) counts[s.state]++;
-          // State-count phrases are short, locale-neutral labels, not full
-          // sentences — ok/warn/fail/unknown map to any language the same
-          // way. Keep them inline to avoid n keys per state.
           const parts: string[] = [];
           if (counts.ok) parts.push(`${counts.ok} ok`);
           if (counts.warn) parts.push(`${counts.warn} warn`);
           if (counts.fail) parts.push(`${counts.fail} fail`);
           if (counts.unknown) parts.push(`${counts.unknown} unknown`);
           deps.logger.info(`Dependency check complete: ${parts.join(', ') || 'no checks registered'}`);
+          // Only notify when something is actionable. If every row is
+          // green the Dependencies tree already speaks for itself — no
+          // toast. On fail/warn/unknown attach a "Show Dependencies"
+          // action so the toast leads somewhere useful.
+          if (counts.fail === 0 && counts.warn === 0 && counts.unknown === 0) return;
+          const showAction = getLocalization(LocalizationKeys.depsShowAction);
           const summary = getLocalization(LocalizationKeys.depsSummary, parts.join(' · '));
-          if (counts.fail > 0) {
-            void notifyWarn(summary, { logger: deps.logger });
-          } else {
-            void notifyInfo(summary);
-          }
+          void vscode.window.showWarningMessage(summary, showAction).then(pick => {
+            if (pick === showAction) {
+              void vscode.commands.executeCommand(`${VIEW_DEPENDENCIES_ID}.focus`);
+            }
+          });
         }
       );
     }),
@@ -66,7 +68,9 @@ export const registerDependencyCommands = (
       const checks = await deps.registry.collect();
       const report = formatReport(checks, deps.tree.getStatuses());
       await vscode.env.clipboard.writeText(report);
-      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.depReportCopied));
+      // Success toast suppressed: the user just triggered the copy; the
+      // clipboard is the feedback. Log for the trail.
+      deps.logger.info(`Dependency report copied to clipboard (${report.length} chars).`);
     }),
 
     vscode.commands.registerCommand('sfdxManager.openRemediationUrl', async (arg?: CheckTreeContext) => {

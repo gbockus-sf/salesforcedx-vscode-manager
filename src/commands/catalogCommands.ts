@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
-import { notifyInfo } from '../util/notify';
+import { notifyInfo, notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { PublisherCatalogService } from '../services/publisherCatalogService';
 import type { Logger } from '../util/logger';
@@ -23,12 +23,16 @@ export const registerCatalogCommands = (
       await deps.catalog.refresh({ force: true });
       const entries = deps.catalog.current();
       deps.tree.refresh();
-      void notifyInfo(
-        entries.length > 0
-          ? getLocalization(LocalizationKeys.refreshCatalogDone, entries.length)
-          : getLocalization(LocalizationKeys.refreshCatalogEmpty),
-        { logger: entries.length === 0 ? deps.logger : undefined }
-      );
+      // Success: the catalog group re-renders with the new member count —
+      // no toast. Empty result usually means offline / auth failure; users
+      // need to know that.
+      if (entries.length === 0) {
+        void notifyWarn(getLocalization(LocalizationKeys.refreshCatalogEmpty), {
+          logger: deps.logger
+        });
+      } else {
+        deps.logger.info(`publisherCatalog: refreshed; ${entries.length} extensions.`);
+      }
     }),
 
     vscode.commands.registerCommand(COMMANDS.browseSalesforceExtensions, async () => {
@@ -92,12 +96,15 @@ export const registerCatalogCommands = (
         }
       );
       deps.tree.refresh();
-      void notifyInfo(
-        failed
-          ? getLocalization(LocalizationKeys.browseInstallSummaryFailed, ok, failed)
-          : getLocalization(LocalizationKeys.browseInstallSummaryOk, ok),
-        { logger: failed ? deps.logger : undefined }
-      );
+      if (failed > 0) {
+        void notifyWarn(
+          getLocalization(LocalizationKeys.browseInstallSummaryFailed, ok, failed),
+          { logger: deps.logger }
+        );
+      } else {
+        // Success: tree already shows the new installed rows.
+        deps.logger.info(`browse: installed ${ok} extension(s).`);
+      }
     })
   );
 };

@@ -151,7 +151,9 @@ describe('update commands', () => {
     await cmds[COMMANDS.installExtension]({ kind: 'extension', extensionId: 'salesforce.new' });
     expect(extensions.install).toHaveBeenCalledWith('salesforce.new');
     expect(tree.refresh).toHaveBeenCalled();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+    // Default-no-toast rule: the freshly-installed row appears in the
+    // tree, so the success case stays silent.
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
   });
 
   it('installExtension is a no-op when the extension is already installed', async () => {
@@ -171,7 +173,9 @@ describe('update commands', () => {
     });
     await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.already' });
     expect(extensions.install).not.toHaveBeenCalled();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+    // Default-no-toast: the tree already shows the installed row; the
+    // no-op stays silent (logged to the output channel instead).
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
   });
 
   // Shared test doubles for the dep-graph surface that uninstallExtension
@@ -277,7 +281,7 @@ describe('update commands', () => {
     expect(extensions.uninstall).not.toHaveBeenCalled();
   });
 
-  it('uninstallExtension reports not-installed and skips when the id is not installed', async () => {
+  it('uninstallExtension is a silent no-op when the id is not installed', async () => {
     const cmds = captureCommands();
     const extensions = {
       isInstalled: jest.fn(() => false),
@@ -294,7 +298,8 @@ describe('update commands', () => {
     });
     await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.never-installed' });
     expect(extensions.uninstall).not.toHaveBeenCalled();
-    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+    // Default-no-toast: the tree already marks the row as not installed.
+    expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
   });
 
   it('openInMarketplace invokes the built-in extension.open command for the selected id', async () => {
@@ -384,19 +389,18 @@ describe('update commands', () => {
     expect(tree.refreshVersionInfo).toHaveBeenCalled();
   });
 
-  it('installExtension notification uses the display name when known', async () => {
+  it('installExtension failure toast uses the display name when known', async () => {
+    // Success toasts were dropped in the notification audit, so the
+    // display-name routing that matters to the user now lives on the
+    // failure path. Confirms label() still feeds the toast copy.
     const cmds = captureCommands();
-    const installed = new Set<string>();
     const extensions = {
-      isInstalled: jest.fn((id: string) => installed.has(id)),
-      install: jest.fn(async (id: string) => {
-        installed.add(id);
-        return { source: 'marketplace' as const, exitCode: 0 };
-      }),
+      isInstalled: jest.fn(() => false),
+      install: jest.fn(async () => ({ source: 'marketplace' as const, exitCode: 1, stderr: 'nope' })),
       label: makeLabel(new Map([['salesforce.salesforcedx-einstein-gpt', 'Agentforce Vibes']])),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
-    (vscode.window.showInformationMessage as jest.Mock).mockReset();
+    (vscode.window.showErrorMessage as jest.Mock).mockReset();
     registerUpdateCommands(mkContext(), {
       codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
       extensions,
@@ -405,24 +409,20 @@ describe('update commands', () => {
       tree: mkTree()
     });
     await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.salesforcedx-einstein-gpt' });
-    const messages = (vscode.window.showInformationMessage as jest.Mock).mock.calls.map(c => c[0]);
+    const messages = (vscode.window.showErrorMessage as jest.Mock).mock.calls.map(c => c[0]);
     expect(messages.some(m => typeof m === 'string' && m.includes('Agentforce Vibes'))).toBe(true);
     expect(messages.every(m => typeof m !== 'string' || !m.includes('salesforce.salesforcedx-einstein-gpt'))).toBe(true);
   });
 
-  it('installExtension notification falls back to the raw id when no display name is known', async () => {
+  it('installExtension failure toast falls back to the raw id when no display name is known', async () => {
     const cmds = captureCommands();
-    const installed = new Set<string>();
     const extensions = {
-      isInstalled: jest.fn((id: string) => installed.has(id)),
-      install: jest.fn(async (id: string) => {
-        installed.add(id);
-        return { source: 'marketplace' as const, exitCode: 0 };
-      }),
+      isInstalled: jest.fn(() => false),
+      install: jest.fn(async () => ({ source: 'marketplace' as const, exitCode: 1, stderr: 'nope' })),
       label: makeLabel(),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
-    (vscode.window.showInformationMessage as jest.Mock).mockReset();
+    (vscode.window.showErrorMessage as jest.Mock).mockReset();
     registerUpdateCommands(mkContext(), {
       codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
       extensions,
@@ -431,7 +431,7 @@ describe('update commands', () => {
       tree: mkTree()
     });
     await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.obscure' });
-    const messages = (vscode.window.showInformationMessage as jest.Mock).mock.calls.map(c => c[0]);
+    const messages = (vscode.window.showErrorMessage as jest.Mock).mock.calls.map(c => c[0]);
     expect(messages.some(m => typeof m === 'string' && m.includes('salesforce.obscure'))).toBe(true);
   });
 

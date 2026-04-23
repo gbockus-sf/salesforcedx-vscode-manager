@@ -68,7 +68,9 @@ export const registerUpdateCommands = (
       deps.logger.info(`update(${id}): reinstalled with --force.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      void notifyInfo(getLocalization(LocalizationKeys.updateSucceeded, label));
+      // Success toast suppressed: the tree row re-renders with the new
+      // version badge, which is the feedback the user needs. Logging is
+      // enough as a trail.
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
@@ -115,7 +117,9 @@ export const registerUpdateCommands = (
       }
       const label = deps.extensions.label(id);
       if (deps.extensions.isInstalled(id)) {
-        void notifyInfo(getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, label));
+        // No toast: the tree already shows the installed row; log so the
+        // click still has a trail in the output channel.
+        deps.logger.info(`install(${id}): already installed; nothing to do.`);
         return;
       }
       const result = await deps.extensions.install(id);
@@ -131,11 +135,8 @@ export const registerUpdateCommands = (
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       deps.tree.refresh();
-      // Re-read the label so freshly-installed ids pick up their on-disk
-      // displayName ("Apex Replay Debugger") instead of the catalog/raw fallback.
-      void notifyInfo(
-        getLocalization(LocalizationKeys.installExtensionSucceeded, deps.extensions.label(id))
-      );
+      // Success toast suppressed: the Groups tree row flips to the
+      // installed state on refresh, which is the feedback the user needs.
     }),
 
     vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
@@ -146,7 +147,9 @@ export const registerUpdateCommands = (
       }
       const label = deps.extensions.label(id);
       if (!deps.extensions.isInstalled(id)) {
-        void notifyInfo(getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, label));
+        // No toast: the tree already marks the row "not installed"; log
+        // so the click still has a trail.
+        deps.logger.info(`uninstall(${id}): not installed; nothing to do.`);
         return;
       }
 
@@ -204,15 +207,9 @@ export const registerUpdateCommands = (
         );
         return;
       }
-      void notifyInfo(
-        installedDependents.length === 0
-          ? getLocalization(LocalizationKeys.uninstallExtensionSucceeded, label)
-          : getLocalization(
-              LocalizationKeys.uninstallExtensionSucceededCascade,
-              label,
-              installedDependents.length
-            )
-      );
+      // Success toast suppressed: the Groups tree reflects the removed
+      // rows (including cascade members). Cascade details are already in
+      // the log lines above for the curious.
     }),
 
     vscode.commands.registerCommand(COMMANDS.openInMarketplace, async (arg?: unknown) => {
@@ -235,14 +232,14 @@ export const registerUpdateCommands = (
       // dialog we can't suppress, which is jarring when the user only
       // expected our own tree to refresh. Our MarketplaceVersionService
       // already drives the manager's own update indicators, so we stick
-      // to that and surface the result as a sticky notification. Users
+      // to that. The Groups tree re-renders with `$(arrow-circle-up)`
+      // badges on any row that has a newer version available — that's
+      // the feedback the user needs; no success toast required. Users
       // who want VSCode's native dialog can still invoke
       // `Extensions: Check for Extension Updates` from the palette.
       deps.extensions.clearCliVersionCache();
       await deps.tree.refreshVersionInfo();
-      void notifyInfo(getLocalization(LocalizationKeys.checkForUpdatesDone), {
-        logger: deps.logger
-      });
+      deps.logger.info('checkForUpdates: tree refreshed via MarketplaceVersionService.');
     })
   );
 };
