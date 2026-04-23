@@ -411,7 +411,7 @@ should be addressed before a real release.
   CLI attempt; a `'missing'` result short-circuits with exit 2 and a
   "not published" stderr. `'unknown'` (offline / timeout) falls through
   so disconnected machines keep working. Result cached per id for 1 h.
-- [ ] **React group contents.** Ship empty; user will fill via
+- [x] **React group contents.** Ship empty; user will fill via
   `Edit Group` per the plan. Confirm contents and repopulate before
   tagging v0.1.0.
 - [x] **Activity bar icon visual — swap padlock for a layers glyph.**

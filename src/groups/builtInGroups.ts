@@ -37,8 +37,13 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
   {
     id: 'react',
     label: 'React',
-    description: 'React / JS tooling. Empty by default — edit this group with the members you want.',
-    extensions: [],
+    description:
+      'Salesforce React / LWR development — Agentforce Vibes, Live Preview, and the Metadata Visualizer.',
+    extensions: [
+      'salesforce.salesforcedx-einstein-gpt',
+      'salesforce.salesforcedx-vscode-ui-preview',
+      'salesforce.salesforcedx-metadata-visualizer-vscode'
+    ],
     builtIn: true
   },
   {
