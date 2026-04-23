@@ -38,10 +38,12 @@ export const SETTINGS = {
   vsixAutoReinstallOnChange: 'vsixAutoReinstallOnChange',
   statusBarShowGroup: 'statusBar.showGroup',
   statusBarShowVsix: 'statusBar.showVsix',
-  updateCheck: 'updateCheck'
+  updateCheck: 'updateCheck',
+  reloadAfterApply: 'reloadAfterApply'
 } as const;
 
 export type UpdateCheckMode = 'onStartup' | 'manual' | 'never';
+export type ReloadAfterApplyMode = 'auto' | 'prompt' | 'never';
 
 export const WORKSPACE_STATE = {
   activeGroupId: 'sfdxManager.activeGroupId',

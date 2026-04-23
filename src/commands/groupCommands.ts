@@ -64,28 +64,59 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   deps.logger.info(
     `Apply result: enabled=${result.enabled.length} disabled=${result.disabled.length} ` +
       `vsix=${result.installedFromVsix.length} manualEnable=${result.needsManualEnable.length} ` +
-      `manualDisable=${result.needsManualDisable.length} skipped=${result.skipped.length}`
+      `manualDisable=${result.needsManualDisable.length} skipped=${result.skipped.length} ` +
+      `depBlocked=${result.dependencyBlocked.length} depAutoIncluded=${result.dependencyAutoIncluded.length}`
   );
+  if (result.dependencyBlocked.length > 0) {
+    for (const { id, blockedBy } of result.dependencyBlocked) {
+      deps.logger.info(`  blocked: ${id} (dependents: ${blockedBy.join(', ')})`);
+    }
+  }
 
   const parts: string[] = [`${group.label} applied.`, `Enabled: ${result.enabled.length}`];
   if (result.disabled.length) parts.push(`Disabled: ${result.disabled.length}`);
   if (result.installedFromVsix.length) parts.push(`VSIX: ${result.installedFromVsix.length}`);
+  if (result.dependencyAutoIncluded.length) {
+    parts.push(`Dep auto-included: ${result.dependencyAutoIncluded.length}`);
+  }
+  if (result.dependencyBlocked.length) parts.push(`Dep-blocked: ${result.dependencyBlocked.length}`);
   if (result.needsManualEnable.length) parts.push(`Manual enable: ${result.needsManualEnable.length}`);
   if (result.needsManualDisable.length) parts.push(`Manual disable: ${result.needsManualDisable.length}`);
   if (result.skipped.length) parts.push(`Skipped: ${result.skipped.length}`);
 
-  const hasFollowUp = result.needsManualEnable.length + result.needsManualDisable.length > 0;
   const logAction = 'Show log';
-  const choice = await vscode.window.showInformationMessage(
-    parts.join(' · '),
-    ...(hasFollowUp ? [logAction] : [logAction])
-  );
+  const choice = await vscode.window.showInformationMessage(parts.join(' · '), logAction);
   if (choice === logAction) deps.logger.show();
 
   if (result.needsManualDisable.length) {
     await deps.extensions.showManualToggleHint(result.needsManualDisable, 'Disable');
   } else if (result.needsManualEnable.length) {
     await deps.extensions.showManualToggleHint(result.needsManualEnable, 'Enable');
+  }
+
+  await maybeReloadAfterApply(result, deps);
+};
+
+const maybeReloadAfterApply = async (
+  result: Awaited<ReturnType<typeof applyGroup>>,
+  deps: Deps
+): Promise<void> => {
+  const touched =
+    result.enabled.length + result.disabled.length + result.installedFromVsix.length > 0;
+  if (!touched) return;
+  const mode = deps.settings.getReloadAfterApply();
+  if (mode === 'never') return;
+  if (mode === 'auto') {
+    await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    return;
+  }
+  const reloadChoice = 'Reload Window';
+  const pick = await vscode.window.showInformationMessage(
+    'Apply complete. Reload window to activate changes?',
+    reloadChoice
+  );
+  if (pick === reloadChoice) {
+    await vscode.commands.executeCommand('workbench.action.reloadWindow');
   }
 };
 

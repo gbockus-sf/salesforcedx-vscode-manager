@@ -43,6 +43,18 @@ export interface NodeVersionInfo {
   source: 'vsix' | 'marketplace' | 'unknown';
 }
 
+/**
+ * Static snapshot of the VSCode extension-dependency graph for currently
+ * installed extensions. Sourced from `ext.packageJSON.extensionDependencies`
+ * and `.extensionPack` — no activation, no network.
+ */
+export interface DependencyGraphNode {
+  id: string;
+  dependsOn: string[];
+  packMembers: string[];
+}
+export type DependencyGraph = Map<string, DependencyGraphNode>;
+
 export class ExtensionService {
   private vsixInstaller: VsixInstallerLike | undefined;
   private marketplaceProbe: MarketplaceVersionProbe | undefined;
@@ -90,6 +102,111 @@ export class ExtensionService {
 
   readManifest<T = unknown>(id: string): T | undefined {
     return vscode.extensions.getExtension(id)?.packageJSON as T | undefined;
+  }
+
+  /**
+   * Snapshot of `extensionDependencies` + `extensionPack` for every currently
+   * installed extension. Callers can use this to order uninstalls
+   * topologically, auto-include transitive deps on enable, and refuse to
+   * disable an extension that another installed extension still depends on.
+   */
+  getDependencyGraph(): DependencyGraph {
+    const graph: DependencyGraph = new Map();
+    for (const ext of vscode.extensions.all) {
+      const pkg = ext.packageJSON as
+        | { extensionDependencies?: unknown; extensionPack?: unknown }
+        | undefined;
+      const dependsOn = Array.isArray(pkg?.extensionDependencies)
+        ? (pkg!.extensionDependencies as unknown[]).filter((v): v is string => typeof v === 'string')
+        : [];
+      const packMembers = Array.isArray(pkg?.extensionPack)
+        ? (pkg!.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+        : [];
+      graph.set(ext.id, { id: ext.id, dependsOn, packMembers });
+    }
+    return graph;
+  }
+
+  /**
+   * Returns the set of ids that `roots` transitively depend on (via
+   * `extensionDependencies`). Does NOT include the roots themselves. Stops at
+   * ids missing from the provided graph (e.g., not installed).
+   */
+  transitiveDependencies(roots: readonly string[], graph: DependencyGraph): Set<string> {
+    const out = new Set<string>();
+    const stack = [...roots];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      const node = graph.get(id);
+      if (!node) continue;
+      for (const dep of node.dependsOn) {
+        if (out.has(dep)) continue;
+        out.add(dep);
+        stack.push(dep);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Returns the set of installed extension ids that any extension *outside*
+   * `candidateDisableSet` depends on. Callers use this to refuse a disable
+   * when a currently-enabled extension would break without it. Iterates to a
+   * fixed point — removing one extension can free up another to be disabled.
+   */
+  computeBlockedByDependents(
+    candidateDisableSet: Set<string>,
+    graph: DependencyGraph
+  ): Map<string, string[]> {
+    const blocked = new Map<string, string[]>();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const [id] of graph) {
+        if (!candidateDisableSet.has(id)) continue;
+        if (blocked.has(id)) continue;
+        const blockers: string[] = [];
+        for (const [depId, depNode] of graph) {
+          if (candidateDisableSet.has(depId)) continue;
+          if (blocked.has(depId)) continue;
+          if (depNode.dependsOn.includes(id) || depNode.packMembers.includes(id)) {
+            blockers.push(depId);
+          }
+        }
+        if (blockers.length > 0) {
+          blocked.set(id, blockers);
+          changed = true;
+        }
+      }
+    }
+    return blocked;
+  }
+
+  /**
+   * Orders a set of ids for uninstall so dependents come off before their
+   * dependencies and pack members come off before the pack. Any id missing
+   * from `graph` is appended at the end (best-effort when graph info is
+   * incomplete).
+   */
+  topologicalUninstallOrder(ids: readonly string[], graph: DependencyGraph): string[] {
+    const idSet = new Set(ids);
+    const visited = new Set<string>();
+    const out: string[] = [];
+    const visit = (id: string): void => {
+      if (visited.has(id) || !idSet.has(id)) return;
+      visited.add(id);
+      // Visit everything that DEPENDS ON `id` first — they must come off before `id` does.
+      for (const [otherId, node] of graph) {
+        if (!idSet.has(otherId)) continue;
+        if (node.dependsOn.includes(id) || node.packMembers.includes(id)) {
+          visit(otherId);
+        }
+      }
+      out.push(id);
+    };
+    for (const id of ids) visit(id);
+    for (const id of ids) if (!visited.has(id)) out.push(id);
+    return out;
   }
 
   /**

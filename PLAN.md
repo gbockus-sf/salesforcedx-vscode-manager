@@ -394,13 +394,10 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 These were discovered during implementation and aren't blocking v0.1 but
 should be addressed before a real release.
 
-- [ ] **Topological uninstall order.** Apply-with-`disableOthers` currently
-  fails for extensions that are members of an installed `extensionPack`
-  or are declared as `extensionDependencies` of another installed
-  extension. VSCode refuses the uninstall and we log `[warn] Cannot
-  uninstall 'X'. 'Y' extension depends on this.` Fix: sort the disable
-  list by reverse-dependency so packs come off before their members,
-  and consider offering to uninstall the containing pack when blocked.
+- [x] **Topological uninstall order.** `ExtensionService.topologicalUninstallOrder()`
+  sorts a candidate set so dependents (and packs) come off before their
+  dependencies (and pack members). `applyGroup` uses it for the
+  `disableOthers` uninstall pass.
 - [x] **Skip unresolvable marketplace ids.** `ExtensionService.install()`
   now probes `MarketplaceVersionService.resolveExistence()` before the
   CLI attempt; a `'missing'` result short-circuits with exit 2 and a
@@ -414,8 +411,12 @@ should be addressed before a real release.
   a stacked-layers shape mirroring the status-bar `$(layers)` codicon.
   Filled paths (`fill="currentColor"`), 24×24 viewBox; same file path
   so `package.json` didn't need to change.
-- [ ] **Reload prompt fatigue.** Each uninstall triggers a reload prompt.
-  Investigate batching or auto-reload after a full apply completes.
+- [x] **Reload prompt fatigue.** New setting
+  `salesforcedx-vscode-manager.reloadAfterApply` (`auto` / `prompt` / `never`,
+  default `prompt`). `runApply` shows a single consolidated prompt after
+  the apply finishes, instead of users seeing one VSCode reload banner per
+  uninstall. `auto` reloads silently; `never` defers to VSCode's per-
+  uninstall banners.
 - [x] **GPG signing during local development.** Full recipe
   documented in [`CONTRIBUTING.md`](./CONTRIBUTING.md) — each parallel
   agent worktree runs `git config commit.gpgsign false` locally so
@@ -438,23 +439,22 @@ should be addressed before a real release.
 - [x] **Worktree-based parallel agents.** Works but requires disabling
   gpg signing in the worktree. Recipe documented in
   [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-- [ ] **Show each extension's VSCode `extensionDependencies` +
-  `extensionPack` members in the Groups tree.** Today the tree shows
-  only the ids declared in a group. Proposal: expand each extension
-  node to list (a) its `extensionDependencies` (installed state
-  indicator per dep), (b) if it's a pack, its `extensionPack`
-  members as children. This is read-only visualization sourced from
-  `ext.packageJSON.extensionDependencies` / `.extensionPack`. Helps
-  the user understand why a disable got blocked (see the topological
-  uninstall TODO above).
-- [ ] **Apply-group should honor extension-dependency graph.** Before
-  enabling a member, ensure each of its `extensionDependencies` is
-  also enabled (or auto-add them to the effective install list).
-  Before disabling a non-member, check whether any currently-enabled
-  extension depends on it; if so, skip with a `needsManualDisable`
-  entry and the reason in the log. This removes the
-  'Cannot uninstall X. Y depends on this' warnings we see today and
-  turns them into explicit tree-surfaced state instead.
+- [x] **Show each extension's VSCode `extensionDependencies` +
+  `extensionPack` members in the Groups tree.** Extension nodes are
+  now collapsible when their `packageJSON.extensionDependencies` or
+  `.extensionPack` is non-empty, and expand to read-only child rows
+  with `$(link)` for deps and `$(package)` for pack members.
+  `contextValue` is `extension:child:dep` / `extension:child:pack` so
+  future context menus can target them.
+- [x] **Apply-group honors the extension-dependency graph.** `applyGroup`
+  pulls every member's transitive `extensionDependencies` into the
+  effective enable set (reported in the summary as "Dep auto-included:
+  N"). Before disabling a non-member, a fixed-point search in
+  `computeBlockedByDependents()` refuses to touch anything an
+  installed outside-the-candidate-set extension still depends on —
+  reported as `dependencyBlocked: [{ id, blockedBy }]`. This replaces
+  VSCode's per-uninstall "Cannot uninstall X" warnings with structured
+  state the summary toast and output log surface.
 - [x] **Dedupe the Dependencies list by logical check, not just by id.**
   Today `DependencyRegistry.collect()` dedupes on `check.id`, but two
   different extensions can declare the same *logical* dependency

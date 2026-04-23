@@ -193,6 +193,82 @@ describe('ExtensionService', () => {
     expect(cli.uninstallExtension).toHaveBeenCalledWith('salesforce.foo');
   });
 
+  describe('dependency graph', () => {
+    const makeGraphExt = (id: string, extensionDependencies: string[] = [], extensionPack: string[] = []) =>
+      makeExt(id, { extensionDependencies, extensionPack });
+
+    it('getDependencyGraph() reads extensionDependencies + extensionPack statically', () => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeGraphExt('salesforce.apex', ['salesforce.core']),
+        makeGraphExt('salesforce.core', []),
+        makeGraphExt('salesforce.pack', [], ['salesforce.a', 'salesforce.b']),
+        makeExt('salesforce.junk', { extensionDependencies: 'not-an-array' })
+      ];
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const graph = svc.getDependencyGraph();
+      expect(graph.get('salesforce.apex')!.dependsOn).toEqual(['salesforce.core']);
+      expect(graph.get('salesforce.pack')!.packMembers).toEqual(['salesforce.a', 'salesforce.b']);
+      expect(graph.get('salesforce.junk')!.dependsOn).toEqual([]);
+    });
+
+    it('transitiveDependencies() walks extensionDependencies edges', () => {
+      const graph = new Map([
+        ['a', { id: 'a', dependsOn: ['b'], packMembers: [] }],
+        ['b', { id: 'b', dependsOn: ['c'], packMembers: [] }],
+        ['c', { id: 'c', dependsOn: [], packMembers: [] }],
+        ['unrelated', { id: 'unrelated', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect([...svc.transitiveDependencies(['a'], graph)].sort()).toEqual(['b', 'c']);
+    });
+
+    it('computeBlockedByDependents() refuses to disable an id still needed by an outside-candidate extension', () => {
+      const graph = new Map([
+        ['apex', { id: 'apex', dependsOn: ['core'], packMembers: [] }],
+        ['core', { id: 'core', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const blocked = svc.computeBlockedByDependents(new Set(['core']), graph);
+      expect(blocked.get('core')).toEqual(['apex']);
+    });
+
+    it('computeBlockedByDependents() iterates to a fixed point — removing one can free another', () => {
+      // Candidates: { apex, core }. apex depends on core, but apex IS a candidate so core is safe.
+      const graph = new Map([
+        ['apex', { id: 'apex', dependsOn: ['core'], packMembers: [] }],
+        ['core', { id: 'core', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const blocked = svc.computeBlockedByDependents(new Set(['apex', 'core']), graph);
+      expect(blocked.size).toBe(0);
+    });
+
+    it('topologicalUninstallOrder() puts dependents before dependencies', () => {
+      const graph = new Map([
+        ['apex', { id: 'apex', dependsOn: ['core'], packMembers: [] }],
+        ['core', { id: 'core', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const order = svc.topologicalUninstallOrder(['core', 'apex'], graph);
+      expect(order.indexOf('apex')).toBeLessThan(order.indexOf('core'));
+    });
+
+    it('topologicalUninstallOrder() puts the containing pack before its members', () => {
+      // VSCode treats `extensionPack` like `extensionDependencies`: the pack
+      // must be removed before its members so VSCode doesn't block the
+      // member uninstalls with "pack depends on this".
+      const graph = new Map([
+        ['pack', { id: 'pack', dependsOn: [], packMembers: ['a', 'b'] }],
+        ['a', { id: 'a', dependsOn: [], packMembers: [] }],
+        ['b', { id: 'b', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const order = svc.topologicalUninstallOrder(['a', 'b', 'pack'], graph);
+      expect(order.indexOf('pack')).toBeLessThan(order.indexOf('a'));
+      expect(order.indexOf('pack')).toBeLessThan(order.indexOf('b'));
+    });
+  });
+
   it('readManifest() returns the packageJSON of an installed extension without activating it', () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(
       makeExt('salesforce.foo', { name: 'foo', salesforceDependencies: [{ id: 'java' }] })

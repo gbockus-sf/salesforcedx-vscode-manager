@@ -9,6 +9,10 @@ All notable changes to `salesforcedx-vscode-manager` will be documented in this 
 - Apply-group now skips an install attempt when the marketplace probe can confirm the id isn't published (e.g., `salesforce.lightning-design-system-vscode`); offline machines still attempt the install as before. Probe result cached 1 h per id.
 - Empty user groups can no longer be saved — `Create Custom Group` and `Edit Group` now surface an error before writing.
 - Removed the dead `salesforcedx-vscode-manager.useInternalCommands` setting. It had no runtime effect under the `codeCli` backend.
+- **Apply-group now understands VSCode's extension-dependency graph.** Transitive `extensionDependencies` of group members are auto-included in the effective enable set (and labeled in the summary as "Dep auto-included: N"). Non-member uninstalls are skipped when another installed extension still depends on them, replacing VSCode's per-uninstall "Cannot uninstall X" warnings with structured `dependencyBlocked` state surfaced in the log.
+- **Topological uninstall order** — `disableOthers` now removes extensions in an order where dependents (and containing packs) come off before their dependencies (and pack members), avoiding the dependency-chain blockage we saw during the v0.1 smoke tests.
+- **Consolidated reload prompt after apply** — new setting `salesforcedx-vscode-manager.reloadAfterApply` (`auto` / `prompt` / `never`, default `prompt`). Replaces VSCode's one-banner-per-uninstall with a single opt-in prompt after the whole apply completes.
+- **Groups tree extension nodes expand to show their `extensionDependencies` and `extensionPack` members** as read-only children with `$(link)` and `$(package)` icons. Helps users understand why a disable got blocked and what gets pulled in when enabling.
 
 ## [0.1.0] — Unreleased
 

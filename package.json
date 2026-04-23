@@ -138,6 +138,17 @@
           "default": true,
           "description": "Show the active group in the status bar."
         },
+        "salesforcedx-vscode-manager.reloadAfterApply": {
+          "type": "string",
+          "enum": ["auto", "prompt", "never"],
+          "enumDescriptions": [
+            "Automatically reload the window after a group apply finishes if any extensions were installed or uninstalled.",
+            "Show one consolidated reload prompt after a group apply instead of VSCode's per-extension reload banners.",
+            "Never prompt; rely on VSCode's built-in per-extension reload banners."
+          ],
+          "default": "prompt",
+          "description": "How to handle the 'reload required' signal at the end of a group apply. Consolidates VSCode's per-uninstall reload banners into a single prompt."
+        },
         "salesforcedx-vscode-manager.statusBar.showVsix": {
           "type": "boolean",
           "default": true,

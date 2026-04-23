@@ -4,7 +4,7 @@ import type { GroupStore } from '../groups/groupStore';
 import type { ExtensionService, NodeVersionInfo } from '../services/extensionService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
 
-export type GroupsNode = GroupNode | ExtensionNode;
+export type GroupsNode = GroupNode | ExtensionNode | DependencyChildNode;
 
 interface GroupNode {
   kind: 'group';
@@ -23,6 +23,21 @@ interface ExtensionNode {
   installedVersion?: string;
   latestVersion?: string;
   updateAvailable: boolean;
+}
+
+/**
+ * Read-only informational child shown under an extension node in the tree.
+ * Lists the extension's `extensionDependencies` ("dep") and
+ * `extensionPack` members ("pack") so the user can see why disable might be
+ * blocked and what gets pulled in when enabling.
+ */
+interface DependencyChildNode {
+  kind: 'dep-child';
+  relation: 'dep' | 'pack';
+  parentExtensionId: string;
+  extensionId: string;
+  installed: boolean;
+  enabled: boolean;
 }
 
 export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
@@ -100,13 +115,44 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       return item;
     }
 
+    if (node.kind === 'dep-child') {
+      const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
+      const item = new vscode.TreeItem(short, vscode.TreeItemCollapsibleState.None);
+      item.description = node.relation === 'pack' ? 'pack member' : 'dependency';
+      const state = !node.installed ? 'not installed' : node.enabled ? 'enabled' : 'disabled';
+      item.tooltip = `${node.extensionId} (${state})`;
+      item.iconPath = new vscode.ThemeIcon(node.relation === 'pack' ? 'package' : 'link');
+      item.contextValue = `extension:child:${node.relation}`;
+      return item;
+    }
+
     const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
-    const item = new vscode.TreeItem(short, vscode.TreeItemCollapsibleState.None);
+    const hasChildren =
+      this.extensionDependenciesOf(node.extensionId).length > 0 ||
+      this.extensionPackOf(node.extensionId).length > 0;
+    const item = new vscode.TreeItem(
+      short,
+      hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
+    );
     item.description = this.formatDescription(node);
     item.tooltip = this.buildTooltip(node);
     item.iconPath = this.resolveIcon(node);
     item.contextValue = this.resolveContextValue(node);
     return item;
+  }
+
+  private extensionDependenciesOf(id: string): string[] {
+    const pkg = this.extensions.readManifest<{ extensionDependencies?: unknown }>(id);
+    return Array.isArray(pkg?.extensionDependencies)
+      ? (pkg!.extensionDependencies as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
+  }
+
+  private extensionPackOf(id: string): string[] {
+    const pkg = this.extensions.readManifest<{ extensionPack?: unknown }>(id);
+    return Array.isArray(pkg?.extensionPack)
+      ? (pkg!.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
   }
 
   private formatDescription(node: ExtensionNode): string {
@@ -162,30 +208,51 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
         isActive: group.id === activeId
       }));
     }
-    if (parent.kind !== 'group') return [];
-    const sources = this.getVsixSources
-      ? this.getVsixSources()
-      : this.workspaceState.getInstallSources();
-    const overrides = this.getVsixOverrides?.();
-    return parent.group.extensions.map(id => {
-      const override = overrides?.get(id);
-      const versionInfo = this.versionInfoCache.get(id);
-      const installed = this.extensions.isInstalled(id);
-      const installedVersion =
-        versionInfo?.installedVersion ?? (installed ? this.extensions.getInstalledVersion(id) : undefined);
-      return {
-        kind: 'extension' as const,
+    if (parent.kind === 'group') {
+      const sources = this.getVsixSources
+        ? this.getVsixSources()
+        : this.workspaceState.getInstallSources();
+      const overrides = this.getVsixOverrides?.();
+      return parent.group.extensions.map(id => {
+        const override = overrides?.get(id);
+        const versionInfo = this.versionInfoCache.get(id);
+        const installed = this.extensions.isInstalled(id);
+        const installedVersion =
+          versionInfo?.installedVersion ?? (installed ? this.extensions.getInstalledVersion(id) : undefined);
+        return {
+          kind: 'extension' as const,
+          extensionId: id,
+          groupId: parent.group.id,
+          installed,
+          enabled: this.extensions.isEnabled(id),
+          source: sources[id] ?? 'unknown',
+          vsixFilename: override?.filePath.split('/').pop(),
+          installedVersion,
+          latestVersion: versionInfo?.latestVersion,
+          updateAvailable: versionInfo?.updateAvailable ?? false
+        };
+      });
+    }
+    if (parent.kind === 'extension') {
+      const deps = this.extensionDependenciesOf(parent.extensionId).map(id => ({
+        kind: 'dep-child' as const,
+        relation: 'dep' as const,
+        parentExtensionId: parent.extensionId,
         extensionId: id,
-        groupId: parent.group.id,
-        installed,
-        enabled: this.extensions.isEnabled(id),
-        source: sources[id] ?? 'unknown',
-        vsixFilename: override?.filePath.split('/').pop(),
-        installedVersion,
-        latestVersion: versionInfo?.latestVersion,
-        updateAvailable: versionInfo?.updateAvailable ?? false
-      };
-    });
+        installed: this.extensions.isInstalled(id),
+        enabled: this.extensions.isEnabled(id)
+      }));
+      const packMembers = this.extensionPackOf(parent.extensionId).map(id => ({
+        kind: 'dep-child' as const,
+        relation: 'pack' as const,
+        parentExtensionId: parent.extensionId,
+        extensionId: id,
+        installed: this.extensions.isInstalled(id),
+        enabled: this.extensions.isEnabled(id)
+      }));
+      return [...deps, ...packMembers];
+    }
+    return [];
   }
 }
 

@@ -15,14 +15,20 @@ interface ExtStub {
   nodeInfo: Map<string, NodeVersionInfo>;
 }
 
-const mkExt = (stub: Partial<ExtStub> = {}): ExtensionService => {
+interface Manifest { extensionDependencies?: string[]; extensionPack?: string[] }
+
+const mkExt = (
+  stub: Partial<ExtStub> & { manifests?: Map<string, Manifest> } = {}
+): ExtensionService => {
   const installed = stub.installed ?? new Set<string>();
   const versions = stub.versions ?? new Map<string, string>();
   const nodeInfo = stub.nodeInfo ?? new Map<string, NodeVersionInfo>();
+  const manifests = stub.manifests ?? new Map<string, Manifest>();
   return {
     isInstalled: jest.fn((id: string) => installed.has(id)),
     isEnabled: jest.fn((id: string) => installed.has(id)),
     getInstalledVersion: jest.fn((id: string) => versions.get(id)),
+    readManifest: jest.fn((id: string) => manifests.get(id)),
     refreshInstalledCliVersions: jest.fn(async () => undefined),
     getNodeVersionInfo: jest.fn(async (id: string) =>
       nodeInfo.get(id) ?? {
@@ -166,6 +172,88 @@ describe('GroupsTreeProvider', () => {
     expect(icon.id).toBe('package');
     expect(extItem.contextValue).toContain('vsix');
     expect(String(extItem.tooltip)).toContain('resources/walkthrough/vsix.md');
+  });
+
+  it('extension node becomes collapsible when it has extensionDependencies or extensionPack', () => {
+    const manifests = new Map([
+      ['salesforce.salesforcedx-vscode-apex', { extensionDependencies: ['salesforce.salesforcedx-vscode-core'] }]
+    ]);
+    const installed = new Set(['salesforce.salesforcedx-vscode-apex']);
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt({ installed, manifests }), mkState());
+    const item = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-vscode-apex',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      updateAvailable: false
+    });
+    // 1 = Collapsed
+    expect(item.collapsibleState).toBe(1);
+  });
+
+  it('expands an extension node into its extensionDependencies with link icons', () => {
+    const manifests = new Map([
+      ['salesforce.apex', { extensionDependencies: ['salesforce.core', 'salesforce.services'] }]
+    ]);
+    const installed = new Set(['salesforce.apex', 'salesforce.core']);
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt({ installed, manifests }), mkState());
+    const children = tree.getChildren({
+      kind: 'extension',
+      extensionId: 'salesforce.apex',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      updateAvailable: false
+    }) as Array<{ kind: 'dep-child'; relation: 'dep' | 'pack'; extensionId: string; installed: boolean }>;
+    expect(children.map(c => c.extensionId)).toEqual(['salesforce.core', 'salesforce.services']);
+    expect(children.every(c => c.relation === 'dep')).toBe(true);
+    expect(children[0].installed).toBe(true);
+    expect(children[1].installed).toBe(false);
+  });
+
+  it('expands an extension node into its extensionPack members with pack icons', () => {
+    const manifests = new Map([
+      ['salesforce.expanded', { extensionPack: ['salesforce.apex', 'salesforce.lwc'] }]
+    ]);
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt({ manifests }), mkState());
+    const children = tree.getChildren({
+      kind: 'extension',
+      extensionId: 'salesforce.expanded',
+      groupId: 'x',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      updateAvailable: false
+    }) as Array<{ kind: 'dep-child'; relation: 'dep' | 'pack' }>;
+    expect(children.map(c => c.relation)).toEqual(['pack', 'pack']);
+  });
+
+  it('dep-child tree items use the link icon for deps and package icon for pack members', () => {
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
+    const depItem = tree.getTreeItem({
+      kind: 'dep-child',
+      relation: 'dep',
+      parentExtensionId: 'salesforce.apex',
+      extensionId: 'salesforce.core',
+      installed: true,
+      enabled: true
+    });
+    expect((depItem.iconPath as { id: string }).id).toBe('link');
+    expect(depItem.contextValue).toBe('extension:child:dep');
+
+    const packItem = tree.getTreeItem({
+      kind: 'dep-child',
+      relation: 'pack',
+      parentExtensionId: 'salesforce.expanded',
+      extensionId: 'salesforce.apex',
+      installed: true,
+      enabled: true
+    });
+    expect((packItem.iconPath as { id: string }).id).toBe('package');
+    expect(packItem.contextValue).toBe('extension:child:pack');
   });
 
   it('refreshVersionInfo populates version info for every group member', async () => {

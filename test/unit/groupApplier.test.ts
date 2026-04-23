@@ -1,12 +1,23 @@
 import { applyGroup } from '../../src/groups/groupApplier';
-import type { ExtensionService, InstallOutcome } from '../../src/services/extensionService';
+import type {
+  DependencyGraph,
+  DependencyGraphNode,
+  ExtensionService,
+  InstallOutcome
+} from '../../src/services/extensionService';
 import type { Group } from '../../src/groups/types';
+
+const emptyGraph = (): DependencyGraph => new Map<string, DependencyGraphNode>();
 
 const mkSvc = (overrides: Partial<Record<keyof ExtensionService, unknown>> = {}): ExtensionService => ({
   isInstalled: jest.fn((_id: string) => true),
   install: jest.fn(async (): Promise<InstallOutcome> => ({ source: 'marketplace', exitCode: 0 })),
   enable: jest.fn(async () => 'ok'),
   disable: jest.fn(async () => 'ok'),
+  getDependencyGraph: jest.fn(() => emptyGraph()),
+  transitiveDependencies: jest.fn((_roots: readonly string[], _graph: DependencyGraph) => new Set<string>()),
+  computeBlockedByDependents: jest.fn(() => new Map<string, string[]>()),
+  topologicalUninstallOrder: jest.fn((ids: readonly string[]) => [...ids]),
   ...overrides
 } as unknown as ExtensionService);
 
@@ -90,5 +101,48 @@ describe('applyGroup', () => {
     const r = await applyGroup(group, 'disableOthers', ['salesforce.lwc'], svc);
     expect(r.disabled).toEqual([]);
     expect(svc.disable).not.toHaveBeenCalled();
+  });
+
+  it('auto-includes transitive extensionDependencies of members', async () => {
+    const autoIncluded = new Set(['salesforce.services']);
+    const svc = mkSvc({
+      transitiveDependencies: jest.fn(() => autoIncluded)
+    });
+    const r = await applyGroup(group, 'enableOnly', [], svc);
+    expect(r.dependencyAutoIncluded).toEqual(['salesforce.services']);
+    expect(svc.enable).toHaveBeenCalledWith('salesforce.services');
+  });
+
+  it('refuses to disable an extension that is depended on by an installed outside-group extension', async () => {
+    const svc = mkSvc({
+      computeBlockedByDependents: jest.fn(
+        () => new Map([['salesforce.core', ['salesforce.agentforce']]])
+      )
+    });
+    const managed = ['salesforce.apex', 'salesforce.core', 'salesforce.agentforce'];
+    const r = await applyGroup(
+      { id: 'x', label: 'X', extensions: ['salesforce.apex'] },
+      'disableOthers',
+      managed,
+      svc
+    );
+    expect(r.dependencyBlocked).toEqual([
+      { id: 'salesforce.core', blockedBy: ['salesforce.agentforce'] }
+    ]);
+    expect(svc.disable).not.toHaveBeenCalledWith('salesforce.core');
+  });
+
+  it('disables non-members in topological order', async () => {
+    const disableCalls: string[] = [];
+    const svc = mkSvc({
+      disable: jest.fn(async (id: string) => { disableCalls.push(id); return 'ok'; }),
+      topologicalUninstallOrder: jest.fn((ids: readonly string[]) =>
+        // reverse to prove the order is what the service returns, not insertion order
+        [...ids].reverse()
+      )
+    });
+    const managed = ['salesforce.a', 'salesforce.b', 'salesforce.c'];
+    await applyGroup({ id: 'x', label: 'X', extensions: [] }, 'disableOthers', managed, svc);
+    expect(disableCalls).toEqual(['salesforce.c', 'salesforce.b', 'salesforce.a']);
   });
 });
