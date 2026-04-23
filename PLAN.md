@@ -573,6 +573,88 @@ should be addressed before a real release.
   when known, and still falls back to the id when
   `getDisplayName` returns undefined.
 
+- [ ] **Notification audit — only notify when there's an action,
+  error, or progress to report.** The extension is noisy today: every
+  command and most settled async ops toss a toast, and VSCode stacks
+  them at the bottom-right where they compete with our own "update
+  available" indicators, sticky-reload prompts, and the legitimate
+  error surface. The user's rule of thumb:
+
+  > I only need a notification if there's an action to be taken, an
+  > error, or progress being reported.
+
+  Concrete offender (from the dep-check screenshot): "Dependencies:
+  4 ok" pops after the user runs `Run Dependency Check`, even though
+  every row in the Dependencies tree already turned green. The toast
+  is redundant — the tree is the source of truth. It should only fire
+  when the check surfaces something actionable (missing / wrong
+  version), and then the toast should include a "Show Dependencies"
+  button so it actually leads somewhere.
+
+  Sweep plan:
+  1. Build a decision table of every `notifyInfo` / `notifyWarn` /
+     `notifyError` + raw `vscode.window.show*Message` call in `src/`.
+     For each one, classify the result state (success-happy-path,
+     success-with-partial-failure, no-op, error, needs-action) and
+     decide whether the user cares when they can't already see the
+     outcome in the tree, status bar, or Problems view.
+  2. Drop the pure "completed successfully with no follow-up" toasts
+     entirely. First-pass kill list (tentative — double-check each):
+     - `Dependencies: N ok` (dep commands) — only notify on
+       missing/warn/fail; drop the all-green case.
+     - `Salesforce catalog: N extensions cached.` — status is
+       already visible in the tree badge; keep only the
+       `refreshCatalogEmpty` warn path.
+     - `SFDX Manager: update check complete.` — the tree's
+       `$(arrow-circle-up)` badges do the talking.
+     - `Updated <ext>.` / `Installed <ext>.` /
+       `Uninstalled <ext>.` — the row in the Groups tree re-renders
+       with the new state within a tick; keep the toast only when
+       something failed (already have separate `*Failed` strings).
+       Consider a single summary toast for `updateAllSalesforce`
+       since that one has no per-row visual.
+     - `Apply complete` info toast on the `never` reloadAfterApply
+       path — the existing consolidated reload prompt is the
+       meaningful action; the bare summary toast is noise.
+     - `Enabled N managed extensions.` / `Disabled N managed
+       extensions.` — same story, tree updates.
+     - `<X> is already installed.` / `<X> is not installed.` —
+       these are "you clicked a menu item that didn't apply"
+       messages. Better: let the command be a no-op and log to the
+       output channel. Keep a toast only if no side-effect-free
+       feedback is possible from the tree context.
+  3. Keep notifications for:
+     - Any failure, partial failure, or skipped-but-user-should-
+       know case (`updateFailed`, `installExtensionFailed`,
+       `uninstallExtensionPartialCascade`, dep-check warn/fail
+       rows, `refreshCatalogEmpty`).
+     - Anything that needs the user to do something next
+       (reload-after-apply prompt, "Open Settings" on missing
+       vsixDirectory, "Uninstall / Cancel" modal cascades).
+     - `withProgress` progress reporters — those are intentional
+       and bounded; no change.
+  4. Centralize the "is the user expected to see the tree result
+     live?" decision in the callers, not the notify helper. The
+     helper keeps doing what it does; we just call it less. Do NOT
+     add a per-command `suppressSuccessToast` flag — that's a
+     smell for the rule to become a toggle instead of a default.
+  5. Update `CLAUDE.md` with the rule: "Default to no toast on
+     success when the tree, Problems view, or status bar already
+     reflects the outcome. Toasts are for action, error, or
+     progress."
+
+  Tests: for each call site we mute, assert the success path no
+  longer calls `vscode.window.showInformationMessage`. Failure-path
+  tests stay as-is. Dep commands gain a new test: "all checks pass
+  → no toast" + "any check fails → warn toast with Show Dependencies
+  action".
+
+  Scope note: this is user-facing behavior, so ship it as one
+  reviewable PR, not piecemeal. The risk is regressing the cases
+  where a toast is load-bearing (e.g., an async command that
+  genuinely has no visual side-effect) — the decision table in
+  step 1 is what keeps us honest.
+
 - [ ] **"Open in Marketplace" button on extension-pack group rows.**
   The pack-discovery groups (`pack:<extensionId>`) and the two
   hardcoded pack built-ins (`salesforce-extension-pack`,
