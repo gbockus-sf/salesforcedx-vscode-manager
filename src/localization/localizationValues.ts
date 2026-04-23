@@ -17,6 +17,7 @@ import { LocalizationKeys } from './localizationKeys';
  */
 export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.showLog]: 'Show Log',
+  [LocalizationKeys.notifyDismiss]: 'Dismiss',
 
   [LocalizationKeys.applyScopePromptPlaceholder]: 'How should "{0}" be applied?',
   [LocalizationKeys.applyScopeDisableOthers]: 'Enable members, disable others',

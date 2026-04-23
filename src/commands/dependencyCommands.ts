@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { COMMANDS, VIEW_DEPENDENCIES_ID } from '../constants';
 import type { DependencyRegistry } from '../dependencies/registry';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { notifyInfo, notifyWarn } from '../util/notify';
 import type { Logger } from '../util/logger';
 import {
   DependenciesTreeProvider,
@@ -53,9 +54,9 @@ export const registerDependencyCommands = (
           deps.logger.info(`Dependency check complete: ${parts.join(', ') || 'no checks registered'}`);
           const summary = getLocalization(LocalizationKeys.depsSummary, parts.join(' · '));
           if (counts.fail > 0) {
-            void vscode.window.showWarningMessage(summary);
+            void notifyWarn(summary, { logger: deps.logger });
           } else {
-            void vscode.window.showInformationMessage(summary);
+            void notifyInfo(summary);
           }
         }
       );

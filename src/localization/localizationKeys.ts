@@ -17,6 +17,7 @@
 export enum LocalizationKeys {
   // generic
   showLog = 'showLog',
+  notifyDismiss = 'notifyDismiss',
 
   // apply scope picker
   applyScopePromptPlaceholder = 'applyScopePromptPlaceholder',

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { notifyError, notifyInfo, notifyWarn } from '../util/notify';
 import type { CodeCliService } from '../services/codeCliService';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
@@ -41,25 +42,25 @@ export const registerUpdateCommands = (
     vscode.commands.registerCommand(COMMANDS.updateExtension, async (arg?: unknown) => {
       const id = extractExtensionId(arg);
       if (!id) {
-        void vscode.window.showWarningMessage(getLocalization(LocalizationKeys.updateRequiresNode));
+        void notifyWarn(getLocalization(LocalizationKeys.updateRequiresNode));
         return;
       }
       const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
       if (exitCode !== 0) {
         deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
-        void vscode.window.showErrorMessage(getLocalization(LocalizationKeys.updateFailed, id));
+        void notifyError(getLocalization(LocalizationKeys.updateFailed, id), { logger: deps.logger });
         return;
       }
       deps.logger.info(`update(${id}): reinstalled with --force.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.updateSucceeded, id));
+      void notifyInfo(getLocalization(LocalizationKeys.updateSucceeded, id));
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
       const ids = deps.extensions.managed().map(e => e.id);
       if (ids.length === 0) {
-        void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.updateAllNone));
+        void notifyInfo(getLocalization(LocalizationKeys.updateAllNone));
         return;
       }
       let ok = 0;
@@ -84,32 +85,30 @@ export const registerUpdateCommands = (
       );
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      void vscode.window.showInformationMessage(
+      void notifyInfo(
         failed
           ? getLocalization(LocalizationKeys.updateAllSummaryFailed, ok, failed)
-          : getLocalization(LocalizationKeys.updateAllSummaryOk, ok)
+          : getLocalization(LocalizationKeys.updateAllSummaryOk, ok),
+        { logger: failed ? deps.logger : undefined }
       );
     }),
 
     vscode.commands.registerCommand(COMMANDS.installExtension, async (arg?: unknown) => {
       const id = extractExtensionId(arg);
       if (!id) {
-        void vscode.window.showWarningMessage(
-          getLocalization(LocalizationKeys.installExtensionRequiresNode)
-        );
+        void notifyWarn(getLocalization(LocalizationKeys.installExtensionRequiresNode));
         return;
       }
       if (deps.extensions.isInstalled(id)) {
-        void vscode.window.showInformationMessage(
-          getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, id)
-        );
+        void notifyInfo(getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, id));
         return;
       }
       const result = await deps.extensions.install(id);
       if (result.exitCode !== 0) {
         deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
-        void vscode.window.showErrorMessage(
-          getLocalization(LocalizationKeys.installExtensionFailed, id)
+        void notifyError(
+          getLocalization(LocalizationKeys.installExtensionFailed, id),
+          { logger: deps.logger }
         );
         return;
       }
@@ -117,23 +116,17 @@ export const registerUpdateCommands = (
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.installExtensionSucceeded, id)
-      );
+      void notifyInfo(getLocalization(LocalizationKeys.installExtensionSucceeded, id));
     }),
 
     vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
       const id = extractExtensionId(arg);
       if (!id) {
-        void vscode.window.showWarningMessage(
-          getLocalization(LocalizationKeys.installExtensionRequiresNode)
-        );
+        void notifyWarn(getLocalization(LocalizationKeys.installExtensionRequiresNode));
         return;
       }
       if (!deps.extensions.isInstalled(id)) {
-        void vscode.window.showInformationMessage(
-          getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, id)
-        );
+        void notifyInfo(getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, id));
         return;
       }
 
@@ -181,16 +174,17 @@ export const registerUpdateCommands = (
       deps.tree.refresh();
 
       if (failed > 0) {
-        void vscode.window.showErrorMessage(
+        void notifyError(
           getLocalization(
             LocalizationKeys.uninstallExtensionPartialCascade,
             uninstalled.length,
             order.length
-          )
+          ),
+          { logger: deps.logger }
         );
         return;
       }
-      void vscode.window.showInformationMessage(
+      void notifyInfo(
         installedDependents.length === 0
           ? getLocalization(LocalizationKeys.uninstallExtensionSucceeded, id)
           : getLocalization(
@@ -218,7 +212,7 @@ export const registerUpdateCommands = (
       }
       deps.extensions.clearCliVersionCache();
       await deps.tree.refreshVersionInfo();
-      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.checkForUpdatesDone));
+      void notifyInfo(getLocalization(LocalizationKeys.checkForUpdatesDone));
     })
   );
 };

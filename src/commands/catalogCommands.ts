@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { notifyInfo } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { PublisherCatalogService } from '../services/publisherCatalogService';
 import type { Logger } from '../util/logger';
@@ -22,10 +23,11 @@ export const registerCatalogCommands = (
       await deps.catalog.refresh({ force: true });
       const entries = deps.catalog.current();
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
+      void notifyInfo(
         entries.length > 0
           ? getLocalization(LocalizationKeys.refreshCatalogDone, entries.length)
-          : getLocalization(LocalizationKeys.refreshCatalogEmpty)
+          : getLocalization(LocalizationKeys.refreshCatalogEmpty),
+        { logger: entries.length === 0 ? deps.logger : undefined }
       );
     }),
 
@@ -36,7 +38,7 @@ export const registerCatalogCommands = (
       }
       const entries = deps.catalog.current();
       if (entries.length === 0) {
-        void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.browseEmpty));
+        void notifyInfo(getLocalization(LocalizationKeys.browseEmpty), { logger: deps.logger });
         return;
       }
       const installedIds = new Set(deps.extensions.managed().map(e => e.id));
@@ -90,10 +92,11 @@ export const registerCatalogCommands = (
         }
       );
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
+      void notifyInfo(
         failed
           ? getLocalization(LocalizationKeys.browseInstallSummaryFailed, ok, failed)
-          : getLocalization(LocalizationKeys.browseInstallSummaryOk, ok)
+          : getLocalization(LocalizationKeys.browseInstallSummaryOk, ok),
+        { logger: failed ? deps.logger : undefined }
       );
     })
   );

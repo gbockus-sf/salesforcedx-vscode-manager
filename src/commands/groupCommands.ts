@@ -10,6 +10,7 @@ import {
 import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { notifyInfo, notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
@@ -62,16 +63,14 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   // would install every Salesforce extension ever published. Force the user
   // through the per-extension Install buttons or the Browse command.
   if (group.source === 'catalog') {
-    void vscode.window.showWarningMessage(
-      getLocalization(LocalizationKeys.catalogCannotApplyAsGroup)
-    );
+    await notifyWarn(getLocalization(LocalizationKeys.catalogCannotApplyAsGroup));
     return;
   }
   // Applying a 0-member group with disableOthers scope would wipe out
   // every managed extension. The empty-user-group case is already blocked
   // at save-time by validateGroup.
   if (group.extensions.length === 0) {
-    void vscode.window.showWarningMessage(`Group "${group.label}" has no members.`);
+    await notifyWarn(`Group "${group.label}" has no members.`);
     return;
   }
   const scope = await resolveScope(group, deps.settings, deps.workspaceState);
@@ -111,9 +110,7 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   if (result.needsManualDisable.length) parts.push(getLocalization(LocalizationKeys.applySummaryManualDisable, result.needsManualDisable.length));
   if (result.skipped.length) parts.push(getLocalization(LocalizationKeys.applySummarySkipped, result.skipped.length));
 
-  const logAction = getLocalization(LocalizationKeys.showLog);
-  const choice = await vscode.window.showInformationMessage(parts.join(' · '), logAction);
-  if (choice === logAction) deps.logger.show();
+  await notifyInfo(parts.join(' · '), { logger: deps.logger });
 
   if (result.needsManualDisable.length) {
     await deps.extensions.showManualToggleHint(result.needsManualDisable, 'Disable');
@@ -206,8 +203,9 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       const ids = deps.extensions.managed().map(e => e.id);
       for (const id of ids) await deps.extensions.enable(id);
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.enableAllDone, ids.length)
+      void notifyInfo(
+        getLocalization(LocalizationKeys.enableAllDone, ids.length),
+        { logger: deps.logger }
       );
     }),
 
@@ -216,8 +214,9 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       for (const id of ids) await deps.extensions.disable(id);
       await deps.workspaceState.setActiveGroupId(undefined);
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(
-        getLocalization(LocalizationKeys.disableAllDone, ids.length)
+      void notifyInfo(
+        getLocalization(LocalizationKeys.disableAllDone, ids.length),
+        { logger: deps.logger }
       );
     }),
 
