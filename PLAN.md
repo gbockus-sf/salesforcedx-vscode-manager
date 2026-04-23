@@ -542,3 +542,95 @@ should be addressed before a real release.
   (`onStartup` / `manual` / `never`, default `manual`). A
   periodic/background status-bar badge for pending updates is left
   as a follow-up.
+- [ ] **Switch notification copy from extension ids to display names.**
+  Every `notifyInfo` / `notifyWarn` / `notifyError` call that
+  includes an extension id in the message should route the id
+  through `ExtensionService.getDisplayName(id)` (with the
+  marketplace catalog lookup as a fallback) and show the human
+  name the user recognizes — e.g., "Uninstalled Agentforce Vibes."
+  instead of "Uninstalled salesforce.salesforcedx-einstein-gpt."
+  Keep the raw id in the output-channel log lines; the change is
+  toast-text only.
+
+  Call sites to audit:
+  - `src/commands/updateCommands.ts`: `installExtensionSucceeded`,
+    `installExtensionAlreadyInstalled`, `installExtensionFailed`,
+    `uninstallExtensionConfirm`, `uninstallExtensionSucceeded`,
+    `uninstallExtensionSucceededCascade` (cascade members too),
+    `uninstallExtensionNotInstalled`,
+    `uninstallExtensionCascadeConfirm` (list members by display
+    name), `updateSucceeded`, `updateFailed`.
+  - `src/commands/catalogCommands.ts`: `browseInstallSummaryFailed`
+    per-id log lines.
+  - `src/services/extensionService.ts` `showManualToggleHint` —
+    currently lists raw ids; pluralize by display name.
+
+  Prioritize modal confirm dialogs (uninstall cascade) — users
+  have to read them. Centralize the lookup-then-fallback dance
+  as a helper (`ExtensionService.label(id)` → display name,
+  falling back to the raw id) so every call site is a one-liner.
+  Tests: assert the formatted string contains the display name
+  when known, and still falls back to the id when
+  `getDisplayName` returns undefined.
+
+- [ ] **Telemetry reporting** — add AppInsights-backed telemetry
+  following the Agentforce Vibes pattern at
+  `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/src/services/TelemetryService.ts`.
+  AFV wires a `TelemetryService` singleton initialized via
+  `CoreExtensionService.getTelemetryService()` and sends events
+  (activation, command invocation, feature enablement, errors,
+  feedback) to both AppInsights and a local file when local-
+  telemetry mode is on.
+
+  **Design question to resolve before coding:** how should the
+  manager acquire a telemetry reporter *without* taking a runtime
+  dependency on `salesforce.salesforcedx-vscode-core`? The manager
+  must function when every other Salesforce extension is disabled
+  — the "No `extensionDependencies` on self" rule from CLAUDE.md.
+  A core dep breaks that invariant.
+
+  **Candidate A — pull from `salesforcedx-vscode-services`.**
+  Declare `salesforce.salesforcedx-vscode-services` as an
+  `extensionDependencies` entry and grab a `TelemetryReporter`
+  from its `.exports` at activation. Services is a small shared-
+  runtime extension (not a feature extension), so this is more
+  defensible than depending on core — but it still breaks the
+  standalone-usable promise.
+
+  **Candidate B — bring our own AppInsights reporter.** Use
+  `@vscode/extension-telemetry` directly. Smaller blast radius,
+  no cross-extension coupling. Cost: duplicated config
+  (connection string, opt-out handling, local-file-dump flag).
+
+  **Candidate C — soft dep on services.** Document services as
+  recommended but not required. At activation,
+  `getExtension('…services')?.exports` either returns a reporter
+  or falls back to a no-op. Honest about optionality.
+
+  **Recommendation to discuss:** start with C (optional services
+  integration), add a setting
+  `salesforcedx-vscode-manager.telemetryBackend`
+  (`'services' | 'builtin' | 'disabled'`, default `'services'`
+  with auto-fallback to `'builtin'` if services isn't present).
+
+  **Events worth emitting (v0.1):** activation/deactivation
+  (duration + version); `group.apply` (group.id, group.source,
+  scope, result counts); `extension.install` / `.uninstall` /
+  `.update` (extensionId + source); `catalog.refresh` (entry
+  count + duration); `dependency.check` (pass/warn/fail counts);
+  `error` (stack + command context). All events must honor
+  VSCode's `telemetry.telemetryLevel` and never log PII
+  (extension ids OK, group labels OK, file paths NOT).
+
+  Test strategy: unit-test the reporter picker (services present
+  vs absent vs `'disabled'`) against a mock
+  `vscode.extensions.getExtension`; snapshot event payloads for
+  shape + no-PII via a reporter spy.
+
+  Gotcha: if A or C, `getExtension('...services').exports` needs
+  the services extension to be activated first. Await
+  `getExtension(id).activate()` during our activation with a
+  short timeout. AFV does this — mirror it.
+
+  Update `CLAUDE.md` once this lands so future agents don't
+  reintroduce `extensionDependencies: ['...core']`.

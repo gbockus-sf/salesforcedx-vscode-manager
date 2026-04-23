@@ -61,6 +61,45 @@ explicit user request:
   description/tooltip. Log messages and internal identifiers stay
   inline — they're not user-facing. Adding a new string means adding
   an enum entry + value, not editing call sites with English text.
+- **`ExtensionService.getDisplayName(id)` is the single label source.**
+  Tree rendering, notification bodies, quick-pick items, and log/user
+  report copy all route through it so users see `Apex Replay Debugger`
+  instead of `salesforce.salesforcedx-vscode-apex-replay-debugger`.
+  The resolver checks `vscode.extensions.getExtension`, falls back to
+  the on-disk manifest, then the marketplace-catalog snapshot via the
+  `setCatalogDisplayNameLookup` hook, then the raw id. Do not fabricate
+  labels locally; if a caller needs a pretty name it asks the service.
+- **Never call `vscode.window.show*Message` directly for state changes.**
+  Apply / install / uninstall / update results go through
+  `src/util/notify.ts` (`notifyInfo` / `notifyWarn` / `notifyError`),
+  which always attaches at least one action button so VSCode does not
+  auto-dismiss the toast before the user notices. Raw `show*Message`
+  is only acceptable for modal confirmation prompts where the user's
+  response is the point.
+- **`getDependencyGraph` reads disk for mid-session installs.**
+  `vscode.extensions.all` only refreshes on reload, so
+  `ExtensionService.augmentGraphFromDisk` scans
+  `~/.vscode/extensions/<id>-<version>/package.json` and merges any
+  `extensionDependencies` / `extensionPack` entries into the live
+  graph. Every consumer of the graph calls `getDependencyGraph()`, not
+  a one-shot snapshot — do not cache the result across an
+  install/uninstall boundary.
+- **`applyGroup` re-snapshots the graph after the install pass.**
+  A fresh install during apply can pull in deps that our pre-install
+  graph did not know about (this is what caused `einstein-gpt` to get
+  uninstalled when applying the Apex group). Any change to the applier
+  must preserve the "install → re-snapshot graph → then disable/
+  uninstall" ordering. If you add a new phase to apply, re-snapshot
+  between phases that can invalidate the graph.
+- **Per-extension uninstall cascades through `transitiveDependents`.**
+  `uninstallExtension` enumerates transitive dependents via
+  `ExtensionService.transitiveDependents`, shows one modal listing the
+  cascade, and then uninstalls in `topologicalUninstallOrder` (leaves
+  first). This is the only way the `code` CLI accepts the uninstall;
+  otherwise it errors with `Cannot uninstall X. Y depends on this.`
+  Do not add a "force uninstall" path that bypasses the cascade —
+  VSCode does not expose one, and silently skipping the dependents
+  strands them in a broken state.
 
 ## Code style
 
