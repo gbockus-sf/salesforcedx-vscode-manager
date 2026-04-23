@@ -217,6 +217,31 @@ describe('GroupStore', () => {
       expect(ids).toContain('salesforce-extension-pack');
       expect(ids).not.toContain('pack:salesforce.salesforcedx-vscode');
     });
+
+    it('handcrafted Anypoint-pack built-in is suppressed when the pack is installed', () => {
+      // Same override mechanic as the Salesforce pack — if the real
+      // Anypoint Extension Pack is on disk the pack-discovery entry wins.
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        {
+          id: 'salesforce.mule-dx-extension-pack',
+          packageJSON: {
+            displayName: 'Anypoint Extension Pack',
+            extensionPack: ['salesforce.mule-dx-vscode']
+          }
+        } as unknown as vscode.Extension<unknown>
+      ];
+      const store = new GroupStore(mkSettings());
+      const ids = store.list().map(g => g.id);
+      expect(ids).toContain('pack:salesforce.mule-dx-extension-pack');
+      expect(ids).not.toContain('anypoint-extension-pack');
+    });
+
+    it('handcrafted Anypoint-pack built-in remains visible when the pack is NOT installed', () => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+      const store = new GroupStore(mkSettings());
+      const ids = store.list().map(g => g.id);
+      expect(ids).toContain('anypoint-extension-pack');
+    });
   });
 
   describe('publisher catalog groups', () => {

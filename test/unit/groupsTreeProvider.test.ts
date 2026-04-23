@@ -68,7 +68,8 @@ describe('GroupsTreeProvider', () => {
       'lightning',
       'react',
       'salesforce-extension-pack',
-      'salesforce-extension-pack-expanded'
+      'salesforce-extension-pack-expanded',
+      'anypoint-extension-pack'
     ]);
     expect(roots.every(r => r.kind === 'group')).toBe(true);
   });

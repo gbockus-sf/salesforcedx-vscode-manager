@@ -14,7 +14,8 @@ import type { Group } from './types';
  */
 const BUILT_IN_TO_PACK_OVERRIDE: Record<string, string> = {
   'salesforce-extension-pack': packGroupId('salesforce.salesforcedx-vscode'),
-  'salesforce-extension-pack-expanded': packGroupId('salesforce.salesforcedx-vscode-expanded')
+  'salesforce-extension-pack-expanded': packGroupId('salesforce.salesforcedx-vscode-expanded'),
+  'anypoint-extension-pack': packGroupId('salesforce.mule-dx-extension-pack')
 };
 
 /** Where a user-defined group lives. Built-ins are source-level. */

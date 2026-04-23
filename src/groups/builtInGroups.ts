@@ -103,5 +103,23 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
     ],
     builtIn: true,
     marketplaceExtensionId: 'salesforce.salesforcedx-vscode-expanded'
+  },
+  {
+    id: 'anypoint-extension-pack',
+    label: 'Anypoint Extension Pack',
+    description:
+      'Every member of the `salesforce.mule-dx-extension-pack` (Anypoint Code Builder). Kept in sync with the pack manifest; suppressed automatically when the pack itself is installed and discovered via packGroups.',
+    extensions: [
+      'salesforce.mule-dx-api-component',
+      'salesforce.mule-dx-apikit-component',
+      'salesforce.mule-dx-data-weave-client',
+      'salesforce.mule-dx-mule-dev-component',
+      'salesforce.mule-dx-munit-component',
+      'salesforce.mule-dx-dependencies',
+      'salesforce.mule-dx-vscode',
+      'salesforce.mule-dx-runtime'
+    ],
+    builtIn: true,
+    marketplaceExtensionId: 'salesforce.mule-dx-extension-pack'
   }
 ];
