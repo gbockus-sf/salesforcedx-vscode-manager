@@ -119,15 +119,23 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       const labels: string[] = [];
       if (node.isActive) labels.push(getLocalization(LocalizationKeys.groupActive));
       labels.push(
-        node.group.builtIn
-          ? getLocalization(LocalizationKeys.groupBuiltIn)
-          : getLocalization(LocalizationKeys.groupCustom)
+        node.group.source === 'pack'
+          ? getLocalization(LocalizationKeys.groupExtensionPack)
+          : node.group.builtIn
+            ? getLocalization(LocalizationKeys.groupBuiltIn)
+            : getLocalization(LocalizationKeys.groupCustom)
       );
       if (scopeBadge) labels.push(scopeBadge);
       item.description = labels.join(' · ');
+      // Pack groups get a distinct icon so they stand out from the
+      // handcrafted Apex / Lightning / React built-ins.
+      item.iconPath = new vscode.ThemeIcon(
+        node.isActive ? 'check' : node.group.source === 'pack' ? 'package' : 'layers'
+      );
+      item.contextValue = node.group.source === 'pack'
+        ? 'group:pack'
+        : `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
       item.tooltip = node.group.description ?? node.group.label;
-      item.iconPath = new vscode.ThemeIcon(node.isActive ? 'check' : 'layers');
-      item.contextValue = `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
       return item;
     }
 

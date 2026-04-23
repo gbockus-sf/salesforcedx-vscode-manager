@@ -18,6 +18,7 @@ All notable changes to `salesforcedx-vscode-manager` will be documented in this 
 - **Workspace-scoped groups.** `SettingsService.getGroupsByScope()` now surfaces the user and workspace layers separately; `GroupStore.upsert/remove/moveToScope` route to the right `ConfigurationTarget`. New `SFDX Manager: Move Group to User / Workspace...` command. Groups tree shows a `user` / `workspace` badge next to each user-defined group so the scope is visible at a glance.
 - **Keybinding:** `Cmd+Alt+G` (macOS) / `Ctrl+Alt+G` fires `sfdxManager.applyGroupQuickPick` for fast group switching.
 - **`SFDX Manager: Check for Extension Updates` now also triggers VSCode's native `workbench.extensions.action.checkForUpdates`** so users see the familiar Extensions-view Update badges alongside the manager's arrow indicators. Our marketplace probe remains the structured source.
+- **Extension packs surface as groups.** Every installed Salesforce-published extension whose `package.json` declares an `extensionPack` now appears as a read-only group in the tree (id `pack:<extensionId>`, label from the pack's `displayName`, tagged with an `extension pack` badge and a `$(package)` icon). Apply uses the pack's own member list, so a freshly-installed `salesforce.salesforcedx-vscode` gives you a one-click "Apex + Lightning + LWC + …" group without any configuration. Delete / Edit / Move-scope are hidden for pack groups — the pack's manifest is the source of truth.
 
 ## [0.1.0] — Unreleased
 

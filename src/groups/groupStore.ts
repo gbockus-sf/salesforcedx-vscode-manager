@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getLocalization, LocalizationKeys } from '../localization';
 import type { SettingsService } from '../services/settingsService';
 import { BUILT_IN_GROUPS } from './builtInGroups';
+import { discoverPackGroups } from './packGroups';
 import type { Group } from './types';
 
 /** Where a user-defined group lives. Built-ins are source-level. */
@@ -16,6 +17,8 @@ export type GroupScope = 'user' | 'workspace' | 'builtIn';
  * be non-empty after merge (and the override could be a deliberate clear).
  */
 export const validateGroup = (group: Group): string | undefined => {
+  // User-authored ids must avoid `:` so they can't collide with the
+  // `pack:<extensionId>` ids we synthesize for discovered extension packs.
   if (!group.id || !/^[a-z][a-z0-9-]*$/.test(group.id)) {
     return getLocalization(LocalizationKeys.validateGroupBadId);
   }
@@ -63,14 +66,22 @@ export class GroupStore {
     for (const builtIn of BUILT_IN_GROUPS) {
       const override = userById.get(builtIn.id);
       if (override) {
-        merged.push({ ...override, id: builtIn.id, builtIn: true });
+        merged.push({ ...override, id: builtIn.id, builtIn: true, source: 'code' });
       } else {
-        merged.push(builtIn);
+        merged.push({ ...builtIn, source: 'code' });
       }
       seen.add(builtIn.id);
     }
+    // Discovered Salesforce extension-pack groups. Appear after the
+    // handcrafted built-ins but before user groups — they're still
+    // built-in semantically but sourced from whatever packs are installed.
+    for (const packGroup of discoverPackGroups()) {
+      if (seen.has(packGroup.id)) continue; // belt-and-suspenders; pack ids use a `:` prefix
+      merged.push(packGroup);
+      seen.add(packGroup.id);
+    }
     for (const [id, g] of userById) {
-      if (!seen.has(id)) merged.push({ ...g, id, builtIn: false });
+      if (!seen.has(id)) merged.push({ ...g, id, builtIn: false, source: 'user' });
     }
     return merged;
   }
@@ -109,9 +120,16 @@ export class GroupStore {
   /**
    * For built-ins: clears any user and workspace overrides so the group
    * reverts to defaults. For user groups: removes the entry from whichever
-   * layer(s) contain it.
+   * layer(s) contain it. Pack-discovered groups cannot be removed — their
+   * definition lives in the pack's own manifest, so the only way to remove
+   * them is to uninstall the pack extension.
    */
   async remove(id: string): Promise<void> {
+    if (id.startsWith('pack:')) {
+      throw new Error(
+        'Extension-pack groups are read-only. Uninstall the pack itself to remove the group.'
+      );
+    }
     const { user, workspace } = this.settings.getGroupsByScope();
     let changed = false;
     if (id in workspace) {
@@ -137,6 +155,9 @@ export class GroupStore {
    * No-op if the group is already in the target layer.
    */
   async moveToScope(id: string, target: Exclude<GroupScope, 'builtIn'>): Promise<void> {
+    if (id.startsWith('pack:')) {
+      throw new Error('Extension-pack groups live in the pack manifest and cannot be moved.');
+    }
     const group = this.get(id);
     if (!group) throw new Error(getLocalization(LocalizationKeys.groupNotFound, id));
     const currentScope = this.getScope(id);

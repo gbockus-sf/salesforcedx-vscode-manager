@@ -144,5 +144,7 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.moveGroupScopeBuiltInError]: 'Built-in groups cannot be moved. Create an override first with Edit Group.',
   [LocalizationKeys.moveGroupScopeDone]: '{0} moved to {1} scope.',
   [LocalizationKeys.scopeBadgeUser]: 'user',
-  [LocalizationKeys.scopeBadgeWorkspace]: 'workspace'
+  [LocalizationKeys.scopeBadgeWorkspace]: 'workspace',
+
+  [LocalizationKeys.groupExtensionPack]: 'extension pack'
 };

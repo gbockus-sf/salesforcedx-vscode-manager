@@ -159,5 +159,8 @@ export enum LocalizationKeys {
   moveGroupScopeBuiltInError = 'moveGroupScopeBuiltInError',
   moveGroupScopeDone = 'moveGroupScopeDone',
   scopeBadgeUser = 'scopeBadgeUser',
-  scopeBadgeWorkspace = 'scopeBadgeWorkspace'
+  scopeBadgeWorkspace = 'scopeBadgeWorkspace',
+
+  // pack groups
+  groupExtensionPack = 'groupExtensionPack'
 }

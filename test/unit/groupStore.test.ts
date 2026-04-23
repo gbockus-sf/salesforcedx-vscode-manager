@@ -158,6 +158,49 @@ describe('GroupStore', () => {
     });
   });
 
+  describe('pack groups', () => {
+    beforeEach(() => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        {
+          id: 'salesforce.salesforcedx-vscode',
+          packageJSON: {
+            displayName: 'Salesforce Extension Pack',
+            extensionPack: [
+              'salesforce.salesforcedx-vscode-apex',
+              'salesforce.salesforcedx-vscode-core'
+            ]
+          }
+        } as unknown as vscode.Extension<unknown>
+      ];
+    });
+    afterEach(() => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+    });
+
+    it('list() surfaces every Salesforce-published pack with source="pack"', () => {
+      const store = new GroupStore(mkSettings());
+      const pack = store.list().find(g => g.id === 'pack:salesforce.salesforcedx-vscode');
+      expect(pack?.source).toBe('pack');
+      expect(pack?.builtIn).toBe(true);
+      expect(pack?.extensions).toEqual([
+        'salesforce.salesforcedx-vscode-apex',
+        'salesforce.salesforcedx-vscode-core'
+      ]);
+    });
+
+    it('remove() refuses to touch a pack group', async () => {
+      const store = new GroupStore(mkSettings());
+      await expect(store.remove('pack:salesforce.salesforcedx-vscode')).rejects.toThrow(/read-only/i);
+    });
+
+    it('moveToScope() refuses to move a pack group', async () => {
+      const store = new GroupStore(mkSettings());
+      await expect(
+        store.moveToScope('pack:salesforce.salesforcedx-vscode', 'workspace')
+      ).rejects.toThrow(/pack manifest/i);
+    });
+  });
+
   it('remove() on a built-in clears the user override (but the group stays visible)', async () => {
     const settings = mkSettings({
       apex: { label: 'overridden', extensions: [] }
