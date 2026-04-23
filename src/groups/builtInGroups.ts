@@ -40,5 +40,66 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
     description: 'React / JS tooling. Empty by default — edit this group with the members you want.',
     extensions: [],
     builtIn: true
+  },
+  {
+    id: 'salesforce-extension-pack',
+    label: 'Salesforce Extension Pack',
+    description:
+      'Every member of the `salesforce.salesforcedx-vscode` extension pack. Kept in sync with the pack manifest at packages/salesforcedx-vscode/package.json.',
+    extensions: [
+      'salesforce.salesforcedx-vscode-agents',
+      'salesforce.salesforcedx-vscode-apex',
+      'salesforce.salesforcedx-vscode-apex-testing',
+      'salesforce.salesforcedx-vscode-apex-oas',
+      'salesforce.salesforcedx-vscode-apex-log',
+      'salesforce.salesforcedx-vscode-apex-replay-debugger',
+      'salesforce.salesforcedx-einstein-gpt',
+      'salesforce.salesforcedx-vscode-core',
+      'salesforce.salesforcedx-vscode-lightning',
+      'salesforce.salesforcedx-vscode-org',
+      'salesforce.salesforcedx-vscode-org-browser',
+      'salesforce.salesforcedx-vscode-visualforce',
+      'salesforce.salesforcedx-vscode-lwc',
+      'salesforce.salesforcedx-vscode-metadata',
+      'salesforce.salesforcedx-vscode-services',
+      'salesforce.salesforcedx-vscode-soql',
+      'salesforce.salesforce-vscode-slds',
+      'salesforce.sfdx-code-analyzer-vscode',
+      'salesforce.apex-language-server-extension'
+    ],
+    builtIn: true
+  },
+  {
+    id: 'salesforce-extension-pack-expanded',
+    label: 'Salesforce Extension Pack (Expanded)',
+    description:
+      'Every member of the `salesforce.salesforcedx-vscode-expanded` extension pack, including the third-party additions (XML, Prettier, Lana). Kept in sync with packages/salesforcedx-vscode-expanded/package.json.',
+    extensions: [
+      'salesforce.salesforcedx-vscode-agents',
+      'salesforce.salesforcedx-vscode-apex',
+      'salesforce.salesforcedx-vscode-apex-log',
+      'salesforce.salesforcedx-vscode-apex-testing',
+      'salesforce.salesforcedx-vscode-apex-oas',
+      'salesforce.salesforcedx-vscode-apex-replay-debugger',
+      'salesforce.salesforcedx-einstein-gpt',
+      'salesforce.salesforcedx-vscode-core',
+      'salesforce.salesforcedx-vscode-lightning',
+      'salesforce.salesforcedx-vscode-org',
+      'salesforce.salesforcedx-vscode-org-browser',
+      'salesforce.salesforcedx-vscode-visualforce',
+      'salesforce.salesforcedx-vscode-lwc',
+      'salesforce.salesforcedx-vscode-media',
+      'salesforce.salesforcedx-vscode-metadata',
+      'salesforce.salesforcedx-vscode-soql',
+      'salesforce.salesforcedx-vscode-services',
+      'salesforce.salesforce-vscode-slds',
+      'salesforce.sfdx-code-analyzer-vscode',
+      'salesforce.salesforcedx-vscode-ui-preview',
+      'salesforce.apex-language-server-extension',
+      'redhat.vscode-xml',
+      'esbenp.prettier-vscode',
+      'financialforce.lana'
+    ],
+    builtIn: true
   }
 ];

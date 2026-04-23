@@ -52,7 +52,13 @@ describe('GroupsTreeProvider', () => {
   it('root children are the built-in groups', () => {
     const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
     const roots = tree.getChildren() as Array<{ kind: 'group'; group: { id: string } }>;
-    expect(roots.map(r => r.group.id)).toEqual(['apex', 'lightning', 'react']);
+    expect(roots.map(r => r.group.id)).toEqual([
+      'apex',
+      'lightning',
+      'react',
+      'salesforce-extension-pack',
+      'salesforce-extension-pack-expanded'
+    ]);
     expect(roots.every(r => r.kind === 'group')).toBe(true);
   });
 
