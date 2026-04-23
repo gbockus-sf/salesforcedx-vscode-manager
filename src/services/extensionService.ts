@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { EXTENSION_ID, SALESFORCE_PUBLISHER } from '../constants';
 import { compare as compareVersions } from '../dependencies/versionCompare';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { CodeCliService } from './codeCliService';
 import type { SettingsService } from './settingsService';
 import type { Logger } from '../util/logger';
@@ -316,7 +317,7 @@ export class ExtensionService {
     const query = ids.map(i => `@installed ${i}`).join(' ');
     await vscode.commands.executeCommand('workbench.extensions.search', query);
     await vscode.window.showInformationMessage(
-      `${action} the ${ids.length} extension(s) shown in the Extensions view.`
+      getLocalization(LocalizationKeys.manualToggleHint, action, ids.length)
     );
   }
 

@@ -90,6 +90,51 @@ sets don't overlap. Rough rules of thumb for this repo:
   tick checkboxes, merge conflicts are trivial but unavoidable. Assign each
   agent its own TODO section or resolve manually on merge.
 
+## Translating
+
+All user-facing strings are externalized.
+
+### Two translation surfaces
+
+1. **`package.json` contributions** (command titles, view names,
+   configuration descriptions, walkthrough steps). English defaults live
+   in `package.nls.json` under keys like
+   `salesforcedx-vscode-manager.command.applyGroupQuickPick.title`. To
+   add a translation, ship `package.nls.<locale>.json` (e.g.,
+   `package.nls.ja.json`) next to it with the same keys.
+2. **Runtime strings in `src/**/*.ts`** (toasts, Quick Pick prompts,
+   status-bar tooltips, tree-item descriptions). English defaults live
+   in `src/localization/localizationValues.ts`. Callers never pass raw
+   strings — they invoke
+   `getLocalization(LocalizationKeys.someKey, ...args)`. To add a
+   translation, ship `l10n/bundle.l10n.<locale>.json` with a map from
+   the **English source string** (the value from `localizationValues`)
+   to the translated string.
+
+### Adding a new key
+
+1. Add the enum entry to `src/localization/localizationKeys.ts`.
+2. Add the default English value to
+   `src/localization/localizationValues.ts`.
+3. Swap the call site to `getLocalization(LocalizationKeys.newKey, ...)`.
+4. Run `npm test` — `test/unit/localization.test.ts` fails CI if a key
+   has no value, which catches drift.
+5. If the new string references `{0}` / `{1}` placeholders, test with
+   the expected positional args.
+
+### Regenerating the bundle
+
+```bash
+npm run l10n
+```
+
+Runs `@vscode/l10n-dev export --outDir ./l10n ./src`. For our enum-lookup
+pattern the output is usually empty (the exporter scans for literal
+`vscode.l10n.t('...')` calls, not indirected lookups), so the
+`l10n/bundle.l10n.json` seed is just `{}`. Translators ship their own
+`bundle.l10n.<locale>.json` keyed by the English source strings in
+`localizationValues.ts`.
+
 ## Keeping the effort ledger current
 
 After any substantial task, update [`TRACKING.md`](./TRACKING.md):

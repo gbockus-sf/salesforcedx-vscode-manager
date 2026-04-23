@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { Group } from '../groups/types';
 import type { GroupStore } from '../groups/groupStore';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { ExtensionService, NodeVersionInfo } from '../services/extensionService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
 
@@ -108,7 +109,11 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
         node.group.label,
         vscode.TreeItemCollapsibleState.Collapsed
       );
-      item.description = node.isActive ? 'active' : node.group.builtIn ? 'built-in' : 'custom';
+      item.description = node.isActive
+        ? getLocalization(LocalizationKeys.groupActive)
+        : node.group.builtIn
+          ? getLocalization(LocalizationKeys.groupBuiltIn)
+          : getLocalization(LocalizationKeys.groupCustom);
       item.tooltip = node.group.description ?? node.group.label;
       item.iconPath = new vscode.ThemeIcon(node.isActive ? 'check' : 'layers');
       item.contextValue = `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
@@ -118,8 +123,14 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     if (node.kind === 'dep-child') {
       const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
       const item = new vscode.TreeItem(short, vscode.TreeItemCollapsibleState.None);
-      item.description = node.relation === 'pack' ? 'pack member' : 'dependency';
-      const state = !node.installed ? 'not installed' : node.enabled ? 'enabled' : 'disabled';
+      item.description = node.relation === 'pack'
+        ? getLocalization(LocalizationKeys.dependencyChildPack)
+        : getLocalization(LocalizationKeys.dependencyChildDep);
+      const state = !node.installed
+        ? getLocalization(LocalizationKeys.dependencyChildNotInstalled)
+        : node.enabled
+          ? getLocalization(LocalizationKeys.dependencyChildEnabled)
+          : getLocalization(LocalizationKeys.dependencyChildDisabled);
       item.tooltip = `${node.extensionId} (${state})`;
       item.iconPath = new vscode.ThemeIcon(node.relation === 'pack' ? 'package' : 'link');
       item.contextValue = `extension:child:${node.relation}`;
@@ -156,30 +167,34 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   }
 
   private formatDescription(node: ExtensionNode): string {
-    if (!node.installed) return 'not installed';
+    if (!node.installed) return getLocalization(LocalizationKeys.extensionNotInstalled);
     const bits: string[] = [];
     if (node.installedVersion) bits.push(`v${stripLeadingV(node.installedVersion)}`);
-    if (!node.enabled) bits.push('disabled');
-    if (node.source === 'vsix') bits.push('vsix');
+    if (!node.enabled) bits.push(getLocalization(LocalizationKeys.extensionDisabled));
+    if (node.source === 'vsix') bits.push(getLocalization(LocalizationKeys.extensionVsixBadge));
     if (node.updateAvailable && node.latestVersion) {
-      bits.push(`update → v${stripLeadingV(node.latestVersion)}`);
+      bits.push(getLocalization(LocalizationKeys.extensionUpdateBadge, stripLeadingV(node.latestVersion)));
     }
     return bits.length > 0 ? bits.join(' · ') : '';
   }
 
   private buildTooltip(node: ExtensionNode): string {
     const lines: string[] = [node.extensionId];
-    if (node.installedVersion) lines.push(`Installed: v${stripLeadingV(node.installedVersion)}`);
+    if (node.installedVersion) {
+      lines.push(getLocalization(LocalizationKeys.extensionInstalledLine, stripLeadingV(node.installedVersion)));
+    }
     if (node.latestVersion && node.updateAvailable) {
-      lines.push(`Marketplace: v${stripLeadingV(node.latestVersion)} (update available)`);
+      lines.push(
+        getLocalization(LocalizationKeys.extensionMarketplaceUpdateLine, stripLeadingV(node.latestVersion))
+      );
     }
     if (node.source === 'vsix') {
       lines.push(
         node.vsixFilename
-          ? `Installed from local VSIX: ${node.vsixFilename}`
-          : 'Installed from local VSIX directory'
+          ? getLocalization(LocalizationKeys.extensionVsixTooltip, node.vsixFilename)
+          : getLocalization(LocalizationKeys.extensionVsixTooltipGeneric)
       );
-      lines.push('See resources/walkthrough/vsix.md for the VSIX workflow.');
+      lines.push(getLocalization(LocalizationKeys.extensionVsixWalkthroughHint));
     }
     return lines.join('\n');
   }

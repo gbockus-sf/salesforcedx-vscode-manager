@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { SettingsService } from '../services/settingsService';
 import type { VsixInstaller } from '../vsix/vsixInstaller';
 
@@ -27,10 +28,11 @@ export class VsixStatusBarItem implements vscode.Disposable {
     }
     const sources = this.installer.currentSources();
     const count = Object.values(sources).filter(s => s === 'vsix').length;
-    this.item.text = `$(package) VSIX: ${count}`;
+    const dir = this.settings.getVsixDirectory();
+    this.item.text = getLocalization(LocalizationKeys.statusVsixText, count);
     this.item.tooltip = count > 0
-      ? `${count} extension(s) loaded from ${this.settings.getVsixDirectory()} — click to manage.`
-      : `VSIX directory: ${this.settings.getVsixDirectory()} — no overrides active. Click to manage.`;
+      ? getLocalization(LocalizationKeys.statusVsixTooltipActive, count, dir)
+      : getLocalization(LocalizationKeys.statusVsixTooltipIdle, dir);
     this.item.backgroundColor = count > 0
       ? new vscode.ThemeColor('statusBarItem.warningBackground')
       : undefined;

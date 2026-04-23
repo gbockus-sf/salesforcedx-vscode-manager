@@ -7,6 +7,7 @@ import { COMMANDS, CONFIG_NAMESPACE, SETTINGS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS
 import { DependencyRegistry } from './dependencies/registry';
 import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
+import { getLocalization, LocalizationKeys } from './localization';
 import { CodeCliService } from './services/codeCliService';
 import { ExtensionService } from './services/extensionService';
 import { MarketplaceVersionService } from './services/marketplaceVersionService';
@@ -59,13 +60,14 @@ export const activate = (context: vscode.ExtensionContext): void => {
   if (vsixWatcher) context.subscriptions.push(vsixWatcher);
 
   if (scanner.isConfigured() && !scanner.exists()) {
+    const openSettings = getLocalization(LocalizationKeys.openSettingsAction);
     void vscode.window
       .showWarningMessage(
-        `VSIX directory "${scanner.getDirectory()}" does not exist.`,
-        'Open Settings'
+        getLocalization(LocalizationKeys.vsixDirectoryMissingWarn, scanner.getDirectory()),
+        openSettings
       )
       .then(choice => {
-        if (choice === 'Open Settings') {
+        if (choice === openSettings) {
           void vscode.commands.executeCommand(
             'workbench.action.openSettings',
             `${CONFIG_NAMESPACE}.${SETTINGS.vsixDirectory}`

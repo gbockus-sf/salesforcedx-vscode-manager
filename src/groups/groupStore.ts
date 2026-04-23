@@ -1,3 +1,4 @@
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { SettingsService } from '../services/settingsService';
 import { BUILT_IN_GROUPS } from './builtInGroups';
 import type { Group } from './types';
@@ -12,13 +13,13 @@ import type { Group } from './types';
  */
 export const validateGroup = (group: Group): string | undefined => {
   if (!group.id || !/^[a-z][a-z0-9-]*$/.test(group.id)) {
-    return 'Group id must start with a letter and contain only lowercase letters, digits, and dashes.';
+    return getLocalization(LocalizationKeys.validateGroupBadId);
   }
   if (!group.label || group.label.trim().length === 0) {
-    return 'Group label is required.';
+    return getLocalization(LocalizationKeys.validateGroupMissingLabel);
   }
   if (group.extensions.length === 0 && group.builtIn !== true) {
-    return `Group "${group.label}" is empty. Add at least one extension before saving.`;
+    return getLocalization(LocalizationKeys.validateGroupEmpty, group.label);
   }
   return undefined;
 };
@@ -87,7 +88,7 @@ export class GroupStore {
     const raw = { ...this.settings.getGroupsRaw() };
     if (!(id in raw)) {
       const isBuiltIn = BUILT_IN_GROUPS.some(g => g.id === id);
-      if (!isBuiltIn) throw new Error(`Group "${id}" not found.`);
+      if (!isBuiltIn) throw new Error(getLocalization(LocalizationKeys.groupNotFound, id));
       return;
     }
     delete raw[id];

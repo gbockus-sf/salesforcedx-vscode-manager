@@ -481,7 +481,7 @@ should be addressed before a real release.
   results to callers); this just adds a complementary trigger. Pattern:
   `await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates')`
   then `await groupsTree.refreshVersionInfo()`.
-- [ ] **Externalize all user-facing strings** from both `package.json` and
+- [x] **Externalize all user-facing strings** from both `package.json` and
   the extension source, following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/` (which in
   turn follows VSCode's official `vscode.l10n` flow). Concretely:

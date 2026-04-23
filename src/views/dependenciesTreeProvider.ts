@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { DependencyRegistry } from '../dependencies/registry';
 import type { DependencyCheck, DependencyStatus } from '../dependencies/types';
+import { getLocalization, LocalizationKeys } from '../localization';
 
 export type DependenciesNode = CategoryNode | CheckNode;
 
@@ -16,10 +17,12 @@ interface CheckNode {
   status: DependencyStatus;
 }
 
-const CATEGORY_LABEL: Record<DependencyCheck['category'], string> = {
-  cli: 'CLIs',
-  runtime: 'Runtimes',
-  'per-extension': 'Per-Extension'
+const categoryLabel = (category: DependencyCheck['category']): string => {
+  switch (category) {
+    case 'cli': return getLocalization(LocalizationKeys.depCategoryCli);
+    case 'runtime': return getLocalization(LocalizationKeys.depCategoryRuntime);
+    case 'per-extension': return getLocalization(LocalizationKeys.depCategoryPerExtension);
+  }
 };
 
 const CATEGORY_ORDER: DependencyCheck['category'][] = ['cli', 'runtime', 'per-extension'];
@@ -77,7 +80,7 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
   getTreeItem(node: DependenciesNode): vscode.TreeItem {
     if (node.kind === 'category') {
       const item = new vscode.TreeItem(
-        CATEGORY_LABEL[node.category],
+        categoryLabel(node.category),
         vscode.TreeItemCollapsibleState.Expanded
       );
       item.description = `${node.checks.length}`;
@@ -92,7 +95,7 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
     const item = new vscode.TreeItem(node.check.label, vscode.TreeItemCollapsibleState.None);
     const detail =
       status.state === 'unknown'
-        ? 'not run yet'
+        ? getLocalization(LocalizationKeys.depStateNotRunYet)
         : status.version
           ? status.version
           : status.detail
@@ -111,8 +114,12 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
         : node.check.ownerExtensionId
           ? [node.check.ownerExtensionId]
           : [];
-    if (owners.length > 0) tooltipLines.push(`Required by: ${owners.join(', ')}`);
-    if (node.check.remediation) tooltipLines.push(`Fix: ${node.check.remediation}`);
+    if (owners.length > 0) {
+      tooltipLines.push(getLocalization(LocalizationKeys.depRequiredBy, owners.join(', ')));
+    }
+    if (node.check.remediation) {
+      tooltipLines.push(getLocalization(LocalizationKeys.depFixLabel, node.check.remediation));
+    }
     if (node.check.remediationUrl) tooltipLines.push(node.check.remediationUrl);
     item.tooltip = tooltipLines.join('\n');
     item.contextValue = node.check.remediationUrl ? 'check:withRemediationUrl' : 'check';
@@ -149,7 +156,7 @@ export const formatReport = (
   for (const cat of CATEGORY_ORDER) {
     const inCat = checks.filter(c => c.category === cat);
     if (inCat.length === 0) continue;
-    lines.push(`## ${CATEGORY_LABEL[cat]}`, '');
+    lines.push(`## ${categoryLabel(cat)}`, '');
     for (const c of inCat) {
       const s = statuses.get(c.id) ?? { state: 'unknown' };
       const badge = s.state === 'ok' ? 'OK' : s.state === 'warn' ? 'WARN' : s.state === 'fail' ? 'FAIL' : '—';

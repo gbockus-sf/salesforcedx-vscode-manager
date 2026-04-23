@@ -1,10 +1,11 @@
 {
   "name": "salesforcedx-vscode-manager",
-  "displayName": "Salesforce Extensions Manager",
-  "description": "Manage which Salesforce VSCode extensions are enabled, verify external dependencies, and override with local VSIX builds.",
+  "displayName": "%salesforcedx-vscode-manager.displayName%",
+  "description": "%salesforcedx-vscode-manager.description%",
   "version": "0.1.0",
   "publisher": "salesforce",
   "license": "BSD-3-Clause",
+  "l10n": "./l10n",
   "engines": {
     "vscode": "^1.86.0"
   },
@@ -17,26 +18,26 @@
   ],
   "contributes": {
     "commands": [
-      { "command": "sfdxManager.applyGroupQuickPick", "title": "Apply Group...", "category": "SFDX Manager", "icon": "$(play)" },
-      { "command": "sfdxManager.applyGroup", "title": "Apply Group", "category": "SFDX Manager", "icon": "$(play)" },
-      { "command": "sfdxManager.enableAllSalesforce", "title": "Enable All Managed Extensions", "category": "SFDX Manager", "icon": "$(check-all)" },
-      { "command": "sfdxManager.disableAllSalesforce", "title": "Disable All Managed Extensions", "category": "SFDX Manager", "icon": "$(circle-slash)" },
-      { "command": "sfdxManager.createCustomGroup", "title": "Create Custom Group", "category": "SFDX Manager", "icon": "$(add)" },
-      { "command": "sfdxManager.editGroup", "title": "Edit Group", "category": "SFDX Manager", "icon": "$(edit)" },
-      { "command": "sfdxManager.deleteGroup", "title": "Delete Group", "category": "SFDX Manager", "icon": "$(trash)" },
-      { "command": "sfdxManager.openGroupsConfig", "title": "Open Groups Setting", "category": "SFDX Manager", "icon": "$(settings-gear)" },
-      { "command": "sfdxManager.showDependencies", "title": "Show Dependencies", "category": "SFDX Manager", "icon": "$(checklist)" },
-      { "command": "sfdxManager.runDependencyCheck", "title": "Run Dependency Check", "category": "SFDX Manager", "icon": "$(refresh)" },
-      { "command": "sfdxManager.copyDependencyReport", "title": "Copy Dependency Report", "category": "SFDX Manager", "icon": "$(clippy)" },
-      { "command": "sfdxManager.openRemediationUrl", "title": "Open Remediation Link", "category": "SFDX Manager", "icon": "$(link-external)" },
-      { "command": "sfdxManager.refreshFromVsixDirectory", "title": "Refresh from VSIX Directory", "category": "SFDX Manager", "icon": "$(cloud-download)" },
-      { "command": "sfdxManager.openVsixDirectory", "title": "Open VSIX Directory", "category": "SFDX Manager", "icon": "$(folder-opened)" },
-      { "command": "sfdxManager.clearVsixOverrides", "title": "Clear VSIX Overrides", "category": "SFDX Manager", "icon": "$(clear-all)" },
-      { "command": "sfdxManager.vsixMenu", "title": "VSIX Management...", "category": "SFDX Manager", "icon": "$(package)" },
-      { "command": "sfdxManager.showLog", "title": "Show Log", "category": "SFDX Manager", "icon": "$(output)" },
-      { "command": "sfdxManager.updateExtension", "title": "Update Extension", "category": "SFDX Manager", "icon": "$(arrow-circle-up)" },
-      { "command": "sfdxManager.updateAllSalesforce", "title": "Update All Salesforce Extensions", "category": "SFDX Manager", "icon": "$(sync)" },
-      { "command": "sfdxManager.checkForUpdates", "title": "Check for Extension Updates", "category": "SFDX Manager", "icon": "$(search-refresh)" }
+      { "command": "sfdxManager.applyGroupQuickPick", "title": "%salesforcedx-vscode-manager.command.applyGroupQuickPick.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(play)" },
+      { "command": "sfdxManager.applyGroup", "title": "%salesforcedx-vscode-manager.command.applyGroup.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(play)" },
+      { "command": "sfdxManager.enableAllSalesforce", "title": "%salesforcedx-vscode-manager.command.enableAllSalesforce.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(check-all)" },
+      { "command": "sfdxManager.disableAllSalesforce", "title": "%salesforcedx-vscode-manager.command.disableAllSalesforce.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(circle-slash)" },
+      { "command": "sfdxManager.createCustomGroup", "title": "%salesforcedx-vscode-manager.command.createCustomGroup.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(add)" },
+      { "command": "sfdxManager.editGroup", "title": "%salesforcedx-vscode-manager.command.editGroup.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(edit)" },
+      { "command": "sfdxManager.deleteGroup", "title": "%salesforcedx-vscode-manager.command.deleteGroup.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
+      { "command": "sfdxManager.openGroupsConfig", "title": "%salesforcedx-vscode-manager.command.openGroupsConfig.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(settings-gear)" },
+      { "command": "sfdxManager.showDependencies", "title": "%salesforcedx-vscode-manager.command.showDependencies.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(checklist)" },
+      { "command": "sfdxManager.runDependencyCheck", "title": "%salesforcedx-vscode-manager.command.runDependencyCheck.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(refresh)" },
+      { "command": "sfdxManager.copyDependencyReport", "title": "%salesforcedx-vscode-manager.command.copyDependencyReport.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(clippy)" },
+      { "command": "sfdxManager.openRemediationUrl", "title": "%salesforcedx-vscode-manager.command.openRemediationUrl.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" },
+      { "command": "sfdxManager.refreshFromVsixDirectory", "title": "%salesforcedx-vscode-manager.command.refreshFromVsixDirectory.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
+      { "command": "sfdxManager.openVsixDirectory", "title": "%salesforcedx-vscode-manager.command.openVsixDirectory.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(folder-opened)" },
+      { "command": "sfdxManager.clearVsixOverrides", "title": "%salesforcedx-vscode-manager.command.clearVsixOverrides.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(clear-all)" },
+      { "command": "sfdxManager.vsixMenu", "title": "%salesforcedx-vscode-manager.command.vsixMenu.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(package)" },
+      { "command": "sfdxManager.showLog", "title": "%salesforcedx-vscode-manager.command.showLog.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(output)" },
+      { "command": "sfdxManager.updateExtension", "title": "%salesforcedx-vscode-manager.command.updateExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-circle-up)" },
+      { "command": "sfdxManager.updateAllSalesforce", "title": "%salesforcedx-vscode-manager.command.updateAllSalesforce.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(sync)" },
+      { "command": "sfdxManager.checkForUpdates", "title": "%salesforcedx-vscode-manager.command.checkForUpdates.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(search-refresh)" }
     ],
     "menus": {
       "commandPalette": [
@@ -65,7 +66,7 @@
       "activitybar": [
         {
           "id": "sfdxManager",
-          "title": "Salesforce Extensions Manager",
+          "title": "%salesforcedx-vscode-manager.viewContainer.title%",
           "icon": "resources/icons/sfdx-manager.svg"
         }
       ]
@@ -74,42 +75,42 @@
       "sfdxManager": [
         {
           "id": "sfdxManager.groups",
-          "name": "Groups"
+          "name": "%salesforcedx-vscode-manager.view.groups.name%"
         },
         {
           "id": "sfdxManager.dependencies",
-          "name": "Dependencies"
+          "name": "%salesforcedx-vscode-manager.view.dependencies.name%"
         }
       ]
     },
     "configuration": {
-      "title": "Salesforce Extensions Manager",
+      "title": "%salesforcedx-vscode-manager.configuration.title%",
       "properties": {
         "salesforcedx-vscode-manager.groups": {
           "type": "object",
           "default": {},
-          "description": "User-defined extension groups (merged with built-ins by id)."
+          "description": "%salesforcedx-vscode-manager.configuration.groups.description%"
         },
         "salesforcedx-vscode-manager.applyScope": {
           "type": "string",
           "enum": ["disableOthers", "enableOnly", "ask"],
           "default": "disableOthers",
-          "description": "What to do with managed extensions not in the applied group."
+          "description": "%salesforcedx-vscode-manager.configuration.applyScope.description%"
         },
         "salesforcedx-vscode-manager.backend": {
           "type": "string",
           "enum": ["codeCli", "profiles"],
           "enumDescriptions": [
-            "Use the `code` CLI to install/uninstall extensions. Applying a group with scope=disableOthers uninstalls non-members.",
-            "Each group maps to a VSCode Profile; applying a group switches profiles (coarse-grained but cleanly isolated). Reserved for a future release."
+            "%salesforcedx-vscode-manager.configuration.backend.codeCli%",
+            "%salesforcedx-vscode-manager.configuration.backend.profiles%"
           ],
           "default": "codeCli",
-          "description": "How apply-group changes workspace extension state."
+          "description": "%salesforcedx-vscode-manager.configuration.backend.description%"
         },
         "salesforcedx-vscode-manager.autoRunDependencyChecks": {
           "type": "boolean",
           "default": false,
-          "description": "Run dependency checks automatically on startup."
+          "description": "%salesforcedx-vscode-manager.configuration.autoRunDependencyChecks.description%"
         },
         "salesforcedx-vscode-manager.thirdPartyExtensionIds": {
           "type": "array",
@@ -120,81 +121,81 @@
             "esbenp.prettier-vscode",
             "salesforce.lightning-design-system-vscode"
           ],
-          "description": "Non-Salesforce extensions the manager may enable/disable as part of a group."
+          "description": "%salesforcedx-vscode-manager.configuration.thirdPartyExtensionIds.description%"
         },
         "salesforcedx-vscode-manager.vsixDirectory": {
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "description": "Absolute path to a directory of local .vsix files. When a managed extension has a matching vsix, it is installed from there instead of the marketplace."
+          "description": "%salesforcedx-vscode-manager.configuration.vsixDirectory.description%"
         },
         "salesforcedx-vscode-manager.vsixAutoReinstallOnChange": {
           "type": "boolean",
           "default": false,
-          "description": "Automatically reinstall a managed extension when a new matching vsix appears in the vsix directory."
+          "description": "%salesforcedx-vscode-manager.configuration.vsixAutoReinstallOnChange.description%"
         },
         "salesforcedx-vscode-manager.statusBar.showGroup": {
           "type": "boolean",
           "default": true,
-          "description": "Show the active group in the status bar."
+          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showGroup.description%"
         },
         "salesforcedx-vscode-manager.reloadAfterApply": {
           "type": "string",
           "enum": ["auto", "prompt", "never"],
           "enumDescriptions": [
-            "Automatically reload the window after a group apply finishes if any extensions were installed or uninstalled.",
-            "Show one consolidated reload prompt after a group apply instead of VSCode's per-extension reload banners.",
-            "Never prompt; rely on VSCode's built-in per-extension reload banners."
+            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.auto%",
+            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.prompt%",
+            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.never%"
           ],
           "default": "prompt",
-          "description": "How to handle the 'reload required' signal at the end of a group apply. Consolidates VSCode's per-uninstall reload banners into a single prompt."
+          "description": "%salesforcedx-vscode-manager.configuration.reloadAfterApply.description%"
         },
         "salesforcedx-vscode-manager.statusBar.showVsix": {
           "type": "boolean",
           "default": true,
-          "description": "Show the VSIX override indicator in the status bar when a vsix directory is set."
+          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showVsix.description%"
         },
         "salesforcedx-vscode-manager.updateCheck": {
           "type": "string",
           "enum": ["onStartup", "manual", "never"],
           "enumDescriptions": [
-            "Probe the Marketplace for newer versions of managed extensions shortly after activation.",
-            "Only check when the user explicitly invokes the 'Check for Extension Updates' command or expands the tree after a refresh.",
-            "Never contact the Marketplace; only show the locally installed version."
+            "%salesforcedx-vscode-manager.configuration.updateCheck.onStartup%",
+            "%salesforcedx-vscode-manager.configuration.updateCheck.manual%",
+            "%salesforcedx-vscode-manager.configuration.updateCheck.never%"
           ],
           "default": "manual",
-          "description": "When the manager should probe the VSCode Marketplace for newer versions of managed extensions. Results are cached in memory for ~1 hour."
+          "description": "%salesforcedx-vscode-manager.configuration.updateCheck.description%"
         }
       }
     },
     "walkthroughs": [
       {
         "id": "sfdxManager.getStarted",
-        "title": "Get Started with the Salesforce Extensions Manager",
-        "description": "Switch between extension groups, verify dependencies, and swap in local VSIX builds.",
+        "title": "%salesforcedx-vscode-manager.walkthrough.title%",
+        "description": "%salesforcedx-vscode-manager.walkthrough.description%",
         "steps": [
           {
             "id": "sfdxManager.walkthrough.applyGroup",
-            "title": "Apply an extension group",
-            "description": "Quickly enable the set of Salesforce extensions you need for the task at hand.\n[Apply a Group](command:sfdxManager.applyGroupQuickPick)",
+            "title": "%salesforcedx-vscode-manager.walkthrough.applyGroup.title%",
+            "description": "%salesforcedx-vscode-manager.walkthrough.applyGroup.description%",
             "media": { "markdown": "resources/walkthrough/apply-group.md" }
           },
           {
             "id": "sfdxManager.walkthrough.dependencies",
-            "title": "Verify dependencies",
-            "description": "See which external prerequisites (Salesforce CLI, Java, Node) are healthy.\n[Check Dependencies](command:sfdxManager.runDependencyCheck)",
+            "title": "%salesforcedx-vscode-manager.walkthrough.dependencies.title%",
+            "description": "%salesforcedx-vscode-manager.walkthrough.dependencies.description%",
             "media": { "markdown": "resources/walkthrough/dependencies.md" }
           },
           {
             "id": "sfdxManager.walkthrough.vsix",
-            "title": "Use a local VSIX directory",
-            "description": "Point at a folder of .vsix files to test unreleased builds without leaving the marketplace install for production.\n[Open VSIX Setting](command:workbench.action.openSettings?%22salesforcedx-vscode-manager.vsixDirectory%22)",
+            "title": "%salesforcedx-vscode-manager.walkthrough.vsix.title%",
+            "description": "%salesforcedx-vscode-manager.walkthrough.vsix.description%",
             "media": { "markdown": "resources/walkthrough/vsix.md" }
           },
           {
             "id": "sfdxManager.walkthrough.statusBar",
-            "title": "Status bar indicators",
-            "description": "The status bar shows the active group and any VSIX overrides; click either to manage.",
+            "title": "%salesforcedx-vscode-manager.walkthrough.statusBar.title%",
+            "description": "%salesforcedx-vscode-manager.walkthrough.statusBar.description%",
             "media": { "markdown": "resources/walkthrough/status-bar.md" }
           }
         ]
@@ -208,6 +209,7 @@
     "bundle:extension": "node ./esbuild.js --production",
     "bundle:vsix": "npm run bundle:extension && npx -y @vscode/vsce package --allow-missing-repository --baseContentUrl https://example.invalid/",
     "vscode:prepublish": "npm run bundle:extension",
+    "l10n": "npx -y @vscode/l10n-dev export --outDir ./l10n ./src",
     "lint": "eslint .",
     "lint-fix": "eslint --fix .",
     "test": "jest --coverage",

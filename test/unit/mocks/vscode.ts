@@ -59,7 +59,21 @@ export const extensions = {
 
 export const env = {
   appRoot: '/fake/app/root',
-  openExternal: jest.fn()
+  openExternal: jest.fn(),
+  clipboard: { writeText: jest.fn() }
+};
+
+/**
+ * Minimal `vscode.l10n` shim: returns the source string with `{n}` placeholders
+ * substituted from the positional args. No translation lookup in tests.
+ */
+export const l10n = {
+  t: jest.fn((message: string, ...args: (string | number | boolean)[]): string =>
+    message.replace(/\{(\d+)\}/g, (_match, digits: string) => {
+      const index = Number(digits);
+      return index < args.length ? String(args[index]) : `{${digits}}`;
+    })
+  )
 };
 
 export const Uri = {

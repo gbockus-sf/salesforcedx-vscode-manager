@@ -3,6 +3,7 @@ import { COMMANDS, CONFIG_NAMESPACE, SETTINGS } from '../constants';
 import { applyGroup } from '../groups/groupApplier';
 import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
@@ -39,10 +40,10 @@ const resolveScope = async (
 
   const choice = await vscode.window.showQuickPick(
     [
-      { label: 'Enable members, disable others', scope: 'disableOthers' as const },
-      { label: 'Enable members only', scope: 'enableOnly' as const }
+      { label: getLocalization(LocalizationKeys.applyScopeDisableOthers), scope: 'disableOthers' as const },
+      { label: getLocalization(LocalizationKeys.applyScopeEnableOnly), scope: 'enableOnly' as const }
     ],
-    { placeHolder: `How should "${group.label}" be applied?` }
+    { placeHolder: getLocalization(LocalizationKeys.applyScopePromptPlaceholder, group.label) }
   );
   if (!choice) return undefined;
   await workspaceState.setApplyScopeChoice(group.id, choice.scope);
@@ -73,18 +74,21 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
     }
   }
 
-  const parts: string[] = [`${group.label} applied.`, `Enabled: ${result.enabled.length}`];
-  if (result.disabled.length) parts.push(`Disabled: ${result.disabled.length}`);
-  if (result.installedFromVsix.length) parts.push(`VSIX: ${result.installedFromVsix.length}`);
+  const parts: string[] = [
+    getLocalization(LocalizationKeys.applySummaryApplied, group.label),
+    getLocalization(LocalizationKeys.applySummaryEnabled, result.enabled.length)
+  ];
+  if (result.disabled.length) parts.push(getLocalization(LocalizationKeys.applySummaryDisabled, result.disabled.length));
+  if (result.installedFromVsix.length) parts.push(getLocalization(LocalizationKeys.applySummaryVsix, result.installedFromVsix.length));
   if (result.dependencyAutoIncluded.length) {
-    parts.push(`Dep auto-included: ${result.dependencyAutoIncluded.length}`);
+    parts.push(getLocalization(LocalizationKeys.applySummaryDepAutoIncluded, result.dependencyAutoIncluded.length));
   }
-  if (result.dependencyBlocked.length) parts.push(`Dep-blocked: ${result.dependencyBlocked.length}`);
-  if (result.needsManualEnable.length) parts.push(`Manual enable: ${result.needsManualEnable.length}`);
-  if (result.needsManualDisable.length) parts.push(`Manual disable: ${result.needsManualDisable.length}`);
-  if (result.skipped.length) parts.push(`Skipped: ${result.skipped.length}`);
+  if (result.dependencyBlocked.length) parts.push(getLocalization(LocalizationKeys.applySummaryDepBlocked, result.dependencyBlocked.length));
+  if (result.needsManualEnable.length) parts.push(getLocalization(LocalizationKeys.applySummaryManualEnable, result.needsManualEnable.length));
+  if (result.needsManualDisable.length) parts.push(getLocalization(LocalizationKeys.applySummaryManualDisable, result.needsManualDisable.length));
+  if (result.skipped.length) parts.push(getLocalization(LocalizationKeys.applySummarySkipped, result.skipped.length));
 
-  const logAction = 'Show log';
+  const logAction = getLocalization(LocalizationKeys.showLog);
   const choice = await vscode.window.showInformationMessage(parts.join(' · '), logAction);
   if (choice === logAction) deps.logger.show();
 
@@ -110,9 +114,9 @@ const maybeReloadAfterApply = async (
     await vscode.commands.executeCommand('workbench.action.reloadWindow');
     return;
   }
-  const reloadChoice = 'Reload Window';
+  const reloadChoice = getLocalization(LocalizationKeys.reloadAfterApplyAction);
   const pick = await vscode.window.showInformationMessage(
-    'Apply complete. Reload window to activate changes?',
+    getLocalization(LocalizationKeys.reloadAfterApplyPrompt),
     reloadChoice
   );
   if (pick === reloadChoice) {
@@ -120,16 +124,18 @@ const maybeReloadAfterApply = async (
   }
 };
 
-const pickGroup = async (deps: Deps, placeholder: string): Promise<Group | undefined> => {
+const pickGroup = async (deps: Deps, placeholder?: string): Promise<Group | undefined> => {
   const groups = deps.store.list();
   const choice = await vscode.window.showQuickPick(
     groups.map(g => ({
       label: g.label,
-      description: g.builtIn ? 'built-in' : 'custom',
+      description: g.builtIn
+        ? getLocalization(LocalizationKeys.groupBuiltIn)
+        : getLocalization(LocalizationKeys.groupCustom),
       detail: g.description,
       group: g
     })),
-    { placeHolder: placeholder }
+    { placeHolder: placeholder ?? getLocalization(LocalizationKeys.pickGroupDefaultPrompt) }
   );
   return choice?.group;
 };
@@ -146,7 +152,7 @@ const pickMembers = async (
   }));
   const picks = await vscode.window.showQuickPick(options, {
     canPickMany: true,
-    placeHolder: 'Pick the extensions that belong to this group.'
+    placeHolder: getLocalization(LocalizationKeys.pickMembersPlaceholder)
   });
   if (!picks) return undefined;
   return picks.map(p => p.label);
@@ -157,7 +163,7 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
     vscode.commands.registerCommand(
       COMMANDS.applyGroupQuickPick,
       async () => {
-        const group = await pickGroup(deps, 'Apply which group?');
+        const group = await pickGroup(deps);
         if (group) await runApply(group, deps);
       }
     ),
@@ -168,7 +174,7 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         let group: Group | undefined;
         if (typeof arg === 'string') group = deps.store.get(arg);
         else if (arg && 'group' in arg && arg.group) group = arg.group;
-        else group = await pickGroup(deps, 'Apply which group?');
+        else group = await pickGroup(deps);
         if (group) await runApply(group, deps);
       }
     ),
@@ -177,7 +183,9 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       const ids = deps.extensions.managed().map(e => e.id);
       for (const id of ids) await deps.extensions.enable(id);
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(`Enabled ${ids.length} managed extensions.`);
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.enableAllDone, ids.length)
+      );
     }),
 
     vscode.commands.registerCommand(COMMANDS.disableAllSalesforce, async () => {
@@ -185,27 +193,33 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       for (const id of ids) await deps.extensions.disable(id);
       await deps.workspaceState.setActiveGroupId(undefined);
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(`Disabled ${ids.length} managed extensions.`);
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.disableAllDone, ids.length)
+      );
     }),
 
     vscode.commands.registerCommand(COMMANDS.createCustomGroup, async () => {
       const id = await vscode.window.showInputBox({
-        prompt: 'Id for the new group (lowercase, no spaces)',
+        prompt: getLocalization(LocalizationKeys.createGroupIdPrompt),
         validateInput: v =>
           !v?.match(/^[a-z][a-z0-9-]*$/)
-            ? 'Must start with a letter; only lowercase letters, digits, and dashes.'
+            ? getLocalization(LocalizationKeys.createGroupIdValidationFormat)
             : deps.store.get(v)
-              ? `A group with id "${v}" already exists.`
+              ? getLocalization(LocalizationKeys.createGroupIdValidationDuplicate, v)
               : undefined
       });
       if (!id) return;
-      const label = await vscode.window.showInputBox({ prompt: 'Display label' });
+      const label = await vscode.window.showInputBox({
+        prompt: getLocalization(LocalizationKeys.createGroupLabelPrompt)
+      });
       if (!label) return;
       const members = await pickMembers(deps);
       if (members === undefined) return;
       await deps.store.upsert({ id, label, extensions: members });
       deps.tree.refresh();
-      void vscode.window.showInformationMessage(`Group "${label}" created with ${members.length} extensions.`);
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.createGroupSuccess, label, members.length)
+      );
     }),
 
     vscode.commands.registerCommand(
@@ -214,14 +228,16 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         let group: Group | undefined;
         if (typeof arg === 'string') group = deps.store.get(arg);
         else if (arg && 'group' in arg && arg.group) group = arg.group;
-        else group = await pickGroup(deps, 'Edit which group?');
+        else group = await pickGroup(deps);
         if (!group) return;
 
         const members = await pickMembers(deps, group.extensions);
         if (members === undefined) return;
         await deps.store.upsert({ ...group, extensions: members });
         deps.tree.refresh();
-        void vscode.window.showInformationMessage(`Group "${group.label}" updated.`);
+        void vscode.window.showInformationMessage(
+          getLocalization(LocalizationKeys.editGroupSuccess, group.label)
+        );
       }
     ),
 
@@ -231,18 +247,24 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         let group: Group | undefined;
         if (typeof arg === 'string') group = deps.store.get(arg);
         else if (arg && 'group' in arg && arg.group) group = arg.group;
-        else group = await pickGroup(deps, 'Delete (or reset) which group?');
+        else group = await pickGroup(deps);
         if (!group) return;
-        const verb = group.builtIn ? 'Reset to default' : 'Delete';
+        const verb = group.builtIn
+          ? getLocalization(LocalizationKeys.deleteGroupVerbReset)
+          : getLocalization(LocalizationKeys.deleteGroupVerbDelete);
         const confirm = await vscode.window.showWarningMessage(
-          `${verb} group "${group.label}"?`,
+          getLocalization(LocalizationKeys.deleteGroupConfirm, verb, group.label),
           { modal: true },
           verb
         );
         if (confirm !== verb) return;
         await deps.store.remove(group.id);
         deps.tree.refresh();
-        void vscode.window.showInformationMessage(`${group.label}: ${verb.toLowerCase()} done.`);
+        void vscode.window.showInformationMessage(
+          group.builtIn
+            ? getLocalization(LocalizationKeys.deleteGroupDoneReset, group.label)
+            : getLocalization(LocalizationKeys.deleteGroupDoneDelete, group.label)
+        );
       }
     ),
 

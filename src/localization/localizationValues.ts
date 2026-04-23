@@ -1,0 +1,127 @@
+/**
+ * Copyright (c) 2026 Salesforce, Inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+ **/
+
+import { LocalizationKeys } from './localizationKeys';
+
+/**
+ * Default English values for every `LocalizationKeys` entry. These strings
+ * are what `vscode.l10n.t(...)` looks up; translations live in
+ * `l10n/bundle.l10n.<locale>.json` keyed by the *source string* (VSCode's
+ * convention, not our enum values).
+ *
+ * Positional placeholders use `{0}`, `{1}`, ... as VSCode's `l10n.t` expects.
+ */
+export const localizationValues: Record<LocalizationKeys, string> = {
+  [LocalizationKeys.showLog]: 'Show Log',
+
+  [LocalizationKeys.applyScopePromptPlaceholder]: 'How should "{0}" be applied?',
+  [LocalizationKeys.applyScopeDisableOthers]: 'Enable members, disable others',
+  [LocalizationKeys.applyScopeEnableOnly]: 'Enable members only',
+
+  [LocalizationKeys.applySummaryApplied]: '{0} applied.',
+  [LocalizationKeys.applySummaryEnabled]: 'Enabled: {0}',
+  [LocalizationKeys.applySummaryDisabled]: 'Disabled: {0}',
+  [LocalizationKeys.applySummaryVsix]: 'VSIX: {0}',
+  [LocalizationKeys.applySummaryDepAutoIncluded]: 'Dep auto-included: {0}',
+  [LocalizationKeys.applySummaryDepBlocked]: 'Dep-blocked: {0}',
+  [LocalizationKeys.applySummaryManualEnable]: 'Manual enable: {0}',
+  [LocalizationKeys.applySummaryManualDisable]: 'Manual disable: {0}',
+  [LocalizationKeys.applySummarySkipped]: 'Skipped: {0}',
+
+  [LocalizationKeys.reloadAfterApplyPrompt]: 'Apply complete. Reload window to activate changes?',
+  [LocalizationKeys.reloadAfterApplyAction]: 'Reload Window',
+
+  [LocalizationKeys.pickGroupDefaultPrompt]: 'Apply which group?',
+  [LocalizationKeys.createGroupIdPrompt]: 'Id for the new group (lowercase, no spaces)',
+  [LocalizationKeys.createGroupIdValidationFormat]: 'Must start with a letter; only lowercase letters, digits, and dashes.',
+  [LocalizationKeys.createGroupIdValidationDuplicate]: 'A group with id "{0}" already exists.',
+  [LocalizationKeys.createGroupLabelPrompt]: 'Display label',
+  [LocalizationKeys.pickMembersPlaceholder]: 'Pick the extensions that belong to this group.',
+  [LocalizationKeys.createGroupSuccess]: 'Group "{0}" created with {1} extensions.',
+  [LocalizationKeys.editGroupSuccess]: 'Group "{0}" updated.',
+  [LocalizationKeys.deleteGroupConfirm]: '{0} group "{1}"?',
+  [LocalizationKeys.deleteGroupVerbDelete]: 'Delete',
+  [LocalizationKeys.deleteGroupVerbReset]: 'Reset to default',
+  [LocalizationKeys.deleteGroupDoneDelete]: '{0}: deleted.',
+  [LocalizationKeys.deleteGroupDoneReset]: '{0}: reset to default.',
+  [LocalizationKeys.enableAllDone]: 'Enabled {0} managed extensions.',
+  [LocalizationKeys.disableAllDone]: 'Disabled {0} managed extensions.',
+  [LocalizationKeys.groupBuiltIn]: 'built-in',
+  [LocalizationKeys.groupCustom]: 'custom',
+  [LocalizationKeys.groupActive]: 'active',
+  [LocalizationKeys.extensionNotInstalled]: 'not installed',
+  [LocalizationKeys.extensionDisabled]: 'disabled',
+  [LocalizationKeys.extensionVsixBadge]: 'vsix',
+  [LocalizationKeys.extensionUpdateBadge]: 'update → v{0}',
+  [LocalizationKeys.extensionInstalledLine]: 'Installed: v{0}',
+  [LocalizationKeys.extensionMarketplaceUpdateLine]: 'Marketplace: v{0} (update available)',
+  [LocalizationKeys.extensionVsixTooltip]: 'Installed from local VSIX: {0}',
+  [LocalizationKeys.extensionVsixTooltipGeneric]: 'Installed from local VSIX directory',
+  [LocalizationKeys.extensionVsixWalkthroughHint]: 'See resources/walkthrough/vsix.md for the VSIX workflow.',
+  [LocalizationKeys.dependencyChildDep]: 'dependency',
+  [LocalizationKeys.dependencyChildPack]: 'pack member',
+  [LocalizationKeys.dependencyChildEnabled]: 'enabled',
+  [LocalizationKeys.dependencyChildDisabled]: 'disabled',
+  [LocalizationKeys.dependencyChildNotInstalled]: 'not installed',
+
+  [LocalizationKeys.vsixDirectoryNotConfigured]: 'VSIX directory is not configured.',
+  [LocalizationKeys.vsixDirectoryNotConfiguredOpenSettings]: 'Open Settings',
+  [LocalizationKeys.vsixNoFilesFound]: 'No .vsix files found in {0}.',
+  [LocalizationKeys.vsixReinstallProgressTitle]: 'Reinstalling from VSIX directory…',
+  [LocalizationKeys.vsixRefreshSummaryOk]: 'Refreshed from VSIX directory: {0} installed.',
+  [LocalizationKeys.vsixRefreshSummaryFailed]: 'Refreshed from VSIX directory: {0} installed · {1} failed.',
+  [LocalizationKeys.vsixNoOverrides]: 'No VSIX-sourced extensions to clear.',
+  [LocalizationKeys.vsixClearConfirm]: 'Uninstall {0} VSIX-sourced extension(s) and reinstall from marketplace?',
+  [LocalizationKeys.vsixClearProceed]: 'Proceed',
+  [LocalizationKeys.vsixReinstalledFromMarketplace]: 'Reinstalled {0} extension(s) from marketplace.',
+  [LocalizationKeys.vsixMenuOpenConfigured]: '$(folder) Open VSIX Directory',
+  [LocalizationKeys.vsixMenuOpenUnconfigured]: '$(gear) Configure VSIX Directory',
+  [LocalizationKeys.vsixMenuNotSet]: 'not set',
+  [LocalizationKeys.vsixMenuRefresh]: '$(refresh) Refresh from VSIX Directory',
+  [LocalizationKeys.vsixMenuClear]: '$(trash) Clear VSIX Overrides',
+  [LocalizationKeys.vsixMenuChange]: '$(gear) Change VSIX Directory...',
+  [LocalizationKeys.vsixMenuPlaceholder]: 'VSIX management',
+
+  [LocalizationKeys.updateRequiresNode]: 'SFDX Manager: Update requires an extension node to be selected in the Groups tree.',
+  [LocalizationKeys.updateFailed]: 'Failed to update {0}. See SFDX Manager log.',
+  [LocalizationKeys.updateSucceeded]: 'Updated {0}.',
+  [LocalizationKeys.updateAllNone]: 'No managed extensions to update.',
+  [LocalizationKeys.updateAllProgressTitle]: 'Updating managed Salesforce extensions…',
+  [LocalizationKeys.updateAllSummaryOk]: 'Update complete: {0} succeeded.',
+  [LocalizationKeys.updateAllSummaryFailed]: 'Update complete: {0} succeeded · {1} failed.',
+  [LocalizationKeys.checkForUpdatesDone]: 'SFDX Manager: update check complete.',
+
+  [LocalizationKeys.depsProgressTitle]: 'Checking dependencies…',
+  [LocalizationKeys.depsSummary]: 'Dependencies: {0}',
+  [LocalizationKeys.depReportCopied]: 'Dependency report copied to clipboard.',
+
+  [LocalizationKeys.depCategoryCli]: 'CLIs',
+  [LocalizationKeys.depCategoryRuntime]: 'Runtimes',
+  [LocalizationKeys.depCategoryPerExtension]: 'Per-Extension',
+  [LocalizationKeys.depStateNotRunYet]: 'not run yet',
+  [LocalizationKeys.depRequiredBy]: 'Required by: {0}',
+  [LocalizationKeys.depFixLabel]: 'Fix: {0}',
+
+  [LocalizationKeys.manualToggleHint]: '{0} the {1} extension(s) shown in the Extensions view.',
+
+  [LocalizationKeys.vsixDirectoryMissingWarn]: 'VSIX directory "{0}" does not exist.',
+  [LocalizationKeys.openSettingsAction]: 'Open Settings',
+
+  [LocalizationKeys.statusGroupText]: '$(layers) {0}',
+  [LocalizationKeys.statusGroupNone]: 'None',
+  [LocalizationKeys.statusGroupTooltipActive]: 'Active SFDX group: {0} — click to switch',
+  [LocalizationKeys.statusGroupTooltipNone]: 'No SFDX group applied — click to pick one',
+  [LocalizationKeys.statusVsixText]: '$(package) VSIX: {0}',
+  [LocalizationKeys.statusVsixTooltipActive]: '{0} extension(s) loaded from {1} — click to manage.',
+  [LocalizationKeys.statusVsixTooltipIdle]: 'VSIX directory: {0} — no overrides active. Click to manage.',
+
+  [LocalizationKeys.validateGroupBadId]: 'Group id must start with a letter and contain only lowercase letters, digits, and dashes.',
+  [LocalizationKeys.validateGroupMissingLabel]: 'Group label is required.',
+  [LocalizationKeys.validateGroupEmpty]: 'Group "{0}" is empty. Add at least one extension before saving.',
+
+  [LocalizationKeys.groupNotFound]: 'Group "{0}" not found.'
+};

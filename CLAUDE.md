@@ -53,6 +53,14 @@ explicit user request:
   `source='vsix'`) — the user asked for local, say so when it didn't work.
 - **No `extensionDependencies` on the manager itself.** It must function
   when every target extension is disabled.
+- **User-facing strings are externalized.** `package.json` uses `%key%`
+  placeholders resolved by `package.nls.json`; source strings route
+  through `getLocalization(LocalizationKeys.foo, ...args)` from
+  `src/localization/`. Never add a raw literal to a `show*Message`,
+  Quick Pick `placeHolder`, status-bar tooltip, or tree-item
+  description/tooltip. Log messages and internal identifiers stay
+  inline — they're not user-facing. Adding a new string means adding
+  an enum entry + value, not editing call sites with English text.
 
 ## Code style
 

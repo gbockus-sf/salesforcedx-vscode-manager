@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS, VIEW_DEPENDENCIES_ID } from '../constants';
 import type { DependencyRegistry } from '../dependencies/registry';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { Logger } from '../util/logger';
 import {
   DependenciesTreeProvider,
@@ -33,21 +34,28 @@ export const registerDependencyCommands = (
         return;
       }
       await vscode.window.withProgress(
-        { location: { viewId: VIEW_DEPENDENCIES_ID }, title: 'Checking dependencies…' },
+        {
+          location: { viewId: VIEW_DEPENDENCIES_ID },
+          title: getLocalization(LocalizationKeys.depsProgressTitle)
+        },
         async () => {
           const statuses = await deps.tree.runChecks();
           const counts = { ok: 0, warn: 0, fail: 0, unknown: 0 };
           for (const s of statuses.values()) counts[s.state]++;
+          // State-count phrases are short, locale-neutral labels, not full
+          // sentences — ok/warn/fail/unknown map to any language the same
+          // way. Keep them inline to avoid n keys per state.
           const parts: string[] = [];
           if (counts.ok) parts.push(`${counts.ok} ok`);
           if (counts.warn) parts.push(`${counts.warn} warn`);
           if (counts.fail) parts.push(`${counts.fail} fail`);
           if (counts.unknown) parts.push(`${counts.unknown} unknown`);
           deps.logger.info(`Dependency check complete: ${parts.join(', ') || 'no checks registered'}`);
+          const summary = getLocalization(LocalizationKeys.depsSummary, parts.join(' · '));
           if (counts.fail > 0) {
-            void vscode.window.showWarningMessage(`Dependencies: ${parts.join(' · ')}`);
+            void vscode.window.showWarningMessage(summary);
           } else {
-            void vscode.window.showInformationMessage(`Dependencies: ${parts.join(' · ')}`);
+            void vscode.window.showInformationMessage(summary);
           }
         }
       );
@@ -57,7 +65,7 @@ export const registerDependencyCommands = (
       const checks = await deps.registry.collect();
       const report = formatReport(checks, deps.tree.getStatuses());
       await vscode.env.clipboard.writeText(report);
-      void vscode.window.showInformationMessage('Dependency report copied to clipboard.');
+      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.depReportCopied));
     }),
 
     vscode.commands.registerCommand('sfdxManager.openRemediationUrl', async (arg?: CheckTreeContext) => {

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { CodeCliService } from '../services/codeCliService';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
@@ -40,27 +41,25 @@ export const registerUpdateCommands = (
     vscode.commands.registerCommand(COMMANDS.updateExtension, async (arg?: unknown) => {
       const id = extractExtensionId(arg);
       if (!id) {
-        void vscode.window.showWarningMessage(
-          'SFDX Manager: Update requires an extension node to be selected in the Groups tree.'
-        );
+        void vscode.window.showWarningMessage(getLocalization(LocalizationKeys.updateRequiresNode));
         return;
       }
       const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
       if (exitCode !== 0) {
         deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
-        void vscode.window.showErrorMessage(`Failed to update ${id}. See SFDX Manager log.`);
+        void vscode.window.showErrorMessage(getLocalization(LocalizationKeys.updateFailed, id));
         return;
       }
       deps.logger.info(`update(${id}): reinstalled with --force.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      void vscode.window.showInformationMessage(`Updated ${id}.`);
+      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.updateSucceeded, id));
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
       const ids = deps.extensions.managed().map(e => e.id);
       if (ids.length === 0) {
-        void vscode.window.showInformationMessage('No managed extensions to update.');
+        void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.updateAllNone));
         return;
       }
       let ok = 0;
@@ -68,7 +67,7 @@ export const registerUpdateCommands = (
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'Updating managed Salesforce extensions…'
+          title: getLocalization(LocalizationKeys.updateAllProgressTitle)
         },
         async progress => {
           for (const id of ids) {
@@ -86,14 +85,16 @@ export const registerUpdateCommands = (
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       void vscode.window.showInformationMessage(
-        `Update complete: ${ok} succeeded${failed ? ` · ${failed} failed` : ''}.`
+        failed
+          ? getLocalization(LocalizationKeys.updateAllSummaryFailed, ok, failed)
+          : getLocalization(LocalizationKeys.updateAllSummaryOk, ok)
       );
     }),
 
     vscode.commands.registerCommand(COMMANDS.checkForUpdates, async () => {
       deps.extensions.clearCliVersionCache();
       await deps.tree.refreshVersionInfo();
-      void vscode.window.showInformationMessage('SFDX Manager: update check complete.');
+      void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.checkForUpdatesDone));
     })
   );
 };

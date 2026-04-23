@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import type { GroupStore } from '../groups/groupStore';
+import { getLocalization, LocalizationKeys } from '../localization';
 import type { SettingsService } from '../services/settingsService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
 
@@ -24,11 +25,11 @@ export class GroupStatusBarItem implements vscode.Disposable {
     }
     const id = this.workspaceState.getActiveGroupId();
     const group = id ? this.store.get(id) : undefined;
-    const label = group?.label ?? 'None';
-    this.item.text = `$(layers) ${label}`;
+    const label = group?.label ?? getLocalization(LocalizationKeys.statusGroupNone);
+    this.item.text = getLocalization(LocalizationKeys.statusGroupText, label);
     this.item.tooltip = group
-      ? `Active SFDX group: ${group.label} — click to switch`
-      : 'No SFDX group applied — click to pick one';
+      ? getLocalization(LocalizationKeys.statusGroupTooltipActive, group.label)
+      : getLocalization(LocalizationKeys.statusGroupTooltipNone);
     this.item.show();
   }
 

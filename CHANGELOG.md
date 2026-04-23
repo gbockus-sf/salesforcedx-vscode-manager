@@ -13,6 +13,7 @@ All notable changes to `salesforcedx-vscode-manager` will be documented in this 
 - **Topological uninstall order** — `disableOthers` now removes extensions in an order where dependents (and containing packs) come off before their dependencies (and pack members), avoiding the dependency-chain blockage we saw during the v0.1 smoke tests.
 - **Consolidated reload prompt after apply** — new setting `salesforcedx-vscode-manager.reloadAfterApply` (`auto` / `prompt` / `never`, default `prompt`). Replaces VSCode's one-banner-per-uninstall with a single opt-in prompt after the whole apply completes.
 - **Groups tree extension nodes expand to show their `extensionDependencies` and `extensionPack` members** as read-only children with `$(link)` and `$(package)` icons. Helps users understand why a disable got blocked and what gets pulled in when enabling.
+- **All user-facing strings externalized.** `package.json` now uses `%key%` placeholders resolved by `package.nls.json`; source strings route through a new `src/localization/` module (`LocalizationKeys` enum + `localizationValues` map + `getLocalization()` helper wrapping `vscode.l10n.t`). Adding translations only requires dropping a `package.nls.<locale>.json` + `l10n/bundle.l10n.<locale>.json` pair — no code changes. New `npm run l10n` script wraps `@vscode/l10n-dev export`. A unit test asserts every `LocalizationKeys` entry has a non-empty default.
 
 ## [0.1.0] — Unreleased
 
