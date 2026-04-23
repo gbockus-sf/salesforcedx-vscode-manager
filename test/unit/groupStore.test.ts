@@ -206,7 +206,8 @@ describe('GroupStore', () => {
       const store = new GroupStore(mkSettings());
       store.setPublisherCatalog(() => ({
         publisher: 'salesforce',
-        extensionIds: ['salesforce.apex', 'salesforce.core']
+        extensionIds: ['salesforce.apex', 'salesforce.core'],
+        loaded: true
       }));
       const catalog = store.list().find(g => g.id === 'catalog:salesforce');
       expect(catalog?.source).toBe('catalog');
@@ -215,17 +216,29 @@ describe('GroupStore', () => {
       expect(catalog?.label).toMatch(/all salesforce extensions/i);
     });
 
-    it('list() omits the catalog group when the snapshot is empty', () => {
+    it('list() still surfaces the catalog group when loaded but empty', () => {
       const store = new GroupStore(mkSettings());
-      store.setPublisherCatalog(() => ({ publisher: 'salesforce', extensionIds: [] }));
-      expect(store.list().some(g => g.id === 'catalog:salesforce')).toBe(false);
+      store.setPublisherCatalog(() => ({ publisher: 'salesforce', extensionIds: [], loaded: true }));
+      // Feature must be discoverable even when the marketplace returns 0
+      // results, so users can right-click → Refresh Salesforce Catalog.
+      const catalog = store.list().find(g => g.id === 'catalog:salesforce');
+      expect(catalog).toBeDefined();
+      expect(catalog?.extensions).toEqual([]);
+    });
+
+    it('list() describes the catalog group as "needs refresh" before first load', () => {
+      const store = new GroupStore(mkSettings());
+      store.setPublisherCatalog(() => ({ publisher: 'salesforce', extensionIds: [], loaded: false }));
+      const catalog = store.list().find(g => g.id === 'catalog:salesforce');
+      expect(catalog?.description).toMatch(/refresh the catalog/i);
     });
 
     it('remove() refuses to touch a catalog group', async () => {
       const store = new GroupStore(mkSettings());
       store.setPublisherCatalog(() => ({
         publisher: 'salesforce',
-        extensionIds: ['salesforce.apex']
+        extensionIds: ['salesforce.apex'],
+        loaded: true
       }));
       await expect(store.remove('catalog:salesforce')).rejects.toThrow(/read-only/i);
     });
@@ -234,7 +247,8 @@ describe('GroupStore', () => {
       const store = new GroupStore(mkSettings());
       store.setPublisherCatalog(() => ({
         publisher: 'salesforce',
-        extensionIds: ['salesforce.apex']
+        extensionIds: ['salesforce.apex'],
+        loaded: true
       }));
       await expect(store.moveToScope('catalog:salesforce', 'workspace')).rejects.toThrow(
         /marketplace/i

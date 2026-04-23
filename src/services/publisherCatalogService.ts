@@ -38,6 +38,11 @@ export class PublisherCatalogService {
     return this.lastRefreshedAt;
   }
 
+  /** True once `refresh()` has attempted at least one network probe. */
+  isLoaded(): boolean {
+    return this.lastRefreshedAt !== undefined;
+  }
+
   /**
    * Refresh the snapshot from the marketplace. Deduplicates in-flight
    * refreshes — concurrent callers await the same promise.

@@ -174,5 +174,7 @@ export enum LocalizationKeys {
   browseInstallSummaryOk = 'browseInstallSummaryOk',
   browseInstallSummaryFailed = 'browseInstallSummaryFailed',
   refreshCatalogDone = 'refreshCatalogDone',
-  refreshCatalogEmpty = 'refreshCatalogEmpty'
+  refreshCatalogEmpty = 'refreshCatalogEmpty',
+
+  catalogNeedsRefresh = 'catalogNeedsRefresh'
 }

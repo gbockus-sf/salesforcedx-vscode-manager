@@ -52,14 +52,11 @@ export const activate = (context: vscode.ExtensionContext): void => {
     settings,
     logger
   );
-  store.setPublisherCatalog(() => {
-    const entries = publisherCatalog.current();
-    if (entries.length === 0) return undefined;
-    return {
-      publisher: publisherCatalog.getPublisher(),
-      extensionIds: entries.map(e => e.extensionId)
-    };
-  });
+  store.setPublisherCatalog(() => ({
+    publisher: publisherCatalog.getPublisher(),
+    extensionIds: publisherCatalog.current().map(e => e.extensionId),
+    loaded: publisherCatalog.isLoaded()
+  }));
 
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
   groupsTree.setVsixSources(() => installer.currentSources());
@@ -171,10 +168,16 @@ export const activate = (context: vscode.ExtensionContext): void => {
     void dependenciesTree.runChecks();
   }
 
-  // Publisher catalog: refresh on startup if the user opted in;
-  // otherwise wait for the explicit command. Refresh runs in the
-  // background — no blocking activation.
-  if (settings.getUpdateCheck() === 'onStartup') {
+  // Publisher catalog: fire one background refresh per activation unless
+  // the user has explicitly opted out with `updateCheck: 'never'`. Without
+  // this, the `All Salesforce Extensions` group never appears on a fresh
+  // install and the feature is invisible to the user.
+  //
+  // `'manual'` still means "no periodic refresh" — we don't poll; we only
+  // ever hit the marketplace once per session (and again on the explicit
+  // Refresh / Check commands). That's a correct reading of the setting and
+  // matches how VSCode's own extension-update check works.
+  if (settings.getUpdateCheck() !== 'never') {
     void publisherCatalog.refresh().then(() => groupsTree.refresh());
   }
 

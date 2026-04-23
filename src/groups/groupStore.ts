@@ -51,10 +51,15 @@ const isValidGroup = (id: string, raw: unknown): raw is Group => {
  * Optional read-side shape for the publisher catalog. Keeping it loose so
  * the store doesn't pull in the full service type (which would force the
  * test doubles to stub it).
+ *
+ * `loaded` distinguishes "catalog refreshed and really contains zero
+ * entries" from "catalog never refreshed yet" — the tree needs that to
+ * show a discoverable placeholder vs. hiding the group entirely.
  */
 export interface PublisherCatalogSnapshot {
   publisher: string;
   extensionIds: readonly string[];
+  loaded: boolean;
 }
 
 export class GroupStore {
@@ -97,16 +102,20 @@ export class GroupStore {
       seen.add(packGroup.id);
     }
     // Synthesized "All <Publisher> Extensions" group sourced from the
-    // marketplace publisher catalog. Appears only when the catalog has
-    // entries (offline/never-refreshed → no group).
+    // marketplace publisher catalog. Always present so the feature is
+    // discoverable; empty-snapshot case still appears with zero members
+    // so users can right-click → Refresh Salesforce Catalog.
     const catalog = this.getCatalog?.();
-    if (catalog && catalog.extensionIds.length > 0) {
+    if (catalog) {
       const id = `catalog:${catalog.publisher}`;
       if (!seen.has(id)) {
+        const publisherLabel = catalog.publisher[0].toUpperCase() + catalog.publisher.slice(1);
         merged.push({
           id,
-          label: `All ${catalog.publisher[0].toUpperCase() + catalog.publisher.slice(1)} Extensions`,
-          description: `Every extension published by "${catalog.publisher}" on the VSCode Marketplace.`,
+          label: `All ${publisherLabel} Extensions`,
+          description: catalog.loaded
+            ? `Every extension published by "${catalog.publisher}" on the VSCode Marketplace.`
+            : `Refresh the catalog to load every extension published by "${catalog.publisher}" on the VSCode Marketplace.`,
           extensions: [...catalog.extensionIds],
           builtIn: true,
           source: 'catalog'

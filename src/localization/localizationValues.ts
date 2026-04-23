@@ -156,5 +156,7 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.browseInstallSummaryOk]: 'Installed {0} extension(s).',
   [LocalizationKeys.browseInstallSummaryFailed]: 'Installed {0} extension(s) · {1} failed. See SFDX Manager log.',
   [LocalizationKeys.refreshCatalogDone]: 'Salesforce catalog: {0} extensions cached.',
-  [LocalizationKeys.refreshCatalogEmpty]: 'Salesforce catalog refresh returned no results (offline?).'
+  [LocalizationKeys.refreshCatalogEmpty]: 'Salesforce catalog refresh returned no results (offline?).',
+
+  [LocalizationKeys.catalogNeedsRefresh]: 'refresh to load'
 };

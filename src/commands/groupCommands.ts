@@ -57,6 +57,18 @@ const resolveScope = async (
 };
 
 const runApply = async (group: Group, deps: Deps): Promise<void> => {
+  // Applying a 0-member group with disableOthers scope would wipe out
+  // every managed extension. The empty-user-group case is already blocked
+  // at save-time by validateGroup; this guards the catalog:* case where
+  // the snapshot hasn't loaded yet.
+  if (group.extensions.length === 0) {
+    void vscode.window.showWarningMessage(
+      group.id.startsWith('catalog:')
+        ? 'Refresh the Salesforce Catalog before applying this group.'
+        : `Group "${group.label}" has no members.`
+    );
+    return;
+  }
   const scope = await resolveScope(group, deps.settings, deps.workspaceState);
   if (!scope) return;
   const managedIds = deps.extensions.managed().map(e => e.id);

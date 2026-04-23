@@ -128,6 +128,11 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
               : getLocalization(LocalizationKeys.groupCustom)
       );
       if (scopeBadge) labels.push(scopeBadge);
+      // Empty catalog group gets a clear "refresh to load" hint so the
+      // feature is discoverable on a fresh install.
+      if (node.group.source === 'catalog' && node.group.extensions.length === 0) {
+        labels.push(getLocalization(LocalizationKeys.catalogNeedsRefresh));
+      }
       item.description = labels.join(' · ');
       // Read-only synthesized groups get distinct icons so they stand out
       // from the handcrafted Apex / Lightning / React built-ins.
