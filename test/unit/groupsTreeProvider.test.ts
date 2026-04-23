@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+import { describe, expect, it, jest } from '@jest/globals';
 import { GroupsTreeProvider } from '../../src/views/groupsTreeProvider';
 import { GroupStore } from '../../src/groups/groupStore';
 import type { ExtensionService, NodeVersionInfo } from '../../src/services/extensionService';

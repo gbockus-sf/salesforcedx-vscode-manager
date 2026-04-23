@@ -283,6 +283,40 @@ describe('update commands', () => {
     expect(vscode.window.showInformationMessage).toHaveBeenCalled();
   });
 
+  it('openInMarketplace invokes the built-in extension.open command for the selected id', async () => {
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall();
+    (vscode.commands.executeCommand as jest.Mock).mockReset();
+    (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.openInMarketplace]({ extensionId: 'salesforce.salesforcedx-einstein-gpt' });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      'extension.open',
+      'salesforce.salesforcedx-einstein-gpt'
+    );
+  });
+
+  it('openInMarketplace surfaces a warning when no extension id is provided', async () => {
+    const cmds = captureCommands();
+    (vscode.commands.executeCommand as jest.Mock).mockReset();
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions: mkExtensionsForUninstall(),
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.openInMarketplace](undefined);
+    expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith('extension.open', expect.anything());
+    expect(vscode.window.showWarningMessage).toHaveBeenCalled();
+  });
+
   it('checkForUpdates clears caches, refreshes the tree, and invokes the native workbench command', async () => {
     const commands = captureCommands();
     const tree = mkTree();

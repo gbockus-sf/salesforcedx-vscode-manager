@@ -44,7 +44,8 @@
       { "command": "sfdxManager.browseSalesforceExtensions", "title": "%salesforcedx-vscode-manager.command.browseSalesforceExtensions.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud)" },
       { "command": "sfdxManager.refreshSalesforceCatalog", "title": "%salesforcedx-vscode-manager.command.refreshSalesforceCatalog.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
       { "command": "sfdxManager.installExtension", "title": "%salesforcedx-vscode-manager.command.installExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
-      { "command": "sfdxManager.uninstallExtension", "title": "%salesforcedx-vscode-manager.command.uninstallExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" }
+      { "command": "sfdxManager.uninstallExtension", "title": "%salesforcedx-vscode-manager.command.uninstallExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
+      { "command": "sfdxManager.openInMarketplace", "title": "%salesforcedx-vscode-manager.command.openInMarketplace.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" }
     ],
     "menus": {
       "commandPalette": [
@@ -52,7 +53,8 @@
         { "command": "sfdxManager.openRemediationUrl", "when": "false" },
         { "command": "sfdxManager.updateExtension", "when": "false" },
         { "command": "sfdxManager.installExtension", "when": "false" },
-        { "command": "sfdxManager.uninstallExtension", "when": "false" }
+        { "command": "sfdxManager.uninstallExtension", "when": "false" },
+        { "command": "sfdxManager.openInMarketplace", "when": "false" }
       ],
       "view/title": [
         { "command": "sfdxManager.createCustomGroup", "when": "view == sfdxManager.groups", "group": "navigation" },
@@ -72,6 +74,8 @@
         { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /notInstalled/", "group": "inline@1" },
         { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /(^|:)installed/", "group": "inline@3" },
         { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /updateAvailable/", "group": "inline@2" },
+        { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && viewItem =~ /^extension/", "group": "inline@4" },
+        { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && viewItem =~ /^extension:child:/", "group": "inline@1" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies && viewItem =~ /^check/", "group": "inline" },
         { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" }
       ]

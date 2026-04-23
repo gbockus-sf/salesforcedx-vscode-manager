@@ -176,5 +176,7 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.uninstallExtensionPartialCascade]:
     'Uninstalled {0} of {1} extensions. Some uninstalls failed — see SFDX Manager log.',
 
-  [LocalizationKeys.catalogCannotApplyAsGroup]: 'The marketplace catalog has too many extensions to apply as a single group. Install what you need via the Install button on each extension, or use "SFDX Manager: Browse Salesforce Extensions..." for a filtered Quick Pick.'
+  [LocalizationKeys.catalogCannotApplyAsGroup]: 'The marketplace catalog has too many extensions to apply as a single group. Install what you need via the Install button on each extension, or use "SFDX Manager: Browse Salesforce Extensions..." for a filtered Quick Pick.',
+
+  [LocalizationKeys.openInMarketplaceRequiresNode]: 'SFDX Manager: Open in Marketplace requires an extension node to be selected in the Groups tree.'
 };

@@ -31,6 +31,7 @@
   "salesforcedx-vscode-manager.command.refreshSalesforceCatalog.title": "Refresh Salesforce Catalog",
   "salesforcedx-vscode-manager.command.installExtension.title": "Install Extension",
   "salesforcedx-vscode-manager.command.uninstallExtension.title": "Uninstall Extension",
+  "salesforcedx-vscode-manager.command.openInMarketplace.title": "Open in Marketplace",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",

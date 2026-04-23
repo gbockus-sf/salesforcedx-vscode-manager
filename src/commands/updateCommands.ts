@@ -195,6 +195,19 @@ export const registerUpdateCommands = (
       );
     }),
 
+    vscode.commands.registerCommand(COMMANDS.openInMarketplace, async (arg?: unknown) => {
+      const id = extractExtensionId(arg);
+      if (!id) {
+        void notifyWarn(getLocalization(LocalizationKeys.openInMarketplaceRequiresNode));
+        return;
+      }
+      // `extension.open` is VSCode's built-in command for opening the
+      // Extensions-view details panel for a given id. It works for
+      // installed and uninstalled extensions alike, and surfaces the
+      // Marketplace's Install button when the extension isn't installed.
+      await vscode.commands.executeCommand('extension.open', id);
+    }),
+
     vscode.commands.registerCommand(COMMANDS.checkForUpdates, async () => {
       // Ask VSCode to refresh its own internal "updates available" state so
       // users see the familiar Extensions-view Update badges alongside our

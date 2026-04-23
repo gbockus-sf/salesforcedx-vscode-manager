@@ -32,7 +32,8 @@ export const COMMANDS = {
   browseSalesforceExtensions: 'sfdxManager.browseSalesforceExtensions',
   refreshSalesforceCatalog: 'sfdxManager.refreshSalesforceCatalog',
   installExtension: 'sfdxManager.installExtension',
-  uninstallExtension: 'sfdxManager.uninstallExtension'
+  uninstallExtension: 'sfdxManager.uninstallExtension',
+  openInMarketplace: 'sfdxManager.openInMarketplace'
 } as const;
 
 export const SETTINGS = {

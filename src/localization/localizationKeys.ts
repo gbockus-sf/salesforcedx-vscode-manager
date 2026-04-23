@@ -194,5 +194,8 @@ export enum LocalizationKeys {
   uninstallExtensionPartialCascade = 'uninstallExtensionPartialCascade',
 
   // catalog bulk-apply guard
-  catalogCannotApplyAsGroup = 'catalogCannotApplyAsGroup'
+  catalogCannotApplyAsGroup = 'catalogCannotApplyAsGroup',
+
+  // marketplace open
+  openInMarketplaceRequiresNode = 'openInMarketplaceRequiresNode'
 }
