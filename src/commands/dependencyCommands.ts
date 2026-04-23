@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { COMMANDS, VIEW_DEPENDENCIES_ID } from '../constants';
 import type { DependencyRegistry } from '../dependencies/registry';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { TelemetryService } from '../services/telemetryService';
 import type { Logger } from '../util/logger';
 import {
   DependenciesTreeProvider,
@@ -48,6 +49,7 @@ export const registerDependencyCommands = (
           if (counts.fail) parts.push(`${counts.fail} fail`);
           if (counts.unknown) parts.push(`${counts.unknown} unknown`);
           deps.logger.info(`Dependency check complete: ${parts.join(', ') || 'no checks registered'}`);
+          TelemetryService.sendDependencyCheck(counts);
           // Only notify when something is actionable. If every row is
           // green the Dependencies tree already speaks for itself — no
           // toast. On fail/warn/unknown attach a "Show Dependencies"

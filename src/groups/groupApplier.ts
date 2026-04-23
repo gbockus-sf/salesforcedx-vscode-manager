@@ -105,10 +105,15 @@ export const applyGroup = async (
       }
     }
 
-    // Candidate set = managed ids that are installed, NOT in effective-enable.
+    // Candidate set = managed ids that are installed, NOT in effective-enable,
+    // and NOT locked by manager's own extensionDependencies chain. Locked ids
+    // (core + services) are pulled in by VSCode itself; our `disable` uses the
+    // `code` CLI, and VSCode refuses to uninstall them while manager is
+    // installed. Skipping them up front avoids noisy "Cannot uninstall X" log
+    // lines on every apply.
     const candidates = new Set<string>(
       managedIds.filter(
-        id => !effectiveEnablePostInstall.has(id) && svc.isInstalled(id)
+        id => !effectiveEnablePostInstall.has(id) && svc.isInstalled(id) && !svc.isLocked(id)
       )
     );
 

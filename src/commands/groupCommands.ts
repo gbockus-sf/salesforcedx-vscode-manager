@@ -13,6 +13,7 @@ import { getLocalization, LocalizationKeys } from '../localization';
 import { notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
+import { TelemetryService } from '../services/telemetryService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
 import type { Logger } from '../util/logger';
 import type { GroupsTreeProvider } from '../views/groupsTreeProvider';
@@ -112,6 +113,18 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
 
   const summary = parts.join(' · ');
   deps.logger.info(summary);
+  TelemetryService.sendGroupApply({
+    groupId: group.id,
+    source: group.source ?? (group.builtIn ? 'code' : 'user'),
+    scope,
+    enabled: result.enabled.length,
+    disabled: result.disabled.length,
+    depBlocked: result.dependencyBlocked.length,
+    manualEnable: result.needsManualEnable.length,
+    manualDisable: result.needsManualDisable.length,
+    skipped: result.skipped.length,
+    installedFromVsix: result.installedFromVsix.length
+  });
   // Only notify when the apply result contains something the user needs
   // to know about that isn't visible in the tree: anything blocked by
   // dependents, extensions needing manual enable/disable, or skipped ids.
@@ -223,12 +236,18 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
     }),
 
     vscode.commands.registerCommand(COMMANDS.disableAllSalesforce, async () => {
-      const ids = deps.extensions.managed().map(e => e.id);
+      // Skip :locked ids (core + services are pulled in as
+      // extensionDependencies — VSCode refuses to uninstall them while
+      // manager is installed, and our `disable` uses `code --uninstall`).
+      const ids = deps.extensions
+        .managed()
+        .map(e => e.id)
+        .filter(id => !deps.extensions.isLocked(id));
       for (const id of ids) await deps.extensions.disable(id);
       await deps.workspaceState.setActiveGroupId(undefined);
       deps.tree.refresh();
       // Toast suppressed: the tree and status bar reflect the state change.
-      deps.logger.info(`disableAllSalesforce: disabled ${ids.length} managed extensions.`);
+      deps.logger.info(`disableAllSalesforce: disabled ${ids.length} managed extensions (locked ids skipped).`);
     }),
 
     vscode.commands.registerCommand(COMMANDS.createCustomGroup, async () => {

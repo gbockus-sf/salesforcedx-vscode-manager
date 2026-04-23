@@ -396,6 +396,59 @@ describe('ExtensionService', () => {
       });
     });
 
+    describe('isLocked', () => {
+      // isLocked BFS-expands manager's own package.json extensionDependencies
+      // through installed extensions' manifests, so we prime `getExtension`
+      // for the self-id and for each hop.
+      const EXT_MANAGER = 'salesforce.salesforcedx-vscode-manager';
+      const EXT_CORE = 'salesforce.salesforcedx-vscode-core';
+      const EXT_SERVICES = 'salesforce.salesforcedx-vscode-services';
+
+      const seedExtensions = (map: Record<string, Record<string, unknown>>): void => {
+        (vscode.extensions.getExtension as jest.Mock).mockImplementation((id: string) =>
+          map[id] ? makeExt(id, map[id]) : undefined
+        );
+      };
+
+      it('returns true for a direct extensionDependencies entry', () => {
+        seedExtensions({
+          [EXT_MANAGER]: { extensionDependencies: [EXT_CORE] },
+          [EXT_CORE]: {}
+        });
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isLocked(EXT_CORE)).toBe(true);
+      });
+
+      it('BFS-expands through the installed manifest chain', () => {
+        // manager → core → services: services is transitively locked
+        // because core's own extensionDependencies pulls it.
+        seedExtensions({
+          [EXT_MANAGER]: { extensionDependencies: [EXT_CORE] },
+          [EXT_CORE]: { extensionDependencies: [EXT_SERVICES] },
+          [EXT_SERVICES]: {}
+        });
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isLocked(EXT_SERVICES)).toBe(true);
+      });
+
+      it('returns false for unrelated ids', () => {
+        seedExtensions({
+          [EXT_MANAGER]: { extensionDependencies: [EXT_CORE] },
+          [EXT_CORE]: {}
+        });
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isLocked('salesforce.unrelated')).toBe(false);
+      });
+
+      it('returns false when manager has no extensionDependencies', () => {
+        seedExtensions({
+          [EXT_MANAGER]: {}
+        });
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isLocked(EXT_CORE)).toBe(false);
+      });
+    });
+
     it('topologicalUninstallOrder() puts the containing pack before its members', () => {
       // VSCode treats `extensionPack` like `extensionDependencies`: the pack
       // must be removed before its members so VSCode doesn't block the

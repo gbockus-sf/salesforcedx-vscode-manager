@@ -119,6 +119,48 @@ Supported `check.type` values:
 - `nodeVersion` — compare against `process.versions.node`.
 - `extensionInstalled` — `vscode.extensions.getExtension(extensionId)`.
 
+## Telemetry
+
+The manager emits a small set of events through the shared
+`salesforcedx-vscode-core` telemetry pipeline (the same one every
+Salesforce extension uses). Events:
+
+- `sfdxManager_activation` / `sfdxManager_deactivation` — startup +
+  shutdown lifecycle with activation duration.
+- `sfdxManager_group_apply` — `groupId`, `source` (`code` / `pack` /
+  `catalog` / `user`), `scope`, plus result counts (enabled, disabled,
+  dep-blocked, manual enable/disable, skipped, installed-from-VSIX).
+- `sfdxManager_extension_install` / `_uninstall` / `_update` —
+  `extensionId`, `source` (`marketplace` / `vsix`), `exitCode`.
+- `sfdxManager_catalog_refresh` — marketplace catalog probe: entry
+  count + duration.
+- `sfdxManager_dependency_check` — `ok` / `warn` / `fail` / `unknown`
+  counts from the Dependencies tree.
+- `sfdxManager_error` — caught exceptions (name + message, no stack
+  data carrying file paths).
+
+**No PII is sent.** Payloads include extension ids (public marketplace
+metadata), group ids, scope enums, durations in milliseconds, and exit
+codes. File paths, workspace names, and user identifiers are never
+transmitted. The global `telemetry.telemetryLevel` setting still gates
+everything downstream through VSCode's core pipeline.
+
+**To disable just the manager's events without turning off telemetry
+globally**, set `salesforcedx-vscode-manager.telemetry.enabled` to
+`false`. The global `telemetry.telemetryLevel` takes precedence — if
+VSCode telemetry is off, manager events never fire regardless of this
+setting.
+
+## Dependency on `salesforcedx-vscode-core`
+
+The manager lists `salesforce.salesforcedx-vscode-core` in its
+`extensionDependencies`, so installing the manager force-installs core
+(and, transitively, `salesforcedx-vscode-services`). Both extensions
+show up in the Groups tree like any other managed extension — with a
+`required` badge and no Install/Uninstall buttons, since VSCode itself
+refuses to uninstall them while the manager is present. `Update
+Extension` and `Open in Marketplace` remain available on those rows.
+
 ## Status
 
 Pre-release. See [`PLAN.md`](./PLAN.md) for phase progress and open TODOs.

@@ -11,6 +11,7 @@ const emptyGraph = (): DependencyGraph => new Map<string, DependencyGraphNode>()
 
 const mkSvc = (overrides: Partial<Record<keyof ExtensionService, unknown>> = {}): ExtensionService => ({
   isInstalled: jest.fn((_id: string) => true),
+  isLocked: jest.fn(() => false),
   install: jest.fn(async (): Promise<InstallOutcome> => ({ source: 'marketplace', exitCode: 0 })),
   enable: jest.fn(async () => 'ok'),
   disable: jest.fn(async () => 'ok'),
@@ -101,6 +102,24 @@ describe('applyGroup', () => {
     const r = await applyGroup(group, 'disableOthers', ['salesforce.lwc'], svc);
     expect(r.disabled).toEqual([]);
     expect(svc.disable).not.toHaveBeenCalled();
+  });
+
+  it('disableOthers skips locked ids (manager extensionDependencies chain)', async () => {
+    // `salesforce.core` is locked (pulled in via manager's own
+    // extensionDependencies). It must not land in the disable set even
+    // when it's "not a group member" under disableOthers — VSCode
+    // refuses to uninstall it while manager is installed.
+    const svc = mkSvc({
+      isLocked: jest.fn((id: string) => id === 'salesforce.salesforcedx-vscode-core')
+    });
+    const managed = [
+      'salesforce.apex',
+      'salesforce.salesforcedx-vscode-core',
+      'salesforce.lwc'
+    ];
+    const r = await applyGroup(group, 'disableOthers', managed, svc);
+    expect(r.disabled).toEqual(['salesforce.lwc']);
+    expect(svc.disable).not.toHaveBeenCalledWith('salesforce.salesforcedx-vscode-core');
   });
 
   it('auto-includes transitive extensionDependencies of members', async () => {

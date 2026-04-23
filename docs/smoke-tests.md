@@ -223,6 +223,80 @@ losing data.
 
 ---
 
+## Phase 12 — Telemetry + locked extensions
+
+Goal: verify telemetry lights up through core's reporter, respects the
+per-extension opt-out, and that `salesforcedx-vscode-core` + services
+show up in the tree as "required, not actionable".
+
+### Setup
+
+- [ ] In the F5 Host window, install `salesforce.salesforcedx-vscode-core`
+  from the marketplace if it isn't already present. (Reloading the
+  manager extension should pull it in automatically via
+  `extensionDependencies`.) Services comes along for the ride.
+- [ ] Open the extension output channel.
+
+### Activation telemetry
+
+- [ ] Reload the window. Output channel shows `TelemetryService:
+  acquired core telemetry reporter.` near the top.
+- [ ] Activation completes with no red toasts.
+
+### Event emission
+
+- [ ] Apply a group (e.g. `Apex`). Output log shows the apply
+  summary; telemetry fires `sfdxManager_group_apply` with counts.
+- [ ] Install / update / uninstall any non-locked managed extension.
+  Telemetry fires `sfdxManager_extension_install` / `_update` /
+  `_uninstall` with the id and `exitCode: 0`.
+- [ ] `SFDX Manager: Refresh Salesforce Catalog`. Telemetry fires
+  `sfdxManager_catalog_refresh` with the entry count and duration.
+- [ ] `SFDX Manager: Run Dependency Check`. Telemetry fires
+  `sfdxManager_dependency_check` with ok/warn/fail/unknown counts.
+
+*How to inspect telemetry events during dev:* if
+`salesforce.isDebugLoggingEnabled` (or whatever core calls it) is on,
+AppInsights events get dumped to the debug console. Otherwise, trust
+the flow unless you want to set up a local AppInsights sink.
+
+### Opt-out
+
+- [ ] Set `salesforcedx-vscode-manager.telemetry.enabled` to `false`.
+  Re-run any of the actions above → no telemetry events fire (the
+  helper no-ops). Output log still shows the action.
+- [ ] Flip back to `true`. Events resume firing without needing a
+  reload (the setting watcher calls `refreshEnabled`).
+
+### Locked extensions
+
+- [ ] Expand the Apex group (or any group containing
+  `salesforce.salesforcedx-vscode-core`). The core row shows a
+  `required` badge in the description and a "Required by Salesforce
+  Extensions Manager" line in the tooltip.
+- [ ] Right-click the core row → **no** `Install Extension` /
+  `Uninstall Extension` entries in the context menu. `Update
+  Extension` and `Open in Marketplace` are still there.
+- [ ] Palette: `SFDX Manager: Uninstall Extension` is hidden (per
+  package.json's `commandPalette` gate). To test defense-in-depth,
+  dispatch programmatically (or through a compromised workflow) —
+  the handler early-returns with a sticky info toast
+  "Cannot uninstall Salesforce Extensions CLI Integration — required
+  by Salesforce Extensions Manager."
+- [ ] Apply a group that would normally try to disable core under
+  `disableOthers` scope (e.g. a group that doesn't list core as a
+  member). The apply summary shows `disabled: N` **without** core in
+  the list; output log is clean (no "Cannot uninstall" lines).
+- [ ] `SFDX Manager: Disable All Managed Extensions` → core and
+  services stay installed.
+
+### Cleanup
+
+- [ ] Reset `salesforcedx-vscode-manager.telemetry.enabled` to its
+  default. Re-apply your preferred group.
+
+---
+
 ## Cross-cutting — compile/lint/test gates
 
 Keep this at the bottom so it's the last thing you confirm before a

@@ -115,6 +115,49 @@ explicit user request:
   must preserve the "install → re-snapshot graph → then disable/
   uninstall" ordering. If you add a new phase to apply, re-snapshot
   between phases that can invalidate the graph.
+- **Telemetry is a hard dep on `salesforcedx-vscode-core`.** The manager
+  lists `salesforce.salesforcedx-vscode-core` in its
+  `extensionDependencies`; telemetry comes from there via
+  `@salesforce/vscode-service-provider`'s
+  `ServiceProvider.getService(ServiceType.Telemetry, EXTENSION_ID)`.
+  This is a published npm package and is what AFV
+  (`salesforcedx-vscode-einstein-gpt`) uses. Do **not** remove the
+  `extensionDependencies` entry to "decouple" — the whole pattern
+  depends on core being present and activated first. `TelemetryService`
+  (`src/services/telemetryService.ts`) wraps acquisition with typed
+  emit helpers (`sendActivation`, `sendGroupApply`,
+  `sendExtensionOp`, `sendCatalogRefresh`, `sendDependencyCheck`,
+  `sendError`) and is the **only** place that should touch the reporter
+  — every new command emits through a typed helper, no raw
+  `sendCommandEvent('...')` calls in feature code.
+- **Every new state-changing command fires a telemetry event.** The
+  audit rule in the notification doc is: if the user can see the
+  outcome in the tree / status bar, don't toast — but do log AND emit.
+  New commands should add a typed helper on `TelemetryService` rather
+  than fall through to the generic `sendCommandEvent` path.
+- **Payloads carry no PII.** Extension ids, group ids, scope enums,
+  counts, durations, exit codes are fine. File paths, workspace
+  names, usernames, org ids are not. When in doubt, don't send it —
+  add a log line instead.
+- **Locked extensions are visible-but-not-actionable.** The manager's
+  own `extensionDependencies` chain is force-installed by VSCode and
+  can't be uninstalled while the manager is present.
+  `ExtensionService.isLocked(id)` BFS-expands the chain from our own
+  manifest (through installed extensions' manifests for transitive
+  hops), and the tree / command handlers / applier all respect it:
+  1. `GroupsTreeProvider` adds a `:locked` suffix to the
+     `contextValue`, a "required" badge to the description, and a
+     "required by" line to the tooltip.
+  2. `package.json` `view/item/context` entries for install /
+     uninstall have `!(viewItem =~ /:locked/)` — the inline buttons
+     simply don't render for locked rows.
+  3. `uninstallExtension` early-returns with a sticky info toast when
+     `isLocked(id)` is true (defense-in-depth for palette dispatch).
+  4. `applyGroup` (disableOthers) filters locked ids out of the
+     candidate-disable set; `disableAllSalesforce` does the same.
+  Do NOT special-case the ids (`salesforce.salesforcedx-vscode-core`,
+  etc.) — always ask `isLocked(id)`. The source of truth is our own
+  manifest.
 - **Per-extension uninstall cascades through `transitiveDependents`.**
   `uninstallExtension` enumerates transitive dependents via
   `ExtensionService.transitiveDependents`, shows one modal listing the

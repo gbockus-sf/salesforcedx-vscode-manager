@@ -23,6 +23,7 @@ const mkExt = (
   stub: Partial<ExtStub> & {
     manifests?: Map<string, Manifest>;
     catalogNames?: Map<string, string>;
+    locked?: Set<string>;
   } = {}
 ): ExtensionService => {
   const installed = stub.installed ?? new Set<string>();
@@ -30,6 +31,7 @@ const mkExt = (
   const nodeInfo = stub.nodeInfo ?? new Map<string, NodeVersionInfo>();
   const manifests = stub.manifests ?? new Map<string, Manifest>();
   const catalogNames = stub.catalogNames ?? new Map<string, string>();
+  const locked = stub.locked ?? new Set<string>();
   const getDisplayName = (id: string): string | undefined => {
     const m = manifests.get(id) as { displayName?: string } | undefined;
     return m?.displayName;
@@ -37,6 +39,8 @@ const mkExt = (
   return {
     isInstalled: jest.fn((id: string) => installed.has(id)),
     isEnabled: jest.fn((id: string) => installed.has(id)),
+    isLocked: jest.fn((id: string) => locked.has(id)),
+    lockedIds: jest.fn(() => locked),
     getInstalledVersion: jest.fn((id: string) => versions.get(id)),
     getDisplayName: jest.fn(getDisplayName),
     label: jest.fn((id: string) => getDisplayName(id) ?? catalogNames.get(id) ?? id),
@@ -204,6 +208,33 @@ describe('GroupsTreeProvider', () => {
       }
     });
     expect(discovered.contextValue).toBe('group:pack');
+  });
+
+  it('locked extensions surface a :locked contextValue suffix + required badge', () => {
+    const installed = new Set(['salesforce.salesforcedx-vscode-core']);
+    const tree = new GroupsTreeProvider(
+      new GroupStore(mkSettings()),
+      mkExt({
+        installed,
+        locked: new Set(['salesforce.salesforcedx-vscode-core'])
+      }),
+      mkState()
+    );
+    const item = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-vscode-core',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      updateAvailable: false
+    });
+    // Combined flag contextValue must include :locked so the
+    // package.json view/item/context when-clauses hide install / uninstall.
+    expect(String(item.contextValue)).toMatch(/:locked$|:locked:|:locked(\s|$)/);
+    expect(String(item.description)).toContain('required');
+    // Tooltip calls out WHY the actions are disabled.
+    expect(String(item.tooltip)).toMatch(/required/i);
   });
 
   it('dep-child nodes use the displayName when known, with the raw id in the description', () => {

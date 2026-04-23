@@ -198,5 +198,10 @@ export enum LocalizationKeys {
   catalogCannotApplyAsGroup = 'catalogCannotApplyAsGroup',
 
   // marketplace open
-  openInMarketplaceRequiresNode = 'openInMarketplaceRequiresNode'
+  openInMarketplaceRequiresNode = 'openInMarketplaceRequiresNode',
+
+  // locked extensions (required as a runtime dependency of the manager)
+  extensionLockedBadge = 'extensionLockedBadge',
+  extensionLockedTooltip = 'extensionLockedTooltip',
+  uninstallExtensionLocked = 'uninstallExtensionLocked'
 }

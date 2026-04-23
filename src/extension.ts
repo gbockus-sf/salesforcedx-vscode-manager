@@ -15,6 +15,7 @@ import { MarketplaceVersionService } from './services/marketplaceVersionService'
 import { ProcessService } from './services/processService';
 import { PublisherCatalogService } from './services/publisherCatalogService';
 import { SettingsService } from './services/settingsService';
+import { TelemetryService } from './services/telemetryService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { Logger } from './util/logger';
 import { GroupStatusBarItem } from './statusBar/groupStatusBarItem';
@@ -24,9 +25,15 @@ import { VsixScanner } from './vsix/vsixScanner';
 import { DependenciesTreeProvider } from './views/dependenciesTreeProvider';
 import { GroupsTreeProvider } from './views/groupsTreeProvider';
 
-export const activate = (context: vscode.ExtensionContext): void => {
+export const activate = async (context: vscode.ExtensionContext): Promise<void> => {
+  const hrStart = process.hrtime();
   const logger = new Logger('Salesforce Extensions Manager');
   context.subscriptions.push({ dispose: () => logger.dispose() });
+
+  // Telemetry first — subsequent services may emit from their own init.
+  // init() swallows failures, so a missing core extension or crashed
+  // reporter does NOT block activation; helpers just no-op.
+  await TelemetryService.init(context, logger);
 
   const settings = new SettingsService();
   const proc = new ProcessService();
@@ -101,6 +108,9 @@ export const activate = (context: vscode.ExtensionContext): void => {
     vscode.window.registerTreeDataProvider(VIEW_GROUPS_ID, groupsTree),
     vscode.window.registerTreeDataProvider(VIEW_DEPENDENCIES_ID, dependenciesTree),
     settings.onDidChange(e => {
+      if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.telemetryEnabled}`)) {
+        TelemetryService.refreshEnabled();
+      }
       if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.vsixDirectory}`)) {
         vsixWatcher?.dispose();
         scanner = new VsixScanner(settings.getVsixDirectory());
@@ -200,9 +210,11 @@ export const activate = (context: vscode.ExtensionContext): void => {
     }, 0);
   }
 
+  TelemetryService.sendActivation(hrStart);
   logger.info('Salesforce Extensions Manager activated.');
 };
 
 export const deactivate = (): void => {
-  // no-op
+  TelemetryService.sendDeactivation();
+  TelemetryService.dispose();
 };

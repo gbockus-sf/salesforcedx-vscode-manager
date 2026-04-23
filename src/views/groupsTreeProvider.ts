@@ -240,6 +240,9 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     if (node.updateAvailable && node.latestVersion) {
       bits.push(getLocalization(LocalizationKeys.extensionUpdateBadge, stripLeadingV(node.latestVersion)));
     }
+    if (this.extensions.isLocked(node.extensionId)) {
+      bits.push(getLocalization(LocalizationKeys.extensionLockedBadge));
+    }
     return bits.length > 0 ? bits.join(' · ') : '';
   }
 
@@ -265,6 +268,9 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       );
       lines.push(getLocalization(LocalizationKeys.extensionVsixWalkthroughHint));
     }
+    if (this.extensions.isLocked(node.extensionId)) {
+      lines.push(getLocalization(LocalizationKeys.extensionLockedTooltip));
+    }
     return lines.join('\n');
   }
 
@@ -284,6 +290,11 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     flags.push(node.installed ? 'installed' : 'notInstalled');
     if (node.updateAvailable) flags.push('updateAvailable');
     if (node.source === 'vsix') flags.push('vsix');
+    // `:locked` ids are pulled in via manager's own extensionDependencies
+    // (e.g. salesforcedx-vscode-core, transitively services). VSCode itself
+    // refuses to uninstall them while manager is installed; the menu
+    // when-clauses in package.json hide install/uninstall for this flag.
+    if (this.extensions.isLocked(node.extensionId)) flags.push('locked');
     return flags.join(':');
   }
 

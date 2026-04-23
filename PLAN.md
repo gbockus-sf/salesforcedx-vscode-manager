@@ -700,7 +700,7 @@ should be addressed before a real release.
   No new test for the handler itself — `openInMarketplace` is
   already covered in `updateCommands.test.ts`.
 
-- [ ] **Telemetry reporting** — add AppInsights-backed telemetry
+- [x] **Telemetry reporting** — add AppInsights-backed telemetry
   following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/src/services/TelemetryService.ts`.
   AFV wires a `TelemetryService` singleton initialized via

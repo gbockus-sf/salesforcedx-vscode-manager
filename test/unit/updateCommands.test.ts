@@ -130,6 +130,7 @@ describe('update commands', () => {
     const installed = new Set<string>();
     const extensions = {
       isInstalled: jest.fn((id: string) => installed.has(id)),
+      isLocked: jest.fn(() => false),
       install: jest.fn(async (id: string) => {
         installed.add(id);
         return { source: 'marketplace' as const, exitCode: 0 };
@@ -160,6 +161,7 @@ describe('update commands', () => {
     const cmds = captureCommands();
     const extensions = {
       isInstalled: jest.fn(() => true),
+      isLocked: jest.fn(() => false),
       install: jest.fn(),
       label: makeLabel(),
       clearCliVersionCache: jest.fn()
@@ -182,6 +184,7 @@ describe('update commands', () => {
   // now consults. Tests can override `dependents` or `graph` via spread.
   const mkExtensionsForUninstall = (overrides: Record<string, unknown> = {}): ExtensionService => ({
     isInstalled: jest.fn(() => true),
+    isLocked: jest.fn(() => false),
     uninstall: jest.fn(async () => ({ exitCode: 0 })),
     label: makeLabel(),
     clearCliVersionCache: jest.fn(),
@@ -190,6 +193,28 @@ describe('update commands', () => {
     topologicalUninstallOrder: jest.fn((ids: readonly string[]) => [...ids]),
     ...overrides
   } as unknown as ExtensionService);
+
+  it('uninstallExtension refuses locked ids without prompting or uninstalling', async () => {
+    // Defense-in-depth: the inline menu already hides the uninstall
+    // button for :locked rows, but the command can still be dispatched
+    // programmatically. We surface a notification and return early.
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall({
+      isLocked: jest.fn(() => true)
+    });
+    (vscode.window.showWarningMessage as jest.Mock).mockReset();
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.salesforcedx-vscode-core' });
+    expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    expect(extensions.uninstall).not.toHaveBeenCalled();
+    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+  });
 
   it('uninstallExtension confirms, then delegates to ExtensionService.uninstall', async () => {
     const cmds = captureCommands();
@@ -285,6 +310,7 @@ describe('update commands', () => {
     const cmds = captureCommands();
     const extensions = {
       isInstalled: jest.fn(() => false),
+      isLocked: jest.fn(() => false),
       uninstall: jest.fn(),
       label: makeLabel(),
       clearCliVersionCache: jest.fn()
@@ -396,6 +422,7 @@ describe('update commands', () => {
     const cmds = captureCommands();
     const extensions = {
       isInstalled: jest.fn(() => false),
+      isLocked: jest.fn(() => false),
       install: jest.fn(async () => ({ source: 'marketplace' as const, exitCode: 1, stderr: 'nope' })),
       label: makeLabel(new Map([['salesforce.salesforcedx-einstein-gpt', 'Agentforce Vibes']])),
       clearCliVersionCache: jest.fn()
@@ -418,6 +445,7 @@ describe('update commands', () => {
     const cmds = captureCommands();
     const extensions = {
       isInstalled: jest.fn(() => false),
+      isLocked: jest.fn(() => false),
       install: jest.fn(async () => ({ source: 'marketplace' as const, exitCode: 1, stderr: 'nope' })),
       label: makeLabel(),
       clearCliVersionCache: jest.fn()

@@ -66,6 +66,7 @@ export class ExtensionService {
   private getCatalogDisplayName: ((id: string) => string | undefined) | undefined;
   private cliVersionCache: Map<string, string> | undefined;
   private loggedCommandList = false;
+  private lockedIdsCache: ReadonlySet<string> | undefined;
 
   constructor(
     private readonly settings: SettingsService,
@@ -99,6 +100,58 @@ export class ExtensionService {
    */
   label(id: string): string {
     return this.getDisplayName(id) ?? this.getCatalogDisplayName?.(id) ?? id;
+  }
+
+  /**
+   * Returns true when `id` is a runtime prerequisite of the manager
+   * extension itself — its manifest `extensionDependencies` BFS-expanded
+   * through the installed extensions' own manifests. VSCode force-installs
+   * these and refuses to uninstall them while we're installed; we mirror
+   * the same block in our own UI so users aren't shown buttons that
+   * would fight VSCode's guarantees.
+   *
+   * The set is read once per session and memoized — reloading picks up
+   * any changes to our own manifest.
+   */
+  isLocked(id: string): boolean {
+    if (!this.lockedIdsCache) this.lockedIdsCache = this.computeLockedIds();
+    return this.lockedIdsCache.has(id);
+  }
+
+  /** Exposed so tests (and the tree) can enumerate locked ids. */
+  lockedIds(): ReadonlySet<string> {
+    if (!this.lockedIdsCache) this.lockedIdsCache = this.computeLockedIds();
+    return this.lockedIdsCache;
+  }
+
+  private computeLockedIds(): ReadonlySet<string> {
+    const locked = new Set<string>();
+    const frontier = this.readOwnExtensionDependencies();
+    while (frontier.length > 0) {
+      const next = frontier.pop()!;
+      if (locked.has(next)) continue;
+      locked.add(next);
+      const manifest = vscode.extensions.getExtension(next)?.packageJSON as
+        | { extensionDependencies?: unknown }
+        | undefined;
+      const deps = Array.isArray(manifest?.extensionDependencies)
+        ? (manifest!.extensionDependencies as unknown[]).filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : [];
+      for (const dep of deps) {
+        if (!locked.has(dep)) frontier.push(dep);
+      }
+    }
+    return locked;
+  }
+
+  private readOwnExtensionDependencies(): string[] {
+    const self = vscode.extensions.getExtension(EXTENSION_ID);
+    const deps = (self?.packageJSON as { extensionDependencies?: unknown } | undefined)
+      ?.extensionDependencies;
+    if (!Array.isArray(deps)) return [];
+    return deps.filter((v): v is string => typeof v === 'string');
   }
 
   managed(): vscode.Extension<unknown>[] {

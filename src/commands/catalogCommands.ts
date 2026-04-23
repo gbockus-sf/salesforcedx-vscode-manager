@@ -4,6 +4,7 @@ import { getLocalization, LocalizationKeys } from '../localization';
 import { notifyInfo, notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { PublisherCatalogService } from '../services/publisherCatalogService';
+import { TelemetryService } from '../services/telemetryService';
 import type { Logger } from '../util/logger';
 import type { GroupsTreeProvider } from '../views/groupsTreeProvider';
 
@@ -20,9 +21,14 @@ export const registerCatalogCommands = (
 ): void => {
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.refreshSalesforceCatalog, async () => {
+      const startMs = Date.now();
       await deps.catalog.refresh({ force: true });
       const entries = deps.catalog.current();
       deps.tree.refresh();
+      TelemetryService.sendCatalogRefresh({
+        entryCount: entries.length,
+        durationMs: Date.now() - startMs
+      });
       // Success: the catalog group re-renders with the new member count —
       // no toast. Empty result usually means offline / auth failure; users
       // need to know that.

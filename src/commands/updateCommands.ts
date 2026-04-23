@@ -5,6 +5,7 @@ import { notifyError, notifyInfo, notifyWarn } from '../util/notify';
 import type { CodeCliService } from '../services/codeCliService';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
+import { TelemetryService } from '../services/telemetryService';
 import type { Logger } from '../util/logger';
 import type { GroupsTreeProvider } from '../views/groupsTreeProvider';
 
@@ -60,6 +61,11 @@ export const registerUpdateCommands = (
       }
       const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
       const label = deps.extensions.label(id);
+      TelemetryService.sendExtensionOp('update', {
+        extensionId: id,
+        source: 'marketplace',
+        exitCode
+      });
       if (exitCode !== 0) {
         deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
         void notifyError(getLocalization(LocalizationKeys.updateFailed, label), { logger: deps.logger });
@@ -123,6 +129,11 @@ export const registerUpdateCommands = (
         return;
       }
       const result = await deps.extensions.install(id);
+      TelemetryService.sendExtensionOp('install', {
+        extensionId: id,
+        source: result.source,
+        exitCode: result.exitCode
+      });
       if (result.exitCode !== 0) {
         deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
         void notifyError(
@@ -146,6 +157,17 @@ export const registerUpdateCommands = (
         return;
       }
       const label = deps.extensions.label(id);
+      // Defense-in-depth: the view/item/context when-clause already hides
+      // the inline Uninstall button for :locked rows, but the command can
+      // still be dispatched programmatically. Surface the reason as an
+      // info toast so the user knows why we refused.
+      if (deps.extensions.isLocked(id)) {
+        void notifyInfo(
+          getLocalization(LocalizationKeys.uninstallExtensionLocked, label),
+          { logger: deps.logger }
+        );
+        return;
+      }
       if (!deps.extensions.isInstalled(id)) {
         // No toast: the tree already marks the row "not installed"; log
         // so the click still has a trail.
@@ -184,6 +206,11 @@ export const registerUpdateCommands = (
       let failed = 0;
       for (const victim of order) {
         const result = await deps.extensions.uninstall(victim);
+        TelemetryService.sendExtensionOp('uninstall', {
+          extensionId: victim,
+          source: 'marketplace',
+          exitCode: result.exitCode
+        });
         if (result.exitCode !== 0) {
           failed++;
           deps.logger.error(`uninstall(${victim}): exit ${result.exitCode}`, result.stderr);
