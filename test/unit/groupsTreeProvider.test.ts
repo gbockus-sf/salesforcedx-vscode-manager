@@ -105,7 +105,11 @@ describe('GroupsTreeProvider', () => {
       updateAvailable: false
     });
     expect(extItem.label).toBe('salesforcedx-vscode-apex');
-    expect(extItem.contextValue).toBe('extension');
+    // contextValue now carries install-state flags (installed / notInstalled)
+    // so view/item/context menus can gate Install vs. Uninstall inline
+    // buttons. A freshly-installed extension without updates should read
+    // as exactly 'extension:installed'.
+    expect(extItem.contextValue).toBe('extension:installed');
   });
 
   it('shows the installed version in the description', () => {

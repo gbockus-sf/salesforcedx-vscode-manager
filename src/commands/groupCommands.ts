@@ -57,16 +57,21 @@ const resolveScope = async (
 };
 
 const runApply = async (group: Group, deps: Deps): Promise<void> => {
+  // Catalog groups are too large to apply as a single group — `disableOthers`
+  // would uninstall anything not on the full catalog, and even `enableOnly`
+  // would install every Salesforce extension ever published. Force the user
+  // through the per-extension Install buttons or the Browse command.
+  if (group.source === 'catalog') {
+    void vscode.window.showWarningMessage(
+      getLocalization(LocalizationKeys.catalogCannotApplyAsGroup)
+    );
+    return;
+  }
   // Applying a 0-member group with disableOthers scope would wipe out
   // every managed extension. The empty-user-group case is already blocked
-  // at save-time by validateGroup; this guards the catalog:* case where
-  // the snapshot hasn't loaded yet.
+  // at save-time by validateGroup.
   if (group.extensions.length === 0) {
-    void vscode.window.showWarningMessage(
-      group.id.startsWith('catalog:')
-        ? 'Refresh the Salesforce Catalog before applying this group.'
-        : `Group "${group.label}" has no members.`
-    );
+    void vscode.window.showWarningMessage(`Group "${group.label}" has no members.`);
     return;
   }
   const scope = await resolveScope(group, deps.settings, deps.workspaceState);

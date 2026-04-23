@@ -244,6 +244,10 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
 
   private resolveContextValue(node: ExtensionNode): string {
     const flags: string[] = ['extension'];
+    // `installed` / `notInstalled` lets view/item/context menus gate the
+    // Install vs. Uninstall inline buttons — both are valid actions on an
+    // extension node, but only one at a time.
+    flags.push(node.installed ? 'installed' : 'notInstalled');
     if (node.updateAvailable) flags.push('updateAvailable');
     if (node.source === 'vsix') flags.push('vsix');
     return flags.join(':');

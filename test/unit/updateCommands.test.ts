@@ -114,6 +114,115 @@ describe('update commands', () => {
     expect(installSpy).toHaveBeenNthCalledWith(2, 'salesforce.salesforcedx-vscode-core', { force: true });
   });
 
+  it('installExtension calls ExtensionService.install when the id is not yet installed', async () => {
+    const cmds = captureCommands();
+    const installed = new Set<string>();
+    const extensions = {
+      isInstalled: jest.fn((id: string) => installed.has(id)),
+      install: jest.fn(async (id: string) => {
+        installed.add(id);
+        return { source: 'marketplace' as const, exitCode: 0 };
+      }),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    const tree = {
+      refreshVersionInfo: jest.fn(async () => undefined),
+      refresh: jest.fn()
+    } as unknown as GroupsTreeProvider;
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree
+    });
+    await cmds[COMMANDS.installExtension]({ kind: 'extension', extensionId: 'salesforce.new' });
+    expect(extensions.install).toHaveBeenCalledWith('salesforce.new');
+    expect(tree.refresh).toHaveBeenCalled();
+    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+  });
+
+  it('installExtension is a no-op when the extension is already installed', async () => {
+    const cmds = captureCommands();
+    const extensions = {
+      isInstalled: jest.fn(() => true),
+      install: jest.fn(),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.already' });
+    expect(extensions.install).not.toHaveBeenCalled();
+    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+  });
+
+  it('uninstallExtension confirms, then delegates to ExtensionService.uninstall', async () => {
+    const cmds = captureCommands();
+    const extensions = {
+      isInstalled: jest.fn(() => true),
+      uninstall: jest.fn(async () => ({ exitCode: 0 })),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    const tree = {
+      refreshVersionInfo: jest.fn(async () => undefined),
+      refresh: jest.fn()
+    } as unknown as GroupsTreeProvider;
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue('Uninstall');
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.goaway' });
+    expect(extensions.uninstall).toHaveBeenCalledWith('salesforce.goaway');
+    expect(tree.refresh).toHaveBeenCalled();
+  });
+
+  it('uninstallExtension bails when the user dismisses the confirm dialog', async () => {
+    const cmds = captureCommands();
+    const extensions = {
+      isInstalled: jest.fn(() => true),
+      uninstall: jest.fn(),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.goaway' });
+    expect(extensions.uninstall).not.toHaveBeenCalled();
+  });
+
+  it('uninstallExtension reports not-installed and skips when the id is not installed', async () => {
+    const cmds = captureCommands();
+    const extensions = {
+      isInstalled: jest.fn(() => false),
+      uninstall: jest.fn(),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.never-installed' });
+    expect(extensions.uninstall).not.toHaveBeenCalled();
+    expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+  });
+
   it('checkForUpdates clears caches, refreshes the tree, and invokes the native workbench command', async () => {
     const commands = captureCommands();
     const tree = mkTree();

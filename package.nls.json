@@ -29,6 +29,8 @@
   "salesforcedx-vscode-manager.command.moveGroupScope.title": "Move Group to User / Workspace...",
   "salesforcedx-vscode-manager.command.browseSalesforceExtensions.title": "Browse Salesforce Extensions...",
   "salesforcedx-vscode-manager.command.refreshSalesforceCatalog.title": "Refresh Salesforce Catalog",
+  "salesforcedx-vscode-manager.command.installExtension.title": "Install Extension",
+  "salesforcedx-vscode-manager.command.uninstallExtension.title": "Uninstall Extension",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",

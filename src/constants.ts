@@ -30,7 +30,9 @@ export const COMMANDS = {
   importGroups: 'sfdxManager.importGroups',
   moveGroupScope: 'sfdxManager.moveGroupScope',
   browseSalesforceExtensions: 'sfdxManager.browseSalesforceExtensions',
-  refreshSalesforceCatalog: 'sfdxManager.refreshSalesforceCatalog'
+  refreshSalesforceCatalog: 'sfdxManager.refreshSalesforceCatalog',
+  installExtension: 'sfdxManager.installExtension',
+  uninstallExtension: 'sfdxManager.uninstallExtension'
 } as const;
 
 export const SETTINGS = {

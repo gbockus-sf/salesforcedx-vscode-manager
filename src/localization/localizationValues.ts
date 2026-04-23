@@ -158,5 +158,17 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.refreshCatalogDone]: 'Salesforce catalog: {0} extensions cached.',
   [LocalizationKeys.refreshCatalogEmpty]: 'Salesforce catalog refresh returned no results (offline?).',
 
-  [LocalizationKeys.catalogNeedsRefresh]: 'refresh to load'
+  [LocalizationKeys.catalogNeedsRefresh]: 'refresh to load',
+
+  [LocalizationKeys.installExtensionRequiresNode]: 'SFDX Manager: Install requires an extension node to be selected in the Groups tree.',
+  [LocalizationKeys.installExtensionFailed]: 'Failed to install {0}. See SFDX Manager log.',
+  [LocalizationKeys.installExtensionSucceeded]: 'Installed {0}.',
+  [LocalizationKeys.installExtensionAlreadyInstalled]: '{0} is already installed.',
+  [LocalizationKeys.uninstallExtensionConfirm]: 'Uninstall {0}?',
+  [LocalizationKeys.uninstallExtensionProceed]: 'Uninstall',
+  [LocalizationKeys.uninstallExtensionFailed]: 'Failed to uninstall {0}. See SFDX Manager log.',
+  [LocalizationKeys.uninstallExtensionSucceeded]: 'Uninstalled {0}.',
+  [LocalizationKeys.uninstallExtensionNotInstalled]: '{0} is not installed.',
+
+  [LocalizationKeys.catalogCannotApplyAsGroup]: 'The marketplace catalog has too many extensions to apply as a single group. Install what you need via the Install button on each extension, or use "SFDX Manager: Browse Salesforce Extensions..." for a filtered Quick Pick.'
 };

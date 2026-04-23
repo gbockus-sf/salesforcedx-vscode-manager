@@ -91,6 +91,75 @@ export const registerUpdateCommands = (
       );
     }),
 
+    vscode.commands.registerCommand(COMMANDS.installExtension, async (arg?: unknown) => {
+      const id = extractExtensionId(arg);
+      if (!id) {
+        void vscode.window.showWarningMessage(
+          getLocalization(LocalizationKeys.installExtensionRequiresNode)
+        );
+        return;
+      }
+      if (deps.extensions.isInstalled(id)) {
+        void vscode.window.showInformationMessage(
+          getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, id)
+        );
+        return;
+      }
+      const result = await deps.extensions.install(id);
+      if (result.exitCode !== 0) {
+        deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
+        void vscode.window.showErrorMessage(
+          getLocalization(LocalizationKeys.installExtensionFailed, id)
+        );
+        return;
+      }
+      deps.logger.info(`install(${id}): ${result.source}.`);
+      deps.extensions.clearCliVersionCache();
+      void deps.tree.refreshVersionInfo();
+      deps.tree.refresh();
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.installExtensionSucceeded, id)
+      );
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
+      const id = extractExtensionId(arg);
+      if (!id) {
+        void vscode.window.showWarningMessage(
+          getLocalization(LocalizationKeys.installExtensionRequiresNode)
+        );
+        return;
+      }
+      if (!deps.extensions.isInstalled(id)) {
+        void vscode.window.showInformationMessage(
+          getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, id)
+        );
+        return;
+      }
+      const proceed = getLocalization(LocalizationKeys.uninstallExtensionProceed);
+      const confirm = await vscode.window.showWarningMessage(
+        getLocalization(LocalizationKeys.uninstallExtensionConfirm, id),
+        { modal: true },
+        proceed
+      );
+      if (confirm !== proceed) return;
+      const result = await deps.extensions.uninstall(id);
+      if (result.exitCode !== 0) {
+        deps.logger.error(`uninstall(${id}): exit ${result.exitCode}`, result.stderr);
+        void vscode.window.showErrorMessage(
+          getLocalization(LocalizationKeys.uninstallExtensionFailed, id)
+        );
+        return;
+      }
+      deps.logger.info(`uninstall(${id}): ok.`);
+      deps.extensions.clearCliVersionCache();
+      void deps.tree.refreshVersionInfo();
+      deps.tree.refresh();
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.uninstallExtensionSucceeded, id)
+      );
+    }),
+
     vscode.commands.registerCommand(COMMANDS.checkForUpdates, async () => {
       // Ask VSCode to refresh its own internal "updates available" state so
       // users see the familiar Extensions-view Update badges alongside our

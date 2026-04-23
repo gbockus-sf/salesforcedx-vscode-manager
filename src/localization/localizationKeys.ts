@@ -176,5 +176,19 @@ export enum LocalizationKeys {
   refreshCatalogDone = 'refreshCatalogDone',
   refreshCatalogEmpty = 'refreshCatalogEmpty',
 
-  catalogNeedsRefresh = 'catalogNeedsRefresh'
+  catalogNeedsRefresh = 'catalogNeedsRefresh',
+
+  // per-extension install / uninstall
+  installExtensionRequiresNode = 'installExtensionRequiresNode',
+  installExtensionFailed = 'installExtensionFailed',
+  installExtensionSucceeded = 'installExtensionSucceeded',
+  installExtensionAlreadyInstalled = 'installExtensionAlreadyInstalled',
+  uninstallExtensionConfirm = 'uninstallExtensionConfirm',
+  uninstallExtensionProceed = 'uninstallExtensionProceed',
+  uninstallExtensionFailed = 'uninstallExtensionFailed',
+  uninstallExtensionSucceeded = 'uninstallExtensionSucceeded',
+  uninstallExtensionNotInstalled = 'uninstallExtensionNotInstalled',
+
+  // catalog bulk-apply guard
+  catalogCannotApplyAsGroup = 'catalogCannotApplyAsGroup'
 }
