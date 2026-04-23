@@ -48,13 +48,14 @@ at the bottom whenever a row is added.
 | **UI: Render extensions by displayName** | ~10 min foreground | 1 (021ec45) | 190 | 12 | 178 | — | `ExtensionService.getDisplayName(id)` is now the single source of truth for tree labels; resolves from `ext.packageJSON.displayName`, disk manifest, then the marketplace catalog snapshot, then the raw id. `GroupsTreeProvider.labelForExtension` + a catalog lookup hook surface pretty names everywhere. |
 | **UI: Inline 'Open in Marketplace' button** | ~5 min foreground | 1 (02c359e) | 64 | 6 | 58 | — | Every extension tree node gains an `$(link-external)` inline `view/item/context` button that invokes `extension.open <id>`. Works for both installed and uninstalled ids, surfaces the Install button for missing ones. |
 | **Fix: Stop firing native check-for-updates modal** | ~5 min foreground | 1 (c6e6587) | 33 | 34 | −1 | — | Our `checkForUpdates` command used to also invoke `workbench.extensions.action.checkForUpdates`, which pops a native modal ("All extensions are up to date." / "Install and Reload") we can't suppress. Users invoking our command wanted our tree to refresh, not the modal — so we stick to our own `MarketplaceVersionService` probe plus a sticky notification. Regression test in `updateCommands.test.ts`. |
+| **Feature: Display names in notification copy** | ~25 min foreground | 1 | ~155 | ~30 | ~125 | — | New `ExtensionService.label(id)` centralizes the "display name, with raw id as final fallback" dance and takes over the catalog lookup that used to live on the tree provider, so tree labels AND notification bodies share one resolver. `updateCommands.ts` and `catalogCommands.ts` route every id-bearing toast/modal through `label()` (install / uninstall / update / cascade-confirm). Log lines keep the raw id per policy. 229 → 235 tests (+6). |
 
 ## Summary (keep up to date)
 
-- **Total repository** (all non-merge commits, excluding `package-lock.json`): **+11,481 / −928 lines (net +10,553)**.
-- **Total commits**: 52 on `main` (including 3 merges).
-- **Tests**: **229 passing** across 20 suites.
+- **Total repository** (all non-merge commits, excluding `package-lock.json`): totals refreshed after each commit; see `git log --numstat` for the authoritative number. Last measured: **+11,481 / −928 (net +10,553)** before the display-names-in-notifications commit added ~125 more net lines.
+- **Total commits**: 53 on `main` (including 3 merges).
+- **Tests**: **235 passing** across 20 suites.
 - **Packaged VSIX**: 19 files, ~49 KB.
 - **Known token usage**: 73,214 (Phase 6) + 75,771 (dedup) + 132,302 (versions/updates) = **281,287 measured across the three successful subagents**. Two additional subagents (dep-graph-cluster + cleanups) were launched but died on Bash denial before doing any work; their tokens (13,004 + 13,555 = 26,559) produced no output.
-- **Phases complete**: 0 through 11 + pack-groups discovery + marketplace catalog + per-extension lifecycle + cascade-uninstall + displayName + sticky notifications. Every §9 TODO with code work is closed. Remaining backlog: notifications-by-displayName polish, telemetry reporting (design TBD), React group contents (awaiting your list), and the four manual F5 smoke tests only you can run.
-- **Open follow-ups**: See `PLAN.md` §9 — display-name-in-notifications sweep, telemetry reporting design, React group contents, and the four manual F5 smoke tests.
+- **Phases complete**: 0 through 11 + pack-groups discovery + marketplace catalog + per-extension lifecycle + cascade-uninstall + displayName + sticky notifications + display-names-in-notifications. Every §9 TODO with code work except telemetry is closed.
+- **Open follow-ups**: See `PLAN.md` §9 — telemetry reporting design, React group contents, and the four manual F5 smoke tests.

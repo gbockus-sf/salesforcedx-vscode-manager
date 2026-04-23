@@ -63,6 +63,7 @@ export class ExtensionService {
   private vsixInstaller: VsixInstallerLike | undefined;
   private marketplaceProbe: MarketplaceVersionProbe | undefined;
   private getInstallSource: ((id: string) => 'vsix' | 'marketplace' | 'unknown') | undefined;
+  private getCatalogDisplayName: ((id: string) => string | undefined) | undefined;
   private cliVersionCache: Map<string, string> | undefined;
   private loggedCommandList = false;
 
@@ -82,6 +83,22 @@ export class ExtensionService {
 
   setInstallSourceLookup(fn: (id: string) => 'vsix' | 'marketplace' | 'unknown'): void {
     this.getInstallSource = fn;
+  }
+
+  setCatalogDisplayNameLookup(fn: (id: string) => string | undefined): void {
+    this.getCatalogDisplayName = fn;
+  }
+
+  /**
+   * Single lookup for user-facing copy — tree labels, notification bodies,
+   * quick-pick items. Resolves via `getDisplayName(id)` first (runtime or
+   * on-disk manifest), then the marketplace-catalog snapshot when one is
+   * wired, and finally falls back to the raw id so the caller always gets
+   * something renderable. Log messages and internal identifiers keep the
+   * raw id — this helper is for anything a human reads.
+   */
+  label(id: string): string {
+    return this.getDisplayName(id) ?? this.getCatalogDisplayName?.(id) ?? id;
   }
 
   managed(): vscode.Extension<unknown>[] {

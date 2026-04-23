@@ -11,6 +11,15 @@ interface RegisteredCommands {
   [commandId: string]: (...args: unknown[]) => unknown;
 }
 
+/**
+ * Most tests here don't care about display-name resolution — they just need
+ * the label helper to exist on the stubbed service. Default behavior is
+ * identity (label(id) === id); individual tests override `labels` when they
+ * want to assert that notification copy uses the display name.
+ */
+const makeLabel = (labels?: Map<string, string>) =>
+  jest.fn((id: string) => labels?.get(id) ?? id);
+
 const mkContext = (): vscode.ExtensionContext =>
   ({ subscriptions: [] } as unknown as vscode.ExtensionContext);
 
@@ -59,6 +68,7 @@ describe('update commands', () => {
     } as unknown as CodeCliService;
     const extensions = {
       managed: jest.fn(() => []),
+      label: makeLabel(),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
     registerUpdateCommands(mkContext(), {
@@ -124,6 +134,7 @@ describe('update commands', () => {
         installed.add(id);
         return { source: 'marketplace' as const, exitCode: 0 };
       }),
+      label: makeLabel(),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
     const tree = {
@@ -148,6 +159,7 @@ describe('update commands', () => {
     const extensions = {
       isInstalled: jest.fn(() => true),
       install: jest.fn(),
+      label: makeLabel(),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
     registerUpdateCommands(mkContext(), {
@@ -167,6 +179,7 @@ describe('update commands', () => {
   const mkExtensionsForUninstall = (overrides: Record<string, unknown> = {}): ExtensionService => ({
     isInstalled: jest.fn(() => true),
     uninstall: jest.fn(async () => ({ exitCode: 0 })),
+    label: makeLabel(),
     clearCliVersionCache: jest.fn(),
     getDependencyGraph: jest.fn(() => new Map()),
     transitiveDependents: jest.fn(() => new Set<string>()),
@@ -269,6 +282,7 @@ describe('update commands', () => {
     const extensions = {
       isInstalled: jest.fn(() => false),
       uninstall: jest.fn(),
+      label: makeLabel(),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
     registerUpdateCommands(mkContext(), {
@@ -336,6 +350,86 @@ describe('update commands', () => {
     await commands[COMMANDS.checkForUpdates]();
     expect(extensions.clearCliVersionCache).toHaveBeenCalled();
     expect(tree.refreshVersionInfo).toHaveBeenCalled();
+  });
+
+  it('installExtension notification uses the display name when known', async () => {
+    const cmds = captureCommands();
+    const installed = new Set<string>();
+    const extensions = {
+      isInstalled: jest.fn((id: string) => installed.has(id)),
+      install: jest.fn(async (id: string) => {
+        installed.add(id);
+        return { source: 'marketplace' as const, exitCode: 0 };
+      }),
+      label: makeLabel(new Map([['salesforce.salesforcedx-einstein-gpt', 'Agentforce Vibes']])),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    (vscode.window.showInformationMessage as jest.Mock).mockReset();
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.salesforcedx-einstein-gpt' });
+    const messages = (vscode.window.showInformationMessage as jest.Mock).mock.calls.map(c => c[0]);
+    expect(messages.some(m => typeof m === 'string' && m.includes('Agentforce Vibes'))).toBe(true);
+    expect(messages.every(m => typeof m !== 'string' || !m.includes('salesforce.salesforcedx-einstein-gpt'))).toBe(true);
+  });
+
+  it('installExtension notification falls back to the raw id when no display name is known', async () => {
+    const cmds = captureCommands();
+    const installed = new Set<string>();
+    const extensions = {
+      isInstalled: jest.fn((id: string) => installed.has(id)),
+      install: jest.fn(async (id: string) => {
+        installed.add(id);
+        return { source: 'marketplace' as const, exitCode: 0 };
+      }),
+      label: makeLabel(),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    (vscode.window.showInformationMessage as jest.Mock).mockReset();
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.obscure' });
+    const messages = (vscode.window.showInformationMessage as jest.Mock).mock.calls.map(c => c[0]);
+    expect(messages.some(m => typeof m === 'string' && m.includes('salesforce.obscure'))).toBe(true);
+  });
+
+  it('uninstallExtension cascade prompt lists dependents by display name', async () => {
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall({
+      transitiveDependents: jest.fn(
+        () => new Set(['salesforce.salesforcedx-vscode-apex-oas'])
+      ),
+      label: makeLabel(
+        new Map([
+          ['salesforce.salesforcedx-vscode-apex', 'Apex'],
+          ['salesforce.salesforcedx-vscode-apex-oas', 'Apex OpenAPI Specification']
+        ])
+      )
+    });
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined);
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.salesforcedx-vscode-apex' });
+    const prompt = (vscode.window.showWarningMessage as jest.Mock).mock.calls[0][0] as string;
+    expect(prompt).toContain('Apex');
+    expect(prompt).toContain('Apex OpenAPI Specification');
+    // Cascade member should render as a display name, not the raw id.
+    expect(prompt).not.toContain('salesforce.salesforcedx-vscode-apex-oas');
   });
 
   it('checkForUpdates does not fire the native workbench "check for updates" modal', async () => {

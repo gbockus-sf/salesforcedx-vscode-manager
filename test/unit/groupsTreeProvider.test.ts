@@ -20,20 +20,26 @@ interface ExtStub {
 interface Manifest { extensionDependencies?: string[]; extensionPack?: string[]; displayName?: string }
 
 const mkExt = (
-  stub: Partial<ExtStub> & { manifests?: Map<string, Manifest> } = {}
+  stub: Partial<ExtStub> & {
+    manifests?: Map<string, Manifest>;
+    catalogNames?: Map<string, string>;
+  } = {}
 ): ExtensionService => {
   const installed = stub.installed ?? new Set<string>();
   const versions = stub.versions ?? new Map<string, string>();
   const nodeInfo = stub.nodeInfo ?? new Map<string, NodeVersionInfo>();
   const manifests = stub.manifests ?? new Map<string, Manifest>();
+  const catalogNames = stub.catalogNames ?? new Map<string, string>();
+  const getDisplayName = (id: string): string | undefined => {
+    const m = manifests.get(id) as { displayName?: string } | undefined;
+    return m?.displayName;
+  };
   return {
     isInstalled: jest.fn((id: string) => installed.has(id)),
     isEnabled: jest.fn((id: string) => installed.has(id)),
     getInstalledVersion: jest.fn((id: string) => versions.get(id)),
-    getDisplayName: jest.fn((id: string) => {
-      const m = manifests.get(id) as { displayName?: string } | undefined;
-      return m?.displayName;
-    }),
+    getDisplayName: jest.fn(getDisplayName),
+    label: jest.fn((id: string) => getDisplayName(id) ?? catalogNames.get(id) ?? id),
     readManifest: jest.fn((id: string) => manifests.get(id)),
     refreshInstalledCliVersions: jest.fn(async () => undefined),
     getNodeVersionInfo: jest.fn(async (id: string) =>
@@ -145,9 +151,16 @@ describe('GroupsTreeProvider', () => {
   });
 
   it('falls back to the marketplace catalog displayName for uninstalled ids', () => {
-    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
-    tree.setCatalogDisplayNameLookup(id =>
-      id === 'salesforce.salesforcedx-einstein-gpt' ? 'Agentforce Vibes' : undefined
+    // The catalog lookup now lives on ExtensionService.label() so the tree
+    // and notification copy share one resolver; the tree just asks.
+    const tree = new GroupsTreeProvider(
+      new GroupStore(mkSettings()),
+      mkExt({
+        catalogNames: new Map([
+          ['salesforce.salesforcedx-einstein-gpt', 'Agentforce Vibes']
+        ])
+      }),
+      mkState()
     );
     const item = tree.getTreeItem({
       kind: 'extension',

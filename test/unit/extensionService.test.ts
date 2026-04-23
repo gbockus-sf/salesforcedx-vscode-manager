@@ -369,6 +369,31 @@ describe('ExtensionService', () => {
         const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
         expect(svc.getDisplayName('nobody.knows')).toBeUndefined();
       });
+
+      it('label() returns the runtime displayName when installed', () => {
+        (vscode.extensions.getExtension as jest.Mock).mockImplementation((qid: string) =>
+          qid === 'salesforce.einstein-gpt'
+            ? makeExt('salesforce.einstein-gpt', { displayName: 'Agentforce Vibes' })
+            : undefined
+        );
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.label('salesforce.einstein-gpt')).toBe('Agentforce Vibes');
+      });
+
+      it('label() falls back to the marketplace catalog lookup for uninstalled ids', () => {
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        svc.setCatalogDisplayNameLookup(id =>
+          id === 'salesforce.einstein-gpt' ? 'Agentforce Vibes' : undefined
+        );
+        expect(svc.label('salesforce.einstein-gpt')).toBe('Agentforce Vibes');
+      });
+
+      it('label() returns the raw id when no resolver knows it', () => {
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.label('nobody.knows')).toBe('nobody.knows');
+      });
     });
 
     it('topologicalUninstallOrder() puts the containing pack before its members', () => {

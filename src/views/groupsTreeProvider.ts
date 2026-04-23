@@ -46,13 +46,6 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   readonly onDidChangeTreeData = this.emitter.event;
   private getVsixSources: (() => Record<string, 'vsix' | 'marketplace'>) | undefined;
   private getVsixOverrides: (() => Map<string, { version: string; filePath: string }>) | undefined;
-  /**
-   * Optional fallback lookup for an extension's display name. Callers wire
-   * this to the marketplace catalog so uninstalled ids (the bulk of the
-   * "All Salesforce Extensions" group) render with their real names like
-   * "Agentforce Vibes" instead of the raw `salesforcedx-einstein-gpt` id.
-   */
-  private getCatalogDisplayName: ((id: string) => string | undefined) | undefined;
   private readonly versionInfoCache = new Map<string, NodeVersionInfo>();
   private refreshInFlight: Promise<void> | undefined;
 
@@ -70,23 +63,16 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     this.getVsixOverrides = fn;
   }
 
-  setCatalogDisplayNameLookup(fn: (id: string) => string | undefined): void {
-    this.getCatalogDisplayName = fn;
-  }
-
   /**
-   * Best effort human-readable label for an extension id. Priority:
-   *   1. Locally-installed manifest `displayName` (runtime or on-disk).
-   *   2. Marketplace catalog entry `displayName` (uninstalled ids).
-   *   3. Cleaned id (`publisher.` prefix stripped) so it still reads
-   *      better than the raw `contextValue`-style string.
-   * Never returns an empty string.
+   * Tree-rendering variant of `ExtensionService.label`: falls back to
+   * `<name>` (publisher stripped) instead of the full id so tree rows stay
+   * readable when we have no display name at all. Notifications use
+   * `extensions.label()` directly — they prefer the full id as the
+   * fallback so it's unambiguous.
    */
   private labelForExtension(id: string): string {
-    const local = this.extensions.getDisplayName(id);
-    if (local) return local;
-    const fromCatalog = this.getCatalogDisplayName?.(id);
-    if (fromCatalog) return fromCatalog;
+    const resolved = this.extensions.label(id);
+    if (resolved !== id) return resolved;
     return id.split('.').slice(1).join('.') || id;
   }
 

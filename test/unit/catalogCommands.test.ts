@@ -104,7 +104,8 @@ describe('catalog commands', () => {
     );
     const extensions = {
       managed: jest.fn(() => []),
-      install
+      install,
+      label: jest.fn((id: string) => id)
     } as unknown as ExtensionService;
     registerCatalogCommands(mkContext(), {
       catalog,

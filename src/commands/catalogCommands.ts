@@ -79,7 +79,7 @@ export const registerCatalogCommands = (
         },
         async progress => {
           for (const pick of picks) {
-            progress.report({ message: pick.extensionId });
+            progress.report({ message: deps.extensions.label(pick.extensionId) });
             const result = await deps.extensions.install(pick.extensionId);
             if (result.exitCode === 0) ok++;
             else {

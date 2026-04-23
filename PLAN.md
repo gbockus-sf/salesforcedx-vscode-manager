@@ -542,7 +542,7 @@ should be addressed before a real release.
   (`onStartup` / `manual` / `never`, default `manual`). A
   periodic/background status-bar badge for pending updates is left
   as a follow-up.
-- [ ] **Switch notification copy from extension ids to display names.**
+- [x] **Switch notification copy from extension ids to display names.**
   Every `notifyInfo` / `notifyWarn` / `notifyError` call that
   includes an extension id in the message should route the id
   through `ExtensionService.getDisplayName(id)` (with the

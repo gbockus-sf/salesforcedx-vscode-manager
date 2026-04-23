@@ -46,15 +46,16 @@ export const registerUpdateCommands = (
         return;
       }
       const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
+      const label = deps.extensions.label(id);
       if (exitCode !== 0) {
         deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
-        void notifyError(getLocalization(LocalizationKeys.updateFailed, id), { logger: deps.logger });
+        void notifyError(getLocalization(LocalizationKeys.updateFailed, label), { logger: deps.logger });
         return;
       }
       deps.logger.info(`update(${id}): reinstalled with --force.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      void notifyInfo(getLocalization(LocalizationKeys.updateSucceeded, id));
+      void notifyInfo(getLocalization(LocalizationKeys.updateSucceeded, label));
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
@@ -99,15 +100,16 @@ export const registerUpdateCommands = (
         void notifyWarn(getLocalization(LocalizationKeys.installExtensionRequiresNode));
         return;
       }
+      const label = deps.extensions.label(id);
       if (deps.extensions.isInstalled(id)) {
-        void notifyInfo(getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, id));
+        void notifyInfo(getLocalization(LocalizationKeys.installExtensionAlreadyInstalled, label));
         return;
       }
       const result = await deps.extensions.install(id);
       if (result.exitCode !== 0) {
         deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
         void notifyError(
-          getLocalization(LocalizationKeys.installExtensionFailed, id),
+          getLocalization(LocalizationKeys.installExtensionFailed, label),
           { logger: deps.logger }
         );
         return;
@@ -116,7 +118,11 @@ export const registerUpdateCommands = (
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       deps.tree.refresh();
-      void notifyInfo(getLocalization(LocalizationKeys.installExtensionSucceeded, id));
+      // Re-read the label so freshly-installed ids pick up their on-disk
+      // displayName ("Apex Replay Debugger") instead of the catalog/raw fallback.
+      void notifyInfo(
+        getLocalization(LocalizationKeys.installExtensionSucceeded, deps.extensions.label(id))
+      );
     }),
 
     vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
@@ -125,8 +131,9 @@ export const registerUpdateCommands = (
         void notifyWarn(getLocalization(LocalizationKeys.installExtensionRequiresNode));
         return;
       }
+      const label = deps.extensions.label(id);
       if (!deps.extensions.isInstalled(id)) {
-        void notifyInfo(getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, id));
+        void notifyInfo(getLocalization(LocalizationKeys.uninstallExtensionNotInstalled, label));
         return;
       }
 
@@ -139,12 +146,12 @@ export const registerUpdateCommands = (
       // One modal: either a plain "Uninstall?" or the cascade warning.
       const proceed = getLocalization(LocalizationKeys.uninstallExtensionProceed);
       const prompt = installedDependents.length === 0
-        ? getLocalization(LocalizationKeys.uninstallExtensionConfirm, id)
+        ? getLocalization(LocalizationKeys.uninstallExtensionConfirm, label)
         : getLocalization(
             LocalizationKeys.uninstallExtensionCascadeConfirm,
-            id,
+            label,
             installedDependents.length,
-            installedDependents.join(', ')
+            installedDependents.map(d => deps.extensions.label(d)).join(', ')
           );
       const confirm = await vscode.window.showWarningMessage(
         prompt,
@@ -186,10 +193,10 @@ export const registerUpdateCommands = (
       }
       void notifyInfo(
         installedDependents.length === 0
-          ? getLocalization(LocalizationKeys.uninstallExtensionSucceeded, id)
+          ? getLocalization(LocalizationKeys.uninstallExtensionSucceeded, label)
           : getLocalization(
               LocalizationKeys.uninstallExtensionSucceededCascade,
-              id,
+              label,
               installedDependents.length
             )
       );
