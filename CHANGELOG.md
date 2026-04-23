@@ -19,6 +19,11 @@ All notable changes to `salesforcedx-vscode-manager` will be documented in this 
 - **Keybinding:** `Cmd+Alt+G` (macOS) / `Ctrl+Alt+G` fires `sfdxManager.applyGroupQuickPick` for fast group switching.
 - **`SFDX Manager: Check for Extension Updates` now also triggers VSCode's native `workbench.extensions.action.checkForUpdates`** so users see the familiar Extensions-view Update badges alongside the manager's arrow indicators. Our marketplace probe remains the structured source.
 - **Extension packs surface as groups.** Every installed Salesforce-published extension whose `package.json` declares an `extensionPack` now appears as a read-only group in the tree (id `pack:<extensionId>`, label from the pack's `displayName`, tagged with an `extension pack` badge and a `$(package)` icon). Apply uses the pack's own member list, so a freshly-installed `salesforce.salesforcedx-vscode` gives you a one-click "Apex + Lightning + LWC + …" group without any configuration. Delete / Edit / Move-scope are hidden for pack groups — the pack's manifest is the source of truth.
+- **Salesforce marketplace catalog integration.** The VSCode Marketplace gallery API is now queried for every extension published under the `salesforce` publisher:
+  - A new **"All Salesforce Extensions"** group (id `catalog:salesforce`, `$(cloud)` icon, `marketplace catalog` badge) surfaces the full catalog as a read-only group. Applying it installs everything Salesforce ships, even extensions the user hasn't heard of.
+  - New command **`SFDX Manager: Browse Salesforce Extensions...`** (view-title `$(cloud)` button) opens a multi-select Quick Pick of the catalog with description + install-count, so users can discover and install specific extensions without leaving VSCode. Selections are installed via the existing `code --install-extension` pipeline.
+  - New command **`SFDX Manager: Refresh Salesforce Catalog`** triggers a cached network probe on demand. Catalog refresh honors the existing `updateCheck` setting (`onStartup` auto-refreshes at activation; `manual` / `never` wait for the command).
+  - All network work is offline-safe: when the marketplace is unreachable the catalog is simply empty and the UI degrades gracefully. Results are cached in-memory for 1 hour.
 
 ## [0.1.0] — Unreleased
 

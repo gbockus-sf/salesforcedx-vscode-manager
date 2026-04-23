@@ -47,8 +47,24 @@ const isValidGroup = (id: string, raw: unknown): raw is Group => {
   );
 };
 
+/**
+ * Optional read-side shape for the publisher catalog. Keeping it loose so
+ * the store doesn't pull in the full service type (which would force the
+ * test doubles to stub it).
+ */
+export interface PublisherCatalogSnapshot {
+  publisher: string;
+  extensionIds: readonly string[];
+}
+
 export class GroupStore {
+  private getCatalog: (() => PublisherCatalogSnapshot | undefined) | undefined;
+
   constructor(private readonly settings: SettingsService) {}
+
+  setPublisherCatalog(read: () => PublisherCatalogSnapshot | undefined): void {
+    this.getCatalog = read;
+  }
 
   list(): Group[] {
     // `.get()` already merges workspace-over-user-over-default, so this keeps
@@ -79,6 +95,24 @@ export class GroupStore {
       if (seen.has(packGroup.id)) continue; // belt-and-suspenders; pack ids use a `:` prefix
       merged.push(packGroup);
       seen.add(packGroup.id);
+    }
+    // Synthesized "All <Publisher> Extensions" group sourced from the
+    // marketplace publisher catalog. Appears only when the catalog has
+    // entries (offline/never-refreshed → no group).
+    const catalog = this.getCatalog?.();
+    if (catalog && catalog.extensionIds.length > 0) {
+      const id = `catalog:${catalog.publisher}`;
+      if (!seen.has(id)) {
+        merged.push({
+          id,
+          label: `All ${catalog.publisher[0].toUpperCase() + catalog.publisher.slice(1)} Extensions`,
+          description: `Every extension published by "${catalog.publisher}" on the VSCode Marketplace.`,
+          extensions: [...catalog.extensionIds],
+          builtIn: true,
+          source: 'catalog'
+        });
+        seen.add(id);
+      }
     }
     for (const [id, g] of userById) {
       if (!seen.has(id)) merged.push({ ...g, id, builtIn: false, source: 'user' });
@@ -130,6 +164,11 @@ export class GroupStore {
         'Extension-pack groups are read-only. Uninstall the pack itself to remove the group.'
       );
     }
+    if (id.startsWith('catalog:')) {
+      throw new Error(
+        'Marketplace-catalog groups are read-only. The marketplace is the source of truth.'
+      );
+    }
     const { user, workspace } = this.settings.getGroupsByScope();
     let changed = false;
     if (id in workspace) {
@@ -157,6 +196,9 @@ export class GroupStore {
   async moveToScope(id: string, target: Exclude<GroupScope, 'builtIn'>): Promise<void> {
     if (id.startsWith('pack:')) {
       throw new Error('Extension-pack groups live in the pack manifest and cannot be moved.');
+    }
+    if (id.startsWith('catalog:')) {
+      throw new Error('Marketplace-catalog groups live in the marketplace and cannot be moved.');
     }
     const group = this.get(id);
     if (!group) throw new Error(getLocalization(LocalizationKeys.groupNotFound, id));

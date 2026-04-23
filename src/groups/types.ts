@@ -2,13 +2,16 @@ export type ApplyScope = 'disableOthers' | 'enableOnly' | 'ask';
 
 /**
  * Where a group's definition comes from:
- *   `code`  — code-defined built-ins (`BUILT_IN_GROUPS`).
- *   `pack`  — dynamically discovered from an installed Salesforce-published
- *             extensionPack's manifest at runtime. Read-only: the pack's
- *             package.json is the source of truth.
- *   `user`  — persisted in the user or workspace settings.
+ *   `code`    — code-defined built-ins (`BUILT_IN_GROUPS`).
+ *   `pack`    — dynamically discovered from an installed Salesforce-published
+ *               extensionPack's manifest at runtime. Read-only: the pack's
+ *               package.json is the source of truth.
+ *   `catalog` — synthesized from the marketplace publisher catalog (every
+ *               extension published under a given publisher). Read-only:
+ *               the marketplace is the source of truth.
+ *   `user`    — persisted in the user or workspace settings.
  */
-export type GroupSource = 'code' | 'pack' | 'user';
+export type GroupSource = 'code' | 'pack' | 'catalog' | 'user';
 
 export interface Group {
   id: string;

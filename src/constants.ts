@@ -28,7 +28,9 @@ export const COMMANDS = {
   checkForUpdates: 'sfdxManager.checkForUpdates',
   exportGroups: 'sfdxManager.exportGroups',
   importGroups: 'sfdxManager.importGroups',
-  moveGroupScope: 'sfdxManager.moveGroupScope'
+  moveGroupScope: 'sfdxManager.moveGroupScope',
+  browseSalesforceExtensions: 'sfdxManager.browseSalesforceExtensions',
+  refreshSalesforceCatalog: 'sfdxManager.refreshSalesforceCatalog'
 } as const;
 
 export const SETTINGS = {

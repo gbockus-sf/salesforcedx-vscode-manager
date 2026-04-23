@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
+import { registerCatalogCommands } from './commands/catalogCommands';
 import { registerDependencyCommands } from './commands/dependencyCommands';
 import { registerGroupCommands } from './commands/groupCommands';
 import { registerUpdateCommands } from './commands/updateCommands';
 import { registerVsixCommands } from './commands/vsixCommands';
-import { COMMANDS, CONFIG_NAMESPACE, SETTINGS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
+import { COMMANDS, CONFIG_NAMESPACE, SALESFORCE_PUBLISHER, SETTINGS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
 import { DependencyRegistry } from './dependencies/registry';
 import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
@@ -12,6 +13,7 @@ import { CodeCliService } from './services/codeCliService';
 import { ExtensionService } from './services/extensionService';
 import { MarketplaceVersionService } from './services/marketplaceVersionService';
 import { ProcessService } from './services/processService';
+import { PublisherCatalogService } from './services/publisherCatalogService';
 import { SettingsService } from './services/settingsService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { Logger } from './util/logger';
@@ -43,6 +45,21 @@ export const activate = (context: vscode.ExtensionContext): void => {
   const marketplaceProbe = new MarketplaceVersionService({ logger });
   extensions.setMarketplaceProbe(marketplaceProbe);
   extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');
+
+  const publisherCatalog = new PublisherCatalogService(
+    SALESFORCE_PUBLISHER,
+    marketplaceProbe,
+    settings,
+    logger
+  );
+  store.setPublisherCatalog(() => {
+    const entries = publisherCatalog.current();
+    if (entries.length === 0) return undefined;
+    return {
+      publisher: publisherCatalog.getPublisher(),
+      extensionIds: entries.map(e => e.extensionId)
+    };
+  });
 
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
   groupsTree.setVsixSources(() => installer.currentSources());
@@ -131,6 +148,13 @@ export const activate = (context: vscode.ExtensionContext): void => {
     groupsTree
   });
 
+  registerCatalogCommands(context, {
+    catalog: publisherCatalog,
+    extensions,
+    logger,
+    tree: groupsTree
+  });
+
   registerUpdateCommands(context, {
     codeCli,
     extensions,
@@ -145,6 +169,13 @@ export const activate = (context: vscode.ExtensionContext): void => {
 
   if (settings.getAutoRunDependencyChecks()) {
     void dependenciesTree.runChecks();
+  }
+
+  // Publisher catalog: refresh on startup if the user opted in;
+  // otherwise wait for the explicit command. Refresh runs in the
+  // background — no blocking activation.
+  if (settings.getUpdateCheck() === 'onStartup') {
+    void publisherCatalog.refresh().then(() => groupsTree.refresh());
   }
 
   // Populate installed-version descriptions immediately (no network), and

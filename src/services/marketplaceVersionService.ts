@@ -40,6 +40,35 @@ interface GalleryResponse {
   }>;
 }
 
+/**
+ * Publisher-listing response shape. We only read the fields we care about;
+ * the gallery returns many more.
+ */
+interface PublisherListingResponse {
+  results?: Array<{
+    extensions?: Array<{
+      publisher?: { publisherName?: string; displayName?: string };
+      extensionName?: string;
+      displayName?: string;
+      shortDescription?: string;
+      categories?: string[];
+      tags?: string[];
+      statistics?: Array<{ statisticName?: string; value?: number }>;
+      versions?: Array<{ version?: string }>;
+    }>;
+  }>;
+}
+
+/** A single entry in a publisher catalog. */
+export interface CatalogEntry {
+  extensionId: string;
+  displayName: string;
+  shortDescription: string | undefined;
+  categories: string[];
+  version: string | undefined;
+  installCount: number | undefined;
+}
+
 export interface MarketplaceVersionServiceOptions {
   logger?: Logger;
   cacheTtlMs?: number;
@@ -59,9 +88,15 @@ interface ExistenceEntry {
   fetchedAt: number;
 }
 
+interface PublisherCacheEntry {
+  entries: CatalogEntry[];
+  fetchedAt: number;
+}
+
 export class MarketplaceVersionService {
   private readonly cache = new Map<string, CacheEntry>();
   private readonly existenceCache = new Map<string, ExistenceEntry>();
+  private readonly publisherCache = new Map<string, PublisherCacheEntry>();
   private readonly logger: Logger | undefined;
   private readonly cacheTtlMs: number;
   private readonly fetchImpl: FetchLike | undefined;
@@ -93,6 +128,124 @@ export class MarketplaceVersionService {
   clearCache(): void {
     this.cache.clear();
     this.existenceCache.clear();
+    this.publisherCache.clear();
+  }
+
+  /**
+   * Returns every extension under `publisherName` (e.g. `salesforce`) as
+   * reported by the Marketplace gallery. Results cached `cacheTtlMs`.
+   * Never throws — returns an empty array when the probe is unavailable.
+   */
+  async listPublisherExtensions(publisherName: string): Promise<CatalogEntry[]> {
+    const cached = this.publisherCache.get(publisherName);
+    if (cached && Date.now() - cached.fetchedAt < this.cacheTtlMs) {
+      return cached.entries;
+    }
+    const entries = await this.probePublisher(publisherName);
+    this.publisherCache.set(publisherName, { entries, fetchedAt: Date.now() });
+    return entries;
+  }
+
+  /**
+   * Fetches one page of the gallery's extensionquery result. `searchText`
+   * uses the gallery's search grammar — e.g. `publisher:"salesforce"` to
+   * narrow to a single publisher. Callers still filter client-side because
+   * the server-side grammar is fuzzy: it matches `publisher.displayName`
+   * as well as `publisher.publisherName`.
+   *
+   * Flags: 0x194 = IncludeVersions (0x1) | IncludeCategoryAndTags (0x4)
+   *              | IncludeStatistics (0x100).
+   * pageSize 100 matches the value documented in known-working clients
+   * (the StackOverflow reference implementation). Some pages return
+   * strictly fewer results, which is our signal to stop paginating.
+   */
+  private async probePublisher(publisherName: string): Promise<CatalogEntry[]> {
+    const fetchImpl = this.fetchImpl;
+    if (!fetchImpl) return [];
+    const pageSize = 100;
+    const maxPages = 10; // 1000 results is more than any single publisher realistically has
+    const out: CatalogEntry[] = [];
+    for (let page = 1; page <= maxPages; page++) {
+      const body = JSON.stringify({
+        filters: [
+          {
+            criteria: [
+              { filterType: 8, value: 'Microsoft.VisualStudio.Code' },
+              { filterType: 10, value: `publisher:"${publisherName}"` }
+            ],
+            pageNumber: page,
+            pageSize,
+            sortBy: 0,
+            sortOrder: 0
+          }
+        ],
+        assetTypes: [],
+        flags: 0x194
+      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+      let pageSizeReturned = 0;
+      try {
+        const response = await fetchImpl(MARKETPLACE_URL, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json;api-version=3.0-preview.1',
+            'Content-Type': 'application/json'
+          },
+          body,
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          this.logger?.warn(
+            `marketplace publisher listing: ${publisherName} http ${response.status}`
+          );
+          return out;
+        }
+        const payload = (await response.json()) as PublisherListingResponse;
+        const extensions = payload.results?.[0]?.extensions ?? [];
+        pageSizeReturned = extensions.length;
+        for (const ext of extensions) {
+          const pubName = ext.publisher?.publisherName;
+          const name = ext.extensionName;
+          if (typeof pubName !== 'string' || typeof name !== 'string') continue;
+          // Server-side search is fuzzy; drop cross-publisher matches.
+          if (pubName.toLowerCase() !== publisherName.toLowerCase()) continue;
+          const installs = ext.statistics?.find(s => s.statisticName === 'install')?.value;
+          out.push({
+            extensionId: `${pubName}.${name}`,
+            displayName: typeof ext.displayName === 'string' && ext.displayName.length > 0
+              ? ext.displayName
+              : `${pubName}.${name}`,
+            shortDescription:
+              typeof ext.shortDescription === 'string' ? ext.shortDescription : undefined,
+            categories: Array.isArray(ext.categories)
+              ? ext.categories.filter((c): c is string => typeof c === 'string')
+              : [],
+            version:
+              Array.isArray(ext.versions) && typeof ext.versions[0]?.version === 'string'
+                ? ext.versions[0]!.version
+                : undefined,
+            installCount: typeof installs === 'number' ? installs : undefined
+          });
+        }
+      } catch (err) {
+        this.logger?.warn(
+          `marketplace publisher listing: ${publisherName} unavailable (${err instanceof Error ? err.message : String(err)})`
+        );
+        return out;
+      } finally {
+        clearTimeout(timeout);
+      }
+      if (pageSizeReturned < pageSize) break;
+    }
+    // Stable client-side sort: by install count desc, then extensionId.
+    out.sort((a, b) => {
+      const ai = a.installCount ?? 0;
+      const bi = b.installCount ?? 0;
+      if (bi !== ai) return bi - ai;
+      return a.extensionId.localeCompare(b.extensionId);
+    });
+    return out;
   }
 
   /**

@@ -40,7 +40,9 @@
       { "command": "sfdxManager.checkForUpdates", "title": "%salesforcedx-vscode-manager.command.checkForUpdates.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(search-refresh)" },
       { "command": "sfdxManager.exportGroups", "title": "%salesforcedx-vscode-manager.command.exportGroups.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-upload)" },
       { "command": "sfdxManager.importGroups", "title": "%salesforcedx-vscode-manager.command.importGroups.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
-      { "command": "sfdxManager.moveGroupScope", "title": "%salesforcedx-vscode-manager.command.moveGroupScope.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-both)" }
+      { "command": "sfdxManager.moveGroupScope", "title": "%salesforcedx-vscode-manager.command.moveGroupScope.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-both)" },
+      { "command": "sfdxManager.browseSalesforceExtensions", "title": "%salesforcedx-vscode-manager.command.browseSalesforceExtensions.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud)" },
+      { "command": "sfdxManager.refreshSalesforceCatalog", "title": "%salesforcedx-vscode-manager.command.refreshSalesforceCatalog.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" }
     ],
     "menus": {
       "commandPalette": [
@@ -53,6 +55,7 @@
         { "command": "sfdxManager.applyGroupQuickPick", "when": "view == sfdxManager.groups", "group": "navigation" },
         { "command": "sfdxManager.updateAllSalesforce", "when": "view == sfdxManager.groups", "group": "navigation" },
         { "command": "sfdxManager.checkForUpdates", "when": "view == sfdxManager.groups", "group": "navigation" },
+        { "command": "sfdxManager.browseSalesforceExtensions", "when": "view == sfdxManager.groups", "group": "navigation" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies", "group": "navigation" },
         { "command": "sfdxManager.copyDependencyReport", "when": "view == sfdxManager.dependencies", "group": "navigation" }
       ],

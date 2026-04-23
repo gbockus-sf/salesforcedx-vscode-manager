@@ -146,5 +146,15 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.scopeBadgeUser]: 'user',
   [LocalizationKeys.scopeBadgeWorkspace]: 'workspace',
 
-  [LocalizationKeys.groupExtensionPack]: 'extension pack'
+  [LocalizationKeys.groupExtensionPack]: 'extension pack',
+
+  [LocalizationKeys.groupCatalog]: 'marketplace catalog',
+
+  [LocalizationKeys.browsePlaceholder]: 'Pick Salesforce extensions to install.',
+  [LocalizationKeys.browseEmpty]: 'Salesforce catalog is empty — run SFDX Manager: Refresh Salesforce Catalog first.',
+  [LocalizationKeys.browseInstallProgress]: 'Installing selected extensions…',
+  [LocalizationKeys.browseInstallSummaryOk]: 'Installed {0} extension(s).',
+  [LocalizationKeys.browseInstallSummaryFailed]: 'Installed {0} extension(s) · {1} failed. See SFDX Manager log.',
+  [LocalizationKeys.refreshCatalogDone]: 'Salesforce catalog: {0} extensions cached.',
+  [LocalizationKeys.refreshCatalogEmpty]: 'Salesforce catalog refresh returned no results (offline?).'
 };

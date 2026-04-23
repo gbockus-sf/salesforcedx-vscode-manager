@@ -201,6 +201,47 @@ describe('GroupStore', () => {
     });
   });
 
+  describe('publisher catalog groups', () => {
+    it('list() surfaces a catalog group when the read returns entries', () => {
+      const store = new GroupStore(mkSettings());
+      store.setPublisherCatalog(() => ({
+        publisher: 'salesforce',
+        extensionIds: ['salesforce.apex', 'salesforce.core']
+      }));
+      const catalog = store.list().find(g => g.id === 'catalog:salesforce');
+      expect(catalog?.source).toBe('catalog');
+      expect(catalog?.builtIn).toBe(true);
+      expect(catalog?.extensions).toEqual(['salesforce.apex', 'salesforce.core']);
+      expect(catalog?.label).toMatch(/all salesforce extensions/i);
+    });
+
+    it('list() omits the catalog group when the snapshot is empty', () => {
+      const store = new GroupStore(mkSettings());
+      store.setPublisherCatalog(() => ({ publisher: 'salesforce', extensionIds: [] }));
+      expect(store.list().some(g => g.id === 'catalog:salesforce')).toBe(false);
+    });
+
+    it('remove() refuses to touch a catalog group', async () => {
+      const store = new GroupStore(mkSettings());
+      store.setPublisherCatalog(() => ({
+        publisher: 'salesforce',
+        extensionIds: ['salesforce.apex']
+      }));
+      await expect(store.remove('catalog:salesforce')).rejects.toThrow(/read-only/i);
+    });
+
+    it('moveToScope() refuses to move a catalog group', async () => {
+      const store = new GroupStore(mkSettings());
+      store.setPublisherCatalog(() => ({
+        publisher: 'salesforce',
+        extensionIds: ['salesforce.apex']
+      }));
+      await expect(store.moveToScope('catalog:salesforce', 'workspace')).rejects.toThrow(
+        /marketplace/i
+      );
+    });
+  });
+
   it('remove() on a built-in clears the user override (but the group stays visible)', async () => {
     const settings = mkSettings({
       apex: { label: 'overridden', extensions: [] }

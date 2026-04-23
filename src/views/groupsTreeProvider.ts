@@ -121,20 +121,31 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       labels.push(
         node.group.source === 'pack'
           ? getLocalization(LocalizationKeys.groupExtensionPack)
-          : node.group.builtIn
-            ? getLocalization(LocalizationKeys.groupBuiltIn)
-            : getLocalization(LocalizationKeys.groupCustom)
+          : node.group.source === 'catalog'
+            ? getLocalization(LocalizationKeys.groupCatalog)
+            : node.group.builtIn
+              ? getLocalization(LocalizationKeys.groupBuiltIn)
+              : getLocalization(LocalizationKeys.groupCustom)
       );
       if (scopeBadge) labels.push(scopeBadge);
       item.description = labels.join(' · ');
-      // Pack groups get a distinct icon so they stand out from the
-      // handcrafted Apex / Lightning / React built-ins.
+      // Read-only synthesized groups get distinct icons so they stand out
+      // from the handcrafted Apex / Lightning / React built-ins.
       item.iconPath = new vscode.ThemeIcon(
-        node.isActive ? 'check' : node.group.source === 'pack' ? 'package' : 'layers'
+        node.isActive
+          ? 'check'
+          : node.group.source === 'pack'
+            ? 'package'
+            : node.group.source === 'catalog'
+              ? 'cloud'
+              : 'layers'
       );
-      item.contextValue = node.group.source === 'pack'
-        ? 'group:pack'
-        : `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
+      item.contextValue =
+        node.group.source === 'pack'
+          ? 'group:pack'
+          : node.group.source === 'catalog'
+            ? 'group:catalog'
+            : `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
       item.tooltip = node.group.description ?? node.group.label;
       return item;
     }

@@ -162,5 +162,17 @@ export enum LocalizationKeys {
   scopeBadgeWorkspace = 'scopeBadgeWorkspace',
 
   // pack groups
-  groupExtensionPack = 'groupExtensionPack'
+  groupExtensionPack = 'groupExtensionPack',
+
+  // catalog groups
+  groupCatalog = 'groupCatalog',
+
+  // browse command
+  browsePlaceholder = 'browsePlaceholder',
+  browseEmpty = 'browseEmpty',
+  browseInstallProgress = 'browseInstallProgress',
+  browseInstallSummaryOk = 'browseInstallSummaryOk',
+  browseInstallSummaryFailed = 'browseInstallSummaryFailed',
+  refreshCatalogDone = 'refreshCatalogDone',
+  refreshCatalogEmpty = 'refreshCatalogEmpty'
 }

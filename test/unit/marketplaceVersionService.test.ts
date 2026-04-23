@@ -129,4 +129,109 @@ describe('MarketplaceVersionService', () => {
       expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('listPublisherExtensions', () => {
+    it('maps gallery results to CatalogEntry and filters to the requested publisher', async () => {
+      const fetchImpl = mkFetch({
+        results: [
+          {
+            extensions: [
+              {
+                publisher: { publisherName: 'salesforce', displayName: 'Salesforce' },
+                extensionName: 'salesforcedx-vscode-apex',
+                displayName: 'Apex',
+                shortDescription: 'Apex support',
+                categories: ['Programming Languages'],
+                statistics: [{ statisticName: 'install', value: 12345 }],
+                versions: [{ version: '63.1.0' }]
+              },
+              {
+                // fuzzy hit — different publisher, must be client-filtered out.
+                publisher: { publisherName: 'someone-else' },
+                extensionName: 'random'
+              }
+            ]
+          }
+        ]
+      });
+      const svc = new MarketplaceVersionService({ fetchImpl });
+      const entries = await svc.listPublisherExtensions('salesforce');
+      expect(entries.map(e => e.extensionId)).toEqual(['salesforce.salesforcedx-vscode-apex']);
+      expect(entries[0].displayName).toBe('Apex');
+      expect(entries[0].installCount).toBe(12345);
+      expect(entries[0].version).toBe('63.1.0');
+      expect(entries[0].categories).toEqual(['Programming Languages']);
+    });
+
+    it('paginates until a short page is returned', async () => {
+      const pageSize = 100;
+      const pages = [
+        {
+          results: [{
+            extensions: Array.from({ length: pageSize }, (_, i) => ({
+              publisher: { publisherName: 'salesforce' },
+              extensionName: `ext-${i}`
+            }))
+          }]
+        },
+        {
+          results: [{
+            extensions: Array.from({ length: 3 }, (_, i) => ({
+              publisher: { publisherName: 'salesforce' },
+              extensionName: `ext-${100 + i}`
+            }))
+          }]
+        }
+      ];
+      let call = 0;
+      const impl: FetchImpl = async () => ({
+        ok: true,
+        status: 200,
+        json: async () => pages[call++] ?? { results: [{ extensions: [] }] }
+      });
+      const svc = new MarketplaceVersionService({ fetchImpl: jest.fn(impl) });
+      const entries = await svc.listPublisherExtensions('salesforce');
+      expect(entries.length).toBe(pageSize + 3);
+    });
+
+    it('sorts client-side by install count descending', async () => {
+      const fetchImpl = mkFetch({
+        results: [{
+          extensions: [
+            {
+              publisher: { publisherName: 'salesforce' },
+              extensionName: 'low',
+              statistics: [{ statisticName: 'install', value: 10 }]
+            },
+            {
+              publisher: { publisherName: 'salesforce' },
+              extensionName: 'high',
+              statistics: [{ statisticName: 'install', value: 1000 }]
+            }
+          ]
+        }]
+      });
+      const svc = new MarketplaceVersionService({ fetchImpl });
+      const entries = await svc.listPublisherExtensions('salesforce');
+      expect(entries.map(e => e.extensionId)).toEqual(['salesforce.high', 'salesforce.low']);
+    });
+
+    it('returns empty array when fetch throws (offline)', async () => {
+      const impl: FetchImpl = async () => {
+        throw new Error('offline');
+      };
+      const svc = new MarketplaceVersionService({ fetchImpl: jest.fn(impl) });
+      expect(await svc.listPublisherExtensions('salesforce')).toEqual([]);
+    });
+
+    it('caches within the TTL', async () => {
+      const fetchImpl = mkFetch({
+        results: [{ extensions: [{ publisher: { publisherName: 'salesforce' }, extensionName: 'foo' }] }]
+      });
+      const svc = new MarketplaceVersionService({ fetchImpl, cacheTtlMs: 1_000_000 });
+      await svc.listPublisherExtensions('salesforce');
+      await svc.listPublisherExtensions('salesforce');
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+  });
 });
