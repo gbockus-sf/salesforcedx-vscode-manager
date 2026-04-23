@@ -61,6 +61,12 @@ export const activate = (context: vscode.ExtensionContext): void => {
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
   groupsTree.setVsixSources(() => installer.currentSources());
   groupsTree.setVsixOverrides(() => installer.vsixOverrides());
+  // Wire the marketplace catalog as a fallback display-name source so
+  // uninstalled ids (the bulk of the "All Salesforce Extensions" group)
+  // render as their real names like "Agentforce Vibes".
+  groupsTree.setCatalogDisplayNameLookup(id =>
+    publisherCatalog.current().find(e => e.extensionId === id)?.displayName
+  );
   const dependenciesTree = new DependenciesTreeProvider(registry);
 
   const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings);

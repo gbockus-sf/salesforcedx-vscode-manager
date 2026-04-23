@@ -98,6 +98,33 @@ export class ExtensionService {
     return vscode.extensions.getExtension(id) !== undefined;
   }
 
+  /**
+   * Resolves the human-readable display name for an extension id. Priority:
+   *   1. Runtime `ext.packageJSON.displayName` (installed + active extensions).
+   *   2. Manifest read directly from `~/.vscode/extensions/` (catches
+   *      mid-session installs that `extensions.all` hasn't refreshed yet).
+   *   3. `undefined` — caller falls back to the raw id.
+   *
+   * This is the single source of truth the tree uses so raw ids like
+   * `salesforce.salesforcedx-einstein-gpt` render as "Agentforce Vibes"
+   * wherever we have the metadata.
+   */
+  getDisplayName(id: string): string | undefined {
+    const runtime = vscode.extensions.getExtension(id)?.packageJSON as
+      | { displayName?: unknown }
+      | undefined;
+    if (typeof runtime?.displayName === 'string' && runtime.displayName.length > 0) {
+      return runtime.displayName;
+    }
+    const onDisk = readInstalledManifestFromDisk(id) as
+      | { displayName?: unknown }
+      | undefined;
+    if (typeof onDisk?.displayName === 'string' && onDisk.displayName.length > 0) {
+      return onDisk.displayName;
+    }
+    return undefined;
+  }
+
   isEnabled(id: string): boolean {
     // getExtension only returns extensions that are both installed AND enabled
     // in the current session. Returns undefined for installed-but-disabled.
@@ -512,9 +539,15 @@ const parseExtensionDirName = (entry: string): string | undefined => {
  * Returns `undefined` if the directory can't be found or the manifest
  * can't be parsed.
  */
+interface DiskManifest {
+  extensionDependencies?: unknown;
+  extensionPack?: unknown;
+  displayName?: unknown;
+}
+
 const readInstalledManifestFromDisk = (
   extensionId: string
-): { extensionDependencies?: unknown; extensionPack?: unknown } | undefined => {
+): DiskManifest | undefined => {
   const dir = resolveExtensionsDir();
   if (!dir) return undefined;
   let match: string | undefined;
@@ -532,7 +565,7 @@ const readInstalledManifestFromDisk = (
   if (!match) return undefined;
   try {
     const raw = fs.readFileSync(path.join(dir, match, 'package.json'), 'utf8');
-    return JSON.parse(raw) as { extensionDependencies?: unknown; extensionPack?: unknown };
+    return JSON.parse(raw) as DiskManifest;
   } catch {
     return undefined;
   }

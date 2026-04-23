@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { GroupsTreeProvider } from '../../src/views/groupsTreeProvider';
 import { GroupStore } from '../../src/groups/groupStore';
 import type { ExtensionService, NodeVersionInfo } from '../../src/services/extensionService';
@@ -16,7 +17,7 @@ interface ExtStub {
   nodeInfo: Map<string, NodeVersionInfo>;
 }
 
-interface Manifest { extensionDependencies?: string[]; extensionPack?: string[] }
+interface Manifest { extensionDependencies?: string[]; extensionPack?: string[]; displayName?: string }
 
 const mkExt = (
   stub: Partial<ExtStub> & { manifests?: Map<string, Manifest> } = {}
@@ -29,6 +30,10 @@ const mkExt = (
     isInstalled: jest.fn((id: string) => installed.has(id)),
     isEnabled: jest.fn((id: string) => installed.has(id)),
     getInstalledVersion: jest.fn((id: string) => versions.get(id)),
+    getDisplayName: jest.fn((id: string) => {
+      const m = manifests.get(id) as { displayName?: string } | undefined;
+      return m?.displayName;
+    }),
     readManifest: jest.fn((id: string) => manifests.get(id)),
     refreshInstalledCliVersions: jest.fn(async () => undefined),
     getNodeVersionInfo: jest.fn(async (id: string) =>
@@ -104,12 +109,77 @@ describe('GroupsTreeProvider', () => {
       source: 'marketplace',
       updateAvailable: false
     });
+    // No displayName wired up in this test — label falls back to the
+    // portion of the id after the publisher prefix.
     expect(extItem.label).toBe('salesforcedx-vscode-apex');
     // contextValue now carries install-state flags (installed / notInstalled)
     // so view/item/context menus can gate Install vs. Uninstall inline
     // buttons. A freshly-installed extension without updates should read
     // as exactly 'extension:installed'.
     expect(extItem.contextValue).toBe('extension:installed');
+  });
+
+  it('uses the installed extension displayName as the node label when available', () => {
+    // Simulates a Salesforce-published extension whose package.json
+    // displayName is "Agentforce Vibes" — users should see that, not the id.
+    const manifests = new Map([
+      ['salesforce.salesforcedx-einstein-gpt', { displayName: 'Agentforce Vibes' }]
+    ]);
+    const tree = new GroupsTreeProvider(
+      new GroupStore(mkSettings()),
+      mkExt({ manifests }),
+      mkState()
+    );
+    const item = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      updateAvailable: false
+    });
+    expect(item.label).toBe('Agentforce Vibes');
+    // Tooltip still surfaces the id so developers can grab it.
+    expect(String(item.tooltip)).toContain('salesforce.salesforcedx-einstein-gpt');
+  });
+
+  it('falls back to the marketplace catalog displayName for uninstalled ids', () => {
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
+    tree.setCatalogDisplayNameLookup(id =>
+      id === 'salesforce.salesforcedx-einstein-gpt' ? 'Agentforce Vibes' : undefined
+    );
+    const item = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      groupId: 'apex',
+      installed: false,
+      enabled: false,
+      source: 'unknown',
+      updateAvailable: false
+    });
+    expect(item.label).toBe('Agentforce Vibes');
+  });
+
+  it('dep-child nodes use the displayName when known, with the raw id in the description', () => {
+    const manifests = new Map([
+      ['salesforce.salesforcedx-einstein-gpt', { displayName: 'Agentforce Vibes' }]
+    ]);
+    const tree = new GroupsTreeProvider(
+      new GroupStore(mkSettings()),
+      mkExt({ manifests }),
+      mkState()
+    );
+    const item = tree.getTreeItem({
+      kind: 'dep-child',
+      relation: 'dep',
+      parentExtensionId: 'salesforce.salesforcedx-vscode-apex-oas',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      installed: true,
+      enabled: true
+    });
+    expect(item.label).toBe('Agentforce Vibes');
+    expect(String(item.description)).toContain('salesforce.salesforcedx-einstein-gpt');
   });
 
   it('shows the installed version in the description', () => {

@@ -337,6 +337,38 @@ describe('ExtensionService', () => {
           'salesforce.current-from-runtime'
         ]);
       });
+
+      it('getDisplayName prefers the runtime packageJSON when available', () => {
+        writeInstalled('salesforce.einstein-gpt', '3.32.0', {
+          displayName: 'Agentforce Vibes (disk)'
+        });
+        // Mock path used by getDisplayName is
+        // `vscode.extensions.getExtension(id)?.packageJSON`. `.all` is
+        // irrelevant here — the runtime lookup goes through getExtension.
+        (vscode.extensions.getExtension as jest.Mock).mockImplementation((qid: string) =>
+          qid === 'salesforce.einstein-gpt'
+            ? makeExt('salesforce.einstein-gpt', { displayName: 'Agentforce Vibes' })
+            : undefined
+        );
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.getDisplayName('salesforce.einstein-gpt')).toBe('Agentforce Vibes');
+      });
+
+      it('getDisplayName falls back to the on-disk manifest for mid-session installs', () => {
+        writeInstalled('salesforce.einstein-gpt', '3.32.0', {
+          displayName: 'Agentforce Vibes'
+        });
+        // Not in vscode.extensions.all — mimics "installed after window startup"
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.getDisplayName('salesforce.einstein-gpt')).toBe('Agentforce Vibes');
+      });
+
+      it('getDisplayName returns undefined when nothing knows the id', () => {
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.getDisplayName('nobody.knows')).toBeUndefined();
+      });
     });
 
     it('topologicalUninstallOrder() puts the containing pack before its members', () => {

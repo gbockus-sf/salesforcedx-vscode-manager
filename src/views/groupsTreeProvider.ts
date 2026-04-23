@@ -46,6 +46,13 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   readonly onDidChangeTreeData = this.emitter.event;
   private getVsixSources: (() => Record<string, 'vsix' | 'marketplace'>) | undefined;
   private getVsixOverrides: (() => Map<string, { version: string; filePath: string }>) | undefined;
+  /**
+   * Optional fallback lookup for an extension's display name. Callers wire
+   * this to the marketplace catalog so uninstalled ids (the bulk of the
+   * "All Salesforce Extensions" group) render with their real names like
+   * "Agentforce Vibes" instead of the raw `salesforcedx-einstein-gpt` id.
+   */
+  private getCatalogDisplayName: ((id: string) => string | undefined) | undefined;
   private readonly versionInfoCache = new Map<string, NodeVersionInfo>();
   private refreshInFlight: Promise<void> | undefined;
 
@@ -61,6 +68,26 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
 
   setVsixOverrides(fn: () => Map<string, { version: string; filePath: string }>): void {
     this.getVsixOverrides = fn;
+  }
+
+  setCatalogDisplayNameLookup(fn: (id: string) => string | undefined): void {
+    this.getCatalogDisplayName = fn;
+  }
+
+  /**
+   * Best effort human-readable label for an extension id. Priority:
+   *   1. Locally-installed manifest `displayName` (runtime or on-disk).
+   *   2. Marketplace catalog entry `displayName` (uninstalled ids).
+   *   3. Cleaned id (`publisher.` prefix stripped) so it still reads
+   *      better than the raw `contextValue`-style string.
+   * Never returns an empty string.
+   */
+  private labelForExtension(id: string): string {
+    const local = this.extensions.getDisplayName(id);
+    if (local) return local;
+    const fromCatalog = this.getCatalogDisplayName?.(id);
+    if (fromCatalog) return fromCatalog;
+    return id.split('.').slice(1).join('.') || id;
   }
 
   refresh(): void {
@@ -156,32 +183,37 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     }
 
     if (node.kind === 'dep-child') {
-      const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
-      const item = new vscode.TreeItem(short, vscode.TreeItemCollapsibleState.None);
-      item.description = node.relation === 'pack'
+      const label = this.labelForExtension(node.extensionId);
+      const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
+      const relationLabel = node.relation === 'pack'
         ? getLocalization(LocalizationKeys.dependencyChildPack)
         : getLocalization(LocalizationKeys.dependencyChildDep);
+      // Keep the id visible via the dim description so developers can still
+      // copy/paste when debugging.
+      item.description = label === node.extensionId
+        ? relationLabel
+        : `${relationLabel} · ${node.extensionId}`;
       const state = !node.installed
         ? getLocalization(LocalizationKeys.dependencyChildNotInstalled)
         : node.enabled
           ? getLocalization(LocalizationKeys.dependencyChildEnabled)
           : getLocalization(LocalizationKeys.dependencyChildDisabled);
-      item.tooltip = `${node.extensionId} (${state})`;
+      item.tooltip = `${label}\n${node.extensionId} (${state})`;
       item.iconPath = new vscode.ThemeIcon(node.relation === 'pack' ? 'package' : 'link');
       item.contextValue = `extension:child:${node.relation}`;
       return item;
     }
 
-    const short = node.extensionId.split('.').slice(1).join('.') || node.extensionId;
+    const label = this.labelForExtension(node.extensionId);
     const hasChildren =
       this.extensionDependenciesOf(node.extensionId).length > 0 ||
       this.extensionPackOf(node.extensionId).length > 0;
     const item = new vscode.TreeItem(
-      short,
+      label,
       hasChildren ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None
     );
     item.description = this.formatDescription(node);
-    item.tooltip = this.buildTooltip(node);
+    item.tooltip = this.buildTooltip(node, label);
     item.iconPath = this.resolveIcon(node);
     item.contextValue = this.resolveContextValue(node);
     return item;
@@ -213,8 +245,12 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     return bits.length > 0 ? bits.join(' · ') : '';
   }
 
-  private buildTooltip(node: ExtensionNode): string {
-    const lines: string[] = [node.extensionId];
+  private buildTooltip(node: ExtensionNode, label?: string): string {
+    const lines: string[] = [];
+    // When the display name and the id differ, surface BOTH in the tooltip
+    // so developers can still grab the id for a bug report / support ticket.
+    if (label && label !== node.extensionId) lines.push(label);
+    lines.push(node.extensionId);
     if (node.installedVersion) {
       lines.push(getLocalization(LocalizationKeys.extensionInstalledLine, stripLeadingV(node.installedVersion)));
     }
