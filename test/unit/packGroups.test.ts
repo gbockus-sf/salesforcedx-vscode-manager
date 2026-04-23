@@ -47,6 +47,10 @@ describe('discoverPackGroups', () => {
       'salesforce.salesforcedx-vscode-apex',
       'salesforce.salesforcedx-vscode-core'
     ]);
+    // Discovered pack groups carry their own extension id so the
+    // inline "Open in Marketplace" button can target the pack listing.
+    expect(groups[0].marketplaceExtensionId).toBe('salesforce.salesforcedx-vscode');
+    expect(groups[1].marketplaceExtensionId).toBe('salesforce.salesforcedx-vscode-expanded');
   });
 
   it('ignores non-Salesforce publishers even if they declare an extensionPack', () => {

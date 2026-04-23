@@ -71,6 +71,7 @@
         { "command": "sfdxManager.deleteGroup", "when": "view == sfdxManager.groups && (viewItem == group:user || viewItem == group:builtIn)", "group": "1_modify@2" },
         { "command": "sfdxManager.moveGroupScope", "when": "view == sfdxManager.groups && viewItem == group:user", "group": "1_modify@3" },
         { "command": "sfdxManager.refreshSalesforceCatalog", "when": "view == sfdxManager.groups && viewItem == group:catalog", "group": "inline" },
+        { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && viewItem == group:pack", "group": "inline@2" },
         { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /notInstalled/", "group": "inline@1" },
         { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /(^|:)installed/", "group": "inline@3" },
         { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && viewItem =~ /^extension/ && viewItem =~ /updateAvailable/", "group": "inline@2" },

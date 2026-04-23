@@ -56,7 +56,8 @@ export const discoverPackGroups = (): Group[] => {
       description: packDescription(ext),
       extensions: members,
       builtIn: true,
-      source: 'pack'
+      source: 'pack',
+      marketplaceExtensionId: ext.id
     });
   }
   out.sort((a, b) => a.id.localeCompare(b.id));

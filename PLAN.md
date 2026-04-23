@@ -655,7 +655,7 @@ should be addressed before a real release.
   genuinely has no visual side-effect) — the decision table in
   step 1 is what keeps us honest.
 
-- [ ] **"Open in Marketplace" button on extension-pack group rows.**
+- [x] **"Open in Marketplace" button on extension-pack group rows.**
   The pack-discovery groups (`pack:<extensionId>`) and the two
   hardcoded pack built-ins (`salesforce-extension-pack`,
   `salesforce-extension-pack-expanded`) represent a real published

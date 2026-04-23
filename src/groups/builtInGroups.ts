@@ -67,7 +67,8 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
       'salesforce.sfdx-code-analyzer-vscode',
       'salesforce.apex-language-server-extension'
     ],
-    builtIn: true
+    builtIn: true,
+    marketplaceExtensionId: 'salesforce.salesforcedx-vscode'
   },
   {
     id: 'salesforce-extension-pack-expanded',
@@ -100,6 +101,7 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
       'esbenp.prettier-vscode',
       'financialforce.lana'
     ],
-    builtIn: true
+    builtIn: true,
+    marketplaceExtensionId: 'salesforce.salesforcedx-vscode-expanded'
   }
 ];

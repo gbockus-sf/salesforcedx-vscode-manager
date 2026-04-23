@@ -131,8 +131,14 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
             : undefined;
       const labels: string[] = [];
       if (node.isActive) labels.push(getLocalization(LocalizationKeys.groupActive));
+      // The two hardcoded pack built-ins (salesforce-extension-pack,
+      // salesforce-extension-pack-expanded) also represent a real
+      // published extension; label them as "extension pack" so the badge
+      // matches the pack-discovery entries.
+      const isExtensionPack =
+        node.group.source === 'pack' || !!node.group.marketplaceExtensionId;
       labels.push(
-        node.group.source === 'pack'
+        isExtensionPack
           ? getLocalization(LocalizationKeys.groupExtensionPack)
           : node.group.source === 'catalog'
             ? getLocalization(LocalizationKeys.groupCatalog)
@@ -152,18 +158,24 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       item.iconPath = new vscode.ThemeIcon(
         node.isActive
           ? 'check'
-          : node.group.source === 'pack'
+          : isExtensionPack
             ? 'package'
             : node.group.source === 'catalog'
               ? 'cloud'
               : 'layers'
       );
-      item.contextValue =
-        node.group.source === 'pack'
-          ? 'group:pack'
-          : node.group.source === 'catalog'
-            ? 'group:catalog'
-            : `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
+      // Pack groups (discovered OR hardcoded with marketplaceExtensionId)
+      // share the `group:pack` contextValue so the view/item/context
+      // contribution can match both with one `when` clause. When the
+      // user clicks the inline "Open in Marketplace" button, VSCode hands
+      // the clicked GroupNode to the command handler — which calls
+      // `extractExtensionId` and picks up `marketplaceExtensionId`
+      // without any handler-side changes.
+      item.contextValue = isExtensionPack
+        ? 'group:pack'
+        : node.group.source === 'catalog'
+          ? 'group:catalog'
+          : `group:${node.group.builtIn ? 'builtIn' : 'user'}`;
       item.tooltip = node.group.description ?? node.group.label;
       return item;
     }

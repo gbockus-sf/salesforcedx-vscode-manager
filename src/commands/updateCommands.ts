@@ -17,19 +17,32 @@ interface Deps {
 }
 
 /**
- * Node context arg shape surfaced by the Groups tree for `view/item/context`
- * menu items. We only care about `extensionId` here.
+ * Shapes VSCode can hand our `view/item/context` menu handlers:
+ *   - a raw string (programmatic invocation from our own code),
+ *   - an extension node `{ kind: 'extension', extensionId }` (leaf rows),
+ *   - a group node `{ kind: 'group', group: { marketplaceExtensionId } }`
+ *     (pack rows' "Open in Marketplace" button).
+ * `extractExtensionId` normalizes all three to the publisher.name id.
  */
 interface ExtensionNodeContext {
   kind?: 'extension';
   extensionId?: string;
 }
+interface GroupNodeContext {
+  kind?: 'group';
+  group?: { marketplaceExtensionId?: string };
+}
 
 const extractExtensionId = (arg: unknown): string | undefined => {
   if (typeof arg === 'string') return arg;
-  if (arg && typeof arg === 'object' && 'extensionId' in arg) {
+  if (!arg || typeof arg !== 'object') return undefined;
+  if ('extensionId' in arg) {
     const id = (arg as ExtensionNodeContext).extensionId;
-    return typeof id === 'string' ? id : undefined;
+    if (typeof id === 'string') return id;
+  }
+  if ('group' in arg) {
+    const id = (arg as GroupNodeContext).group?.marketplaceExtensionId;
+    if (typeof id === 'string') return id;
   }
   return undefined;
 };

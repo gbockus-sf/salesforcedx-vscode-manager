@@ -174,6 +174,37 @@ describe('GroupsTreeProvider', () => {
     expect(item.label).toBe('Agentforce Vibes');
   });
 
+  it('pack groups receive the group:pack contextValue so the marketplace button renders', () => {
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
+    // Hardcoded pack built-in: source is undefined but marketplaceExtensionId is set.
+    const hardcoded = tree.getTreeItem({
+      kind: 'group',
+      isActive: false,
+      group: {
+        id: 'salesforce-extension-pack',
+        label: 'Salesforce Extension Pack',
+        extensions: ['salesforce.salesforcedx-vscode-apex'],
+        builtIn: true,
+        marketplaceExtensionId: 'salesforce.salesforcedx-vscode'
+      }
+    });
+    expect(hardcoded.contextValue).toBe('group:pack');
+    // Pack-discovery group: source is 'pack' and marketplaceExtensionId is set.
+    const discovered = tree.getTreeItem({
+      kind: 'group',
+      isActive: false,
+      group: {
+        id: 'pack:salesforce.salesforcedx-vscode',
+        label: 'Salesforce Extension Pack',
+        extensions: [],
+        builtIn: true,
+        source: 'pack',
+        marketplaceExtensionId: 'salesforce.salesforcedx-vscode'
+      }
+    });
+    expect(discovered.contextValue).toBe('group:pack');
+  });
+
   it('dep-child nodes use the displayName when known, with the raw id in the description', () => {
     const manifests = new Map([
       ['salesforce.salesforcedx-einstein-gpt', { displayName: 'Agentforce Vibes' }]

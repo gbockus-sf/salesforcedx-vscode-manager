@@ -316,6 +316,38 @@ describe('update commands', () => {
     );
   });
 
+  it('openInMarketplace picks up marketplaceExtensionId from a pack group node', async () => {
+    // view/item/context hands the entire GroupsNode to the command when the
+    // user clicks the inline button on a pack group row. extractExtensionId
+    // must descend into `group.marketplaceExtensionId` so the pack's own id
+    // (e.g. salesforce.salesforcedx-vscode) gets opened.
+    const cmds = captureCommands();
+    (vscode.commands.executeCommand as jest.Mock).mockReset();
+    (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions: mkExtensionsForUninstall(),
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.openInMarketplace]({
+      kind: 'group',
+      isActive: false,
+      group: {
+        id: 'salesforce-extension-pack',
+        label: 'Salesforce Extension Pack',
+        extensions: [],
+        builtIn: true,
+        marketplaceExtensionId: 'salesforce.salesforcedx-vscode'
+      }
+    });
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+      'extension.open',
+      'salesforce.salesforcedx-vscode'
+    );
+  });
+
   it('openInMarketplace surfaces a warning when no extension id is provided', async () => {
     const cmds = captureCommands();
     (vscode.commands.executeCommand as jest.Mock).mockReset();

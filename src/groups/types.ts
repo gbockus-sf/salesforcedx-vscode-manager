@@ -23,4 +23,12 @@ export interface Group {
   builtIn?: boolean;
   /** Finer-grained than `builtIn`: lets the UI distinguish code from pack. */
   source?: GroupSource;
+  /**
+   * For groups that correspond to a published extension (i.e. an extension
+   * pack): the `publisher.name` id of the pack itself. Drives the inline
+   * "Open in Marketplace" button on the group row. Unset for groups that
+   * don't map to a single marketplace listing (user / catalog / code built-
+   * ins that aren't packs).
+   */
+  marketplaceExtensionId?: string;
 }
