@@ -48,7 +48,6 @@ export const applyGroup = async (
     if (!memberSet.has(depId)) autoIncluded.push(depId);
   }
   result.dependencyAutoIncluded = autoIncluded;
-  const effectiveEnable = new Set<string>([...memberSet, ...transitiveDeps]);
 
   // Enable order: auto-included deps first (in topological order so each
   // dep's own deps precede it), then the group's listed members in authored
@@ -78,15 +77,45 @@ export const applyGroup = async (
   }
 
   if (scope === 'disableOthers') {
+    // Re-snapshot the graph AFTER the install pass. Installing a member
+    // pulls in its own `extensionDependencies` via the VSCode CLI, and
+    // those deps weren't in the graph we built at the top of the function.
+    // Without this re-snapshot a dep like `einstein-gpt` (pulled in when
+    // `apex-oas` was installed) would look like a disable candidate,
+    // the disable would fail with VSCode's "Cannot uninstall, X depends
+    // on this" message, and the dep would silently end up in the
+    // manualDisable bucket — the extension would keep working but the
+    // user sees a confusing error banner on next activation.
+    const postInstallGraph = svc.getDependencyGraph();
+
+    // Re-compute transitive deps against the post-install graph too, so
+    // deps of freshly-installed members are auto-excluded from candidates.
+    const postInstallTransitive = svc.transitiveDependencies(
+      group.extensions,
+      postInstallGraph
+    );
+    const effectiveEnablePostInstall = new Set<string>([
+      ...memberSet,
+      ...transitiveDeps,
+      ...postInstallTransitive
+    ]);
+    for (const depId of postInstallTransitive) {
+      if (!memberSet.has(depId) && !transitiveDeps.has(depId)) {
+        result.dependencyAutoIncluded.push(depId);
+      }
+    }
+
     // Candidate set = managed ids that are installed, NOT in effective-enable.
     const candidates = new Set<string>(
-      managedIds.filter(id => !effectiveEnable.has(id) && svc.isInstalled(id))
+      managedIds.filter(
+        id => !effectiveEnablePostInstall.has(id) && svc.isInstalled(id)
+      )
     );
 
     // Refuse to disable anything that a non-candidate installed extension
     // still depends on. This is what turns VSCode's 'Cannot uninstall X. Y
     // depends on this.' warnings into first-class state.
-    const blocked = svc.computeBlockedByDependents(candidates, graph);
+    const blocked = svc.computeBlockedByDependents(candidates, postInstallGraph);
     for (const [id, blockers] of blocked) {
       candidates.delete(id);
       result.dependencyBlocked.push({ id, blockedBy: blockers });
@@ -94,7 +123,7 @@ export const applyGroup = async (
 
     // Uninstall in topological order so pack members come off before packs
     // and dependents come off before dependencies.
-    const uninstallOrder = svc.topologicalUninstallOrder([...candidates], graph);
+    const uninstallOrder = svc.topologicalUninstallOrder([...candidates], postInstallGraph);
     for (const id of uninstallOrder) {
       const outcome = await svc.disable(id);
       if (outcome === 'ok') {

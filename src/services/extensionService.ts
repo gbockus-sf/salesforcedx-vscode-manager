@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { EXTENSION_ID, SALESFORCE_PUBLISHER } from '../constants';
 import { compare as compareVersions } from '../dependencies/versionCompare';
@@ -125,7 +128,58 @@ export class ExtensionService {
         : [];
       graph.set(ext.id, { id: ext.id, dependsOn, packMembers });
     }
+    // VSCode's `extensions.all` is a snapshot of the startup state — it
+    // doesn't pick up extensions installed later in this session until a
+    // reload. Read those ids' manifests directly from the
+    // ~/.vscode/extensions install directory so the graph reflects
+    // what's actually on disk.
+    this.augmentGraphFromDisk(graph, [...this.getDiskInstalledIds()]);
     return graph;
+  }
+
+  /**
+   * Enriches `graph` in place with extension-dependency info for ids that
+   * VSCode's runtime `extensions.all` API doesn't yet know about (e.g.,
+   * extensions installed after the window started). Reads each candidate's
+   * `package.json` directly from `~/.vscode/extensions/<id>-<version>/`.
+   * Silent no-op on any I/O failure — the apply flow must not crash when
+   * one manifest is missing or malformed.
+   */
+  augmentGraphFromDisk(graph: DependencyGraph, ids: readonly string[]): void {
+    for (const id of ids) {
+      if (graph.has(id)) continue; // live runtime wins over disk
+      const manifest = readInstalledManifestFromDisk(id);
+      if (!manifest) continue;
+      const dependsOn = Array.isArray(manifest.extensionDependencies)
+        ? (manifest.extensionDependencies as unknown[]).filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : [];
+      const packMembers = Array.isArray(manifest.extensionPack)
+        ? (manifest.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+        : [];
+      graph.set(id, { id, dependsOn, packMembers });
+    }
+  }
+
+  /**
+   * Returns every extension id installed under the user's VSCode extensions
+   * directory, scanned live from disk. Includes extensions installed after
+   * window startup that `vscode.extensions.all` doesn't yet know about.
+   */
+  getDiskInstalledIds(): Set<string> {
+    const dir = resolveExtensionsDir();
+    const out = new Set<string>();
+    if (!dir) return out;
+    try {
+      for (const entry of fs.readdirSync(dir)) {
+        const parsed = parseExtensionDirName(entry);
+        if (parsed) out.add(parsed);
+      }
+    } catch {
+      // extensions dir missing / unreadable — graceful no-op.
+    }
+    return out;
   }
 
   /**
@@ -384,6 +438,79 @@ export class ExtensionService {
     return { installedVersion, latestVersion, updateAvailable, source };
   }
 }
+
+/**
+ * Resolves the VSCode user-extensions directory. Order of preference:
+ *   1. `VSCODE_EXTENSIONS` env var — explicitly set, trust it.
+ *   2. `~/.vscode-insiders/extensions` when the running VSCode is Insiders
+ *      (detected via `vscode.env.appRoot` path hint).
+ *   3. `~/.vscode/extensions` — the stable default.
+ * Returns `undefined` when none of these exist.
+ */
+const resolveExtensionsDir = (): string | undefined => {
+  const envDir = process.env.VSCODE_EXTENSIONS;
+  if (envDir && fs.existsSync(envDir)) return envDir;
+  const home = os.homedir();
+  const candidates = [
+    path.join(home, '.vscode-insiders', 'extensions'),
+    path.join(home, '.vscode', 'extensions')
+  ];
+  for (const dir of candidates) {
+    try {
+      if (fs.existsSync(dir)) return dir;
+    } catch {
+      // continue
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Parses a directory name under `~/.vscode/extensions/` back into its
+ * `publisher.name` extension id. VSCode uses `<publisher>.<name>-<version>`;
+ * there may be additional suffixes like a universal-platform marker.
+ * Returns `undefined` for non-extension entries (.obsolete, .lock, etc.).
+ */
+const parseExtensionDirName = (entry: string): string | undefined => {
+  if (entry.startsWith('.')) return undefined;
+  const match = entry.match(/^([a-z0-9][a-z0-9-]*)\.([a-z0-9][a-z0-9-]*)-\d/i);
+  if (!match) return undefined;
+  return `${match[1]}.${match[2]}`;
+};
+
+/**
+ * Reads the `package.json` of an extension installed on disk. Only the
+ * fields the manager cares about (`extensionDependencies`,
+ * `extensionPack`) are typed; the full manifest is returned as an
+ * unknown record so callers can access other fields when needed.
+ * Returns `undefined` if the directory can't be found or the manifest
+ * can't be parsed.
+ */
+const readInstalledManifestFromDisk = (
+  extensionId: string
+): { extensionDependencies?: unknown; extensionPack?: unknown } | undefined => {
+  const dir = resolveExtensionsDir();
+  if (!dir) return undefined;
+  let match: string | undefined;
+  try {
+    const prefix = `${extensionId.toLowerCase()}-`;
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.toLowerCase().startsWith(prefix)) {
+        match = entry;
+        break;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  if (!match) return undefined;
+  try {
+    const raw = fs.readFileSync(path.join(dir, match, 'package.json'), 'utf8');
+    return JSON.parse(raw) as { extensionDependencies?: unknown; extensionPack?: unknown };
+  } catch {
+    return undefined;
+  }
+};
 
 /**
  * Parses `publisher.name@version` lines emitted by

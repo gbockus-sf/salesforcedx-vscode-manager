@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   ExtensionService,
@@ -251,6 +254,66 @@ describe('ExtensionService', () => {
       const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
       const order = svc.topologicalUninstallOrder(['core', 'apex'], graph);
       expect(order.indexOf('apex')).toBeLessThan(order.indexOf('core'));
+    });
+
+    describe('disk-backed graph augmentation', () => {
+      let tmp: string;
+      const originalEnv = process.env.VSCODE_EXTENSIONS;
+
+      beforeEach(() => {
+        tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sfdx-mgr-ext-'));
+        process.env.VSCODE_EXTENSIONS = tmp;
+      });
+      afterEach(() => {
+        process.env.VSCODE_EXTENSIONS = originalEnv;
+        fs.rmSync(tmp, { recursive: true, force: true });
+      });
+
+      const writeInstalled = (
+        id: string,
+        version: string,
+        manifest: Record<string, unknown>
+      ): void => {
+        const extDir = path.join(tmp, `${id}-${version}`);
+        fs.mkdirSync(extDir, { recursive: true });
+        fs.writeFileSync(path.join(extDir, 'package.json'), JSON.stringify(manifest));
+      };
+
+      it('getDependencyGraph picks up ids installed on disk that vscode.extensions.all does not know about', () => {
+        // vscode.extensions.all is empty — mimics the "installed after window
+        // startup" case. Disk-augmentation should still surface the node.
+        writeInstalled('salesforce.salesforcedx-vscode-apex-oas', '63.1.0', {
+          name: 'salesforcedx-vscode-apex-oas',
+          publisher: 'salesforce',
+          extensionDependencies: [
+            'salesforce.salesforcedx-vscode-apex',
+            'salesforce.salesforcedx-einstein-gpt'
+          ]
+        });
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        const graph = svc.getDependencyGraph();
+        const node = graph.get('salesforce.salesforcedx-vscode-apex-oas');
+        expect(node?.dependsOn).toEqual([
+          'salesforce.salesforcedx-vscode-apex',
+          'salesforce.salesforcedx-einstein-gpt'
+        ]);
+      });
+
+      it('runtime vscode.extensions.all entries win over disk entries for the same id', () => {
+        writeInstalled('salesforce.apex', '63.0.0', {
+          extensionDependencies: ['salesforce.stale-from-disk']
+        });
+        (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+          makeExt('salesforce.apex', {
+            extensionDependencies: ['salesforce.current-from-runtime']
+          })
+        ];
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.getDependencyGraph().get('salesforce.apex')?.dependsOn).toEqual([
+          'salesforce.current-from-runtime'
+        ]);
+      });
     });
 
     it('topologicalUninstallOrder() puts the containing pack before its members', () => {

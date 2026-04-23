@@ -132,6 +132,60 @@ describe('applyGroup', () => {
     expect(svc.disable).not.toHaveBeenCalledWith('salesforce.core');
   });
 
+  it('excludes deps of freshly-installed members from the disable candidate set', async () => {
+    // Regression for the apex-oas / einstein-gpt case: if a group member
+    // isn't installed until the apply runs, its extensionDependencies
+    // only become known to us AFTER install. A naive implementation
+    // would compute the blocker set from the pre-install graph, miss the
+    // new edge, and try to uninstall the freshly-pulled-in dep.
+    const preGraph = new Map<string, DependencyGraphNode>();
+    preGraph.set('salesforce.apex', { id: 'salesforce.apex', dependsOn: [], packMembers: [] });
+    const postGraph = new Map<string, DependencyGraphNode>();
+    postGraph.set('salesforce.apex', { id: 'salesforce.apex', dependsOn: [], packMembers: [] });
+    postGraph.set('salesforce.apex-oas', {
+      id: 'salesforce.apex-oas',
+      dependsOn: ['salesforce.einstein-gpt'],
+      packMembers: []
+    });
+    postGraph.set('salesforce.einstein-gpt', {
+      id: 'salesforce.einstein-gpt',
+      dependsOn: [],
+      packMembers: []
+    });
+
+    let callCount = 0;
+    const svc = mkSvc({
+      getDependencyGraph: jest.fn(() => (callCount++ === 0 ? preGraph : postGraph)),
+      transitiveDependencies: jest.fn(
+        (roots: readonly string[], graph: DependencyGraph) => {
+          // Real impl walks edges; simulate here.
+          const out = new Set<string>();
+          const stack = [...roots];
+          while (stack.length) {
+            const id = stack.pop()!;
+            const node = graph.get(id);
+            if (!node) continue;
+            for (const d of node.dependsOn) if (!out.has(d)) { out.add(d); stack.push(d); }
+          }
+          return out;
+        }
+      )
+    });
+    const members = ['salesforce.apex', 'salesforce.apex-oas'];
+    const managed = [...members, 'salesforce.einstein-gpt'];
+    const r = await applyGroup(
+      { id: 'apex', label: 'Apex', extensions: members },
+      'disableOthers',
+      managed,
+      svc
+    );
+    // einstein-gpt must not appear in the disable set; it was pulled in
+    // by apex-oas and is part of the transitive deps post-install.
+    expect(svc.disable).not.toHaveBeenCalledWith('salesforce.einstein-gpt');
+    expect(r.disabled).toEqual([]);
+    expect(r.dependencyAutoIncluded).toContain('salesforce.einstein-gpt');
+  });
+
   it('disables non-members in topological order', async () => {
     const disableCalls: string[] = [];
     const svc = mkSvc({
