@@ -15,6 +15,15 @@ decisions that should not be relitigated.
 - **[`CONTRIBUTING.md`](./CONTRIBUTING.md)** — dev loop, quality gates, and
   the git-worktree recipe for running multiple agents in parallel without
   fighting GPG signing.
+- **[`docs/telemetry-events.md`](./docs/telemetry-events.md)** — every
+  telemetry event the manager emits, with properties / measurements.
+  **Must be updated in the same commit** whenever you add, remove, or
+  retune a typed emit helper in `src/services/telemetryService.ts`.
+- **[`docs/notifications.md`](./docs/notifications.md)** — every
+  user-facing toast / modal, plus the "intentionally silent" list.
+  **Must be updated in the same commit** whenever you add, remove,
+  mute, or retune a `notifyInfo` / `notifyWarn` / `notifyError` or a
+  raw `show*Message` call.
 
 ## Quality gates (non-negotiable)
 
@@ -262,4 +271,11 @@ When you finish something:
 - [ ] Corresponding checkbox in `PLAN.md` (phase or §9 TODO) ticked.
 - [ ] `CHANGELOG.md` updated under `[Unreleased]` if user-visible.
 - [ ] `TRACKING.md` row added or updated.
+- [ ] If the diff touched telemetry (new / changed / removed event or
+      helper on `src/services/telemetryService.ts`),
+      `docs/telemetry-events.md` reflects it.
+- [ ] If the diff touched notifications (new / changed / muted /
+      removed `notify*` or `show*Message` call),
+      `docs/notifications.md` reflects it — either as a new row or by
+      moving the call into the "Intentionally silent paths" list.
 - [ ] Conventional-commit message with the *why*.
