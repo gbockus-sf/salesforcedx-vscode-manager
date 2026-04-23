@@ -2,8 +2,20 @@ import * as vscode from 'vscode';
 import { getLocalization, LocalizationKeys } from '../localization';
 import type { SettingsService } from '../services/settingsService';
 import { BUILT_IN_GROUPS } from './builtInGroups';
-import { discoverPackGroups } from './packGroups';
+import { discoverPackGroups, packGroupId } from './packGroups';
 import type { Group } from './types';
+
+/**
+ * When a pack is installed locally we prefer its real manifest over our
+ * handcrafted static copy. This map is the single source of truth for that
+ * correspondence — key is the built-in group id, value is the discovered
+ * pack group id (`pack:<extensionId>`). If the discovered group is present
+ * the built-in is suppressed from the tree so users never see duplicates.
+ */
+const BUILT_IN_TO_PACK_OVERRIDE: Record<string, string> = {
+  'salesforce-extension-pack': packGroupId('salesforce.salesforcedx-vscode'),
+  'salesforce-extension-pack-expanded': packGroupId('salesforce.salesforcedx-vscode-expanded')
+};
 
 /** Where a user-defined group lives. Built-ins are source-level. */
 export type GroupScope = 'user' | 'workspace' | 'builtIn';
@@ -82,9 +94,21 @@ export class GroupStore {
         userById.set(id, { ...(raw as Group), id });
       }
     }
+    // Resolve discovered pack groups up front so we can suppress any
+    // handcrafted built-in whose corresponding pack is installed — the
+    // pack's manifest is the source of truth when it's present.
+    const packGroups = discoverPackGroups();
+    const discoveredPackIds = new Set(packGroups.map(g => g.id));
+
     const merged: Group[] = [];
     const seen = new Set<string>();
     for (const builtIn of BUILT_IN_GROUPS) {
+      const supplantingPackId = BUILT_IN_TO_PACK_OVERRIDE[builtIn.id];
+      if (supplantingPackId && discoveredPackIds.has(supplantingPackId)) {
+        // Discovery will add the live-manifest version below; skip the
+        // handcrafted copy so the tree shows one entry per pack.
+        continue;
+      }
       const override = userById.get(builtIn.id);
       if (override) {
         merged.push({ ...override, id: builtIn.id, builtIn: true, source: 'code' });
@@ -96,7 +120,7 @@ export class GroupStore {
     // Discovered Salesforce extension-pack groups. Appear after the
     // handcrafted built-ins but before user groups — they're still
     // built-in semantically but sourced from whatever packs are installed.
-    for (const packGroup of discoverPackGroups()) {
+    for (const packGroup of packGroups) {
       if (seen.has(packGroup.id)) continue; // belt-and-suspenders; pack ids use a `:` prefix
       merged.push(packGroup);
       seen.add(packGroup.id);

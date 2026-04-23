@@ -199,6 +199,24 @@ describe('GroupStore', () => {
         store.moveToScope('pack:salesforce.salesforcedx-vscode', 'workspace')
       ).rejects.toThrow(/pack manifest/i);
     });
+
+    it('handcrafted Salesforce-pack built-in is suppressed when the pack is installed', () => {
+      // Pack manifest is the source of truth when present; we should see
+      // `pack:salesforce.salesforcedx-vscode` but NOT the static
+      // `salesforce-extension-pack` built-in in the list.
+      const store = new GroupStore(mkSettings());
+      const ids = store.list().map(g => g.id);
+      expect(ids).toContain('pack:salesforce.salesforcedx-vscode');
+      expect(ids).not.toContain('salesforce-extension-pack');
+    });
+
+    it('handcrafted Salesforce-pack built-in remains visible when the pack is NOT installed', () => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+      const store = new GroupStore(mkSettings());
+      const ids = store.list().map(g => g.id);
+      expect(ids).toContain('salesforce-extension-pack');
+      expect(ids).not.toContain('pack:salesforce.salesforcedx-vscode');
+    });
   });
 
   describe('publisher catalog groups', () => {
