@@ -761,3 +761,163 @@ should be addressed before a real release.
 
   Update `CLAUDE.md` once this lands so future agents don't
   reintroduce `extensionDependencies: ['...core']`.
+
+- [ ] **Manage extension version dependencies** — let a Salesforce
+  extension declare which version(s) of other extensions it's
+  compatible with, and surface mismatches in the Groups tree with a
+  visible indicator. VSCode's native `extensionDependencies` field is
+  id-only (no semver range), and the marketplace has no version-pin
+  concept either, so this has to be a custom property we read from
+  each extension's `package.json` — same approach we used for
+  `salesforceDependencies` (the external-prerequisite contract).
+
+  ### Proposed contract
+
+  A new top-level field in each extension's `package.json`, read
+  statically (never activate the target):
+
+  ```jsonc
+  {
+    "name": "salesforcedx-vscode-apex",
+    "salesforceExtensionRequirements": [
+      {
+        "id": "salesforce.salesforcedx-vscode-core",
+        "versionRange": ">=63.0.0",
+        "severity": "error",
+        "reason": "Relies on TelemetryService API added in 63.0.0."
+      },
+      {
+        "id": "salesforce.salesforcedx-vscode-apex-log",
+        "versionRange": ">=2.5.0 <3.0.0",
+        "severity": "warn"
+      }
+    ]
+  }
+  ```
+
+  Fields:
+  - `id` (required) — target extension's `publisher.name`.
+  - `versionRange` (required) — a semver range string
+    (`^1.0.0` / `>=2.1.0 <3.0.0` / `~1.5.0`). Reuse `semver` library
+    semantics; we already have an inline `compare` helper in
+    `src/dependencies/versionCompare.ts` but should pull in the
+    `semver` npm package for `satisfies()`.
+  - `severity` (optional, default `'error'`) — `'error' | 'warn'`.
+    Error = red badge + tree error color + never apply the group;
+    warn = yellow badge + tree warning color + apply but surface.
+  - `reason` (optional) — free-text blurb for the tooltip.
+
+  ### Source of truth
+
+  Each target extension's installed `package.json` (read via
+  `ext.packageJSON` → fall back to disk scan for mid-session
+  installs, same as `getDependencyGraph`). No central registry,
+  no marketplace queries. A shim catalog at
+  `src/dependencies/extensionRequirementsShims.ts` can seed
+  requirements for Salesforce extensions that haven't adopted the
+  contract yet — the same pattern the existing shim catalog uses.
+
+  ### Engine
+
+  New file: `src/services/extensionRequirementsService.ts`.
+  - `collect(): ExtensionRequirement[]` — scans installed Salesforce
+    extensions + the shim catalog, dedups by `(source, id)` so two
+    extensions can pin the same target.
+  - `evaluate(requirement, installedVersion): 'ok' | 'warn' | 'fail'`
+    — wraps `semver.satisfies`; returns `ok` when the target isn't
+    installed and severity is `warn` (nothing to pin yet), `fail`
+    otherwise.
+  - `violations(): Violation[]` — current list of requirements whose
+    installed version fails the range, each carrying `sourceId`
+    (extension that declared the requirement), `targetId`, the
+    expected range, the observed version, severity, and reason.
+  - In-memory cache invalidated by the same `clearCliVersionCache()`
+    hook we already use — piggyback on extension-install events.
+
+  ### UI
+
+  **Groups tree (`GroupsTreeProvider`):**
+  - Every `extension` node that's involved in a violation gains:
+    - An inline warning/error icon on the row
+      (`$(warning)` for warn, `$(error)` for fail).
+    - A new description badge — `incompatible` for fail,
+      `compatible (warn)` for warn.
+    - Tooltip lines listing each violation: `Requires X vRange
+      from <sourceDisplayName> — installed vObserved.`
+  - New `contextValue` flags: `:reqFail` / `:reqWarn` so menus can
+    target the state (e.g. a future "View Compatibility Details"
+    command).
+
+  **Dependencies tree:**
+  - A new category: "Extension Compatibility" (alongside CLIs,
+    Runtimes, Per-Extension). Each violation becomes a check row
+    under it with the full source → target → range story. Reuses
+    the existing status-icon + remediation-tooltip machinery.
+
+  **Apply-time guard:**
+  - `applyGroup` runs `violations()` before the install pass. Any
+    `error`-severity violation where both source and target land in
+    the effective enable set triggers a modal:
+    > "Applying 'Apex' will activate extensions with incompatible
+    > versions: `apex` requires `core >=63.0.0` but v62.1.4 is
+    > installed. Continue?"
+  - "Continue" proceeds with the apply as usual; "Cancel" aborts.
+  - `warn` severity logs + appends to the apply-summary toast (which
+    already fires for other "actionable" results), but never blocks.
+
+  **Status bar:**
+  - Existing `GroupStatusBarItem` gets an optional suffix — if
+    `violations()` contains any `error` entries, the item's
+    background flips to `statusBarItem.errorBackground` and the
+    tooltip appends "N compatibility issue(s)". Click still opens
+    the group picker; a separate `SFDX Manager: Show Compatibility
+    Issues` command (focus Dependencies view) may be warranted.
+
+  ### Commands
+
+  - `sfdxManager.showCompatibilityIssues` — focuses the Dependencies
+    view at the new category. Palette + view-title button.
+  - Consider a `sfdxManager.copyCompatibilityReport` (mirrors
+    `copyDependencyReport`) for bug reports.
+
+  ### Settings
+
+  One new enum setting:
+  - `salesforcedx-vscode-manager.extensionCompatibility.onViolation`
+    — `'block' | 'warn' | 'ignore'`, default `'warn'`. Lets
+    organizations that don't want the manager to block apply turn
+    error-severity into warnings.
+
+  ### Telemetry
+
+  New event: `sfdxManager_extension_requirements_check` with
+  `{ total, ok, warn, fail }` counts. Fires on every
+  `runDependencyCheck` + once per activation. Separate from
+  `sfdxManager_dependency_check` so the dashboards stay clean.
+
+  ### Tests
+
+  - `semver` wrapper test (exact bounds, pre-release, caret / tilde /
+    inclusive ranges).
+  - `evaluate()` test covering ok / warn / fail / target-not-installed.
+  - `applyGroup` regression: two members with a violation between
+    them under `error` severity triggers the confirm prompt; user
+    dismissing aborts; accepting continues. Under `warn` severity,
+    no prompt.
+  - `GroupsTreeProvider` test: a node with a violation gets the
+    right contextValue flag + description badge + tooltip line.
+
+  ### Reference
+
+  - Existing `salesforceDependencies` contract implementation:
+    `src/dependencies/registry.ts`, `src/dependencies/runners.ts`.
+    Same read-statically pattern; the new engine is a sibling
+    rather than a new concept.
+  - AFV's `isAboveMinimumRequiredVersion` at
+    `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/src/services/CoreExtensionService.ts:149-155`
+    is a one-target variant of this idea — worth cribbing for the
+    error-copy structure.
+  - Adoption: once the contract lands, send a PR against
+    `/Users/gbockus/github/IDEx/salesforcedx-vscode/packages/*/package.json`
+    adding `salesforceExtensionRequirements` where appropriate. The
+    shim catalog is the bridge until that adoption completes.
