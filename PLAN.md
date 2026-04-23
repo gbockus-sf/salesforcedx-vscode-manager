@@ -573,6 +573,51 @@ should be addressed before a real release.
   when known, and still falls back to the id when
   `getDisplayName` returns undefined.
 
+- [ ] **"Open in Marketplace" button on extension-pack group rows.**
+  The pack-discovery groups (`pack:<extensionId>`) and the two
+  hardcoded pack built-ins (`salesforce-extension-pack`,
+  `salesforce-extension-pack-expanded`) represent a real published
+  extension — the pack itself — not just a set of members. Today the
+  group row has no way to jump to that pack's marketplace page; the
+  `$(link-external)` "Open in Marketplace" button only appears on
+  leaf extension nodes. Users who want to read the pack description
+  or leave a review have to remember the id and use the palette.
+
+  Proposal: add an inline `view/item/context` button on pack-source
+  group nodes that invokes the existing `sfdxManager.openInMarketplace`
+  command with the pack's own extension id. Wiring details:
+  - `Group.source === 'pack'` already marks pack-discovery groups;
+    add a parallel marker for the two hardcoded pack built-ins so
+    the contribution `when` clause can target all three. Either
+    route them through `packGroups.ts` too (cleanest — discover
+    from installed manifests + fall back to the hardcoded ids when
+    not installed), or tag the hardcoded entries with a dedicated
+    `contextValue` like `group:pack-builtin`.
+  - Add the id the button should open to the group shape (e.g.,
+    `Group.marketplaceExtensionId: string`), populated from
+    `pack:<id>` or the hardcoded ids. The pack-discovery path
+    already has it; the hardcoded entries need the string wired in.
+  - `groupsTreeProvider.ts` sets `contextValue` to
+    `group:pack` (or `:pack-builtin`) when `marketplaceExtensionId`
+    is set; the `view/item/context` contribution in `package.json`
+    targets that `contextValue` with the `$(link-external)` icon and
+    the existing `sfdxManager.openInMarketplace` command, passing the
+    group's `marketplaceExtensionId` via `arguments`. Reuse
+    `extractExtensionId` in `updateCommands.ts` — it already accepts
+    `{ extensionId }` shaped args, so no handler change is needed if
+    the button passes the right shape.
+  - `package.json` gets a new menu entry under
+    `view/item/context`: `{ "when": "view == sfdxManager.groups &&
+    viewItem =~ /^group:pack/", "group": "inline@1", "command":
+    "sfdxManager.openInMarketplace" }` (or similar — inline position
+    matches the leaf node's existing button).
+
+  Tests: `groupsTreeProvider.test.ts` asserts pack groups receive
+  the new contextValue and carry a `marketplaceExtensionId`;
+  update `packGroups.test.ts` to confirm the field is populated.
+  No new test for the handler itself — `openInMarketplace` is
+  already covered in `updateCommands.test.ts`.
+
 - [ ] **Telemetry reporting** — add AppInsights-backed telemetry
   following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/src/services/TelemetryService.ts`.
