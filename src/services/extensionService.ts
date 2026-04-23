@@ -59,6 +59,20 @@ export interface DependencyGraphNode {
 }
 export type DependencyGraph = Map<string, DependencyGraphNode>;
 
+/**
+ * VSCode treats `publisher.name` case-insensitively (marketplace lookups,
+ * `getExtension`, and the `code` CLI all normalize), but our dependency
+ * graph used to key on whatever casing each manifest happened to declare.
+ * That bit us when `salesforcedx-vscode-agents` shipped with
+ * `"publisher": "Salesforce"` while every pack's `extensionPack` array
+ * referenced it as `salesforce.salesforcedx-vscode-agents` — our BFS
+ * treated them as two distinct ids and tried to uninstall the same
+ * extension twice. One source of truth: every graph-side id gets lowered
+ * at the boundary.
+ */
+const normalizeId = (id: string): string => id.toLowerCase();
+const normalizeIds = (ids: readonly string[]): string[] => ids.map(normalizeId);
+
 export class ExtensionService {
   private vsixInstaller: VsixInstallerLike | undefined;
   private marketplaceProbe: MarketplaceVersionProbe | undefined;
@@ -115,7 +129,7 @@ export class ExtensionService {
    */
   isLocked(id: string): boolean {
     if (!this.lockedIdsCache) this.lockedIdsCache = this.computeLockedIds();
-    return this.lockedIdsCache.has(id);
+    return this.lockedIdsCache.has(normalizeId(id));
   }
 
   /** Exposed so tests (and the tree) can enumerate locked ids. */
@@ -135,8 +149,10 @@ export class ExtensionService {
         | { extensionDependencies?: unknown }
         | undefined;
       const deps = Array.isArray(manifest?.extensionDependencies)
-        ? (manifest!.extensionDependencies as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
+        ? normalizeIds(
+            (manifest!.extensionDependencies as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
           )
         : [];
       for (const dep of deps) {
@@ -151,7 +167,7 @@ export class ExtensionService {
     const deps = (self?.packageJSON as { extensionDependencies?: unknown } | undefined)
       ?.extensionDependencies;
     if (!Array.isArray(deps)) return [];
-    return deps.filter((v): v is string => typeof v === 'string');
+    return normalizeIds(deps.filter((v): v is string => typeof v === 'string'));
   }
 
   managed(): vscode.Extension<unknown>[] {
@@ -218,12 +234,17 @@ export class ExtensionService {
         | { extensionDependencies?: unknown; extensionPack?: unknown }
         | undefined;
       const dependsOn = Array.isArray(pkg?.extensionDependencies)
-        ? (pkg!.extensionDependencies as unknown[]).filter((v): v is string => typeof v === 'string')
+        ? normalizeIds(
+            (pkg!.extensionDependencies as unknown[]).filter((v): v is string => typeof v === 'string')
+          )
         : [];
       const packMembers = Array.isArray(pkg?.extensionPack)
-        ? (pkg!.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+        ? normalizeIds(
+            (pkg!.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+          )
         : [];
-      graph.set(ext.id, { id: ext.id, dependsOn, packMembers });
+      const id = normalizeId(ext.id);
+      graph.set(id, { id, dependsOn, packMembers });
     }
     // VSCode's `extensions.all` is a snapshot of the startup state — it
     // doesn't pick up extensions installed later in this session until a
@@ -243,17 +264,22 @@ export class ExtensionService {
    * one manifest is missing or malformed.
    */
   augmentGraphFromDisk(graph: DependencyGraph, ids: readonly string[]): void {
-    for (const id of ids) {
+    for (const raw of ids) {
+      const id = normalizeId(raw);
       if (graph.has(id)) continue; // live runtime wins over disk
       const manifest = readInstalledManifestFromDisk(id);
       if (!manifest) continue;
       const dependsOn = Array.isArray(manifest.extensionDependencies)
-        ? (manifest.extensionDependencies as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
+        ? normalizeIds(
+            (manifest.extensionDependencies as unknown[]).filter(
+              (v): v is string => typeof v === 'string'
+            )
           )
         : [];
       const packMembers = Array.isArray(manifest.extensionPack)
-        ? (manifest.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+        ? normalizeIds(
+            (manifest.extensionPack as unknown[]).filter((v): v is string => typeof v === 'string')
+          )
         : [];
       graph.set(id, { id, dependsOn, packMembers });
     }
@@ -271,7 +297,7 @@ export class ExtensionService {
     try {
       for (const entry of fs.readdirSync(dir)) {
         const parsed = parseExtensionDirName(entry);
-        if (parsed) out.add(parsed);
+        if (parsed) out.add(normalizeId(parsed));
       }
     } catch {
       // extensions dir missing / unreadable — graceful no-op.
@@ -289,13 +315,15 @@ export class ExtensionService {
    * pack functionally depends on its members.
    */
   transitiveDependents(roots: readonly string[], graph: DependencyGraph): Set<string> {
+    const normalizedRoots = normalizeIds(roots);
     const out = new Set<string>();
-    const stack = [...roots];
+    const stack = [...normalizedRoots];
+    const rootSet = new Set(normalizedRoots);
     while (stack.length > 0) {
       const id = stack.pop()!;
       for (const [otherId, node] of graph) {
         if (out.has(otherId)) continue;
-        if (roots.includes(otherId)) continue; // roots themselves aren't dependents-of-themselves
+        if (rootSet.has(otherId)) continue; // roots themselves aren't dependents-of-themselves
         if (node.dependsOn.includes(id) || node.packMembers.includes(id)) {
           out.add(otherId);
           stack.push(otherId);
@@ -312,7 +340,7 @@ export class ExtensionService {
    */
   transitiveDependencies(roots: readonly string[], graph: DependencyGraph): Set<string> {
     const out = new Set<string>();
-    const stack = [...roots];
+    const stack = normalizeIds(roots);
     while (stack.length > 0) {
       const id = stack.pop()!;
       const node = graph.get(id);
@@ -336,16 +364,19 @@ export class ExtensionService {
     candidateDisableSet: Set<string>,
     graph: DependencyGraph
   ): Map<string, string[]> {
+    const normalizedCandidates = new Set<string>(
+      [...candidateDisableSet].map(normalizeId)
+    );
     const blocked = new Map<string, string[]>();
     let changed = true;
     while (changed) {
       changed = false;
       for (const [id] of graph) {
-        if (!candidateDisableSet.has(id)) continue;
+        if (!normalizedCandidates.has(id)) continue;
         if (blocked.has(id)) continue;
         const blockers: string[] = [];
         for (const [depId, depNode] of graph) {
-          if (candidateDisableSet.has(depId)) continue;
+          if (normalizedCandidates.has(depId)) continue;
           if (blocked.has(depId)) continue;
           if (depNode.dependsOn.includes(id) || depNode.packMembers.includes(id)) {
             blockers.push(depId);
@@ -367,7 +398,8 @@ export class ExtensionService {
    * incomplete).
    */
   topologicalUninstallOrder(ids: readonly string[], graph: DependencyGraph): string[] {
-    const idSet = new Set(ids);
+    const normalized = normalizeIds(ids);
+    const idSet = new Set(normalized);
     const visited = new Set<string>();
     const out: string[] = [];
     const visit = (id: string): void => {
@@ -382,8 +414,8 @@ export class ExtensionService {
       }
       out.push(id);
     };
-    for (const id of ids) visit(id);
-    for (const id of ids) if (!visited.has(id)) out.push(id);
+    for (const id of normalized) visit(id);
+    for (const id of normalized) if (!visited.has(id)) out.push(id);
     return out;
   }
 

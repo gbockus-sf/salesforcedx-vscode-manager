@@ -214,6 +214,44 @@ describe('ExtensionService', () => {
       expect(graph.get('salesforce.junk')!.dependsOn).toEqual([]);
     });
 
+    it('getDependencyGraph() lowercases ids so mixed-case manifests fold to one key', () => {
+      // Regression: `salesforcedx-vscode-agents` shipped with
+      // `"publisher": "Salesforce"` (capital S) while every pack's
+      // `extensionPack` list referenced `salesforce.salesforcedx-vscode-agents`.
+      // Keying the graph on the raw `ext.id` made those look like two
+      // distinct extensions and cascade-uninstall tried to remove the
+      // same thing twice (second attempt failed with "not installed").
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeGraphExt('Salesforce.salesforcedx-vscode-agents', []),
+        makeGraphExt('salesforce.pack', [], ['salesforce.salesforcedx-vscode-agents'])
+      ];
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const graph = svc.getDependencyGraph();
+      expect(graph.has('Salesforce.salesforcedx-vscode-agents')).toBe(false);
+      expect(graph.get('salesforce.salesforcedx-vscode-agents')).toBeDefined();
+      expect(graph.get('salesforce.pack')!.packMembers).toEqual([
+        'salesforce.salesforcedx-vscode-agents'
+      ]);
+    });
+
+    it('topologicalUninstallOrder() deduplicates ids that differ only in casing', () => {
+      // Belt-and-suspenders: even if a caller passes both casings, the
+      // ordering routine should emit each underlying extension once.
+      const graph = new Map([
+        ['salesforce.salesforcedx-vscode-agents', {
+          id: 'salesforce.salesforcedx-vscode-agents',
+          dependsOn: [],
+          packMembers: []
+        }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const order = svc.topologicalUninstallOrder(
+        ['Salesforce.salesforcedx-vscode-agents', 'salesforce.salesforcedx-vscode-agents'],
+        graph
+      );
+      expect(order).toEqual(['salesforce.salesforcedx-vscode-agents']);
+    });
+
     it('transitiveDependents() walks the reverse edges', () => {
       const graph = new Map([
         ['apex', { id: 'apex', dependsOn: [], packMembers: [] }],
