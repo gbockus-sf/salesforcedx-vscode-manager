@@ -317,7 +317,7 @@ describe('update commands', () => {
     expect(vscode.window.showWarningMessage).toHaveBeenCalled();
   });
 
-  it('checkForUpdates clears caches, refreshes the tree, and invokes the native workbench command', async () => {
+  it('checkForUpdates clears caches and refreshes the tree via our own probe', async () => {
     const commands = captureCommands();
     const tree = mkTree();
     const extensions = {
@@ -336,30 +336,31 @@ describe('update commands', () => {
     await commands[COMMANDS.checkForUpdates]();
     expect(extensions.clearCliVersionCache).toHaveBeenCalled();
     expect(tree.refreshVersionInfo).toHaveBeenCalled();
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.extensions.action.checkForUpdates');
   });
 
-  it('checkForUpdates still completes if the native workbench command throws', async () => {
+  it('checkForUpdates does not fire the native workbench "check for updates" modal', async () => {
+    // VSCode's workbench.extensions.action.checkForUpdates pops a modal
+    // dialog we can't suppress ("All extensions are up to date."). Users
+    // invoking our command want our tree refreshed, not that dialog, so
+    // we intentionally skip it.
     const commands = captureCommands();
-    const tree = mkTree();
     const extensions = {
       managed: jest.fn(() => []),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
     (vscode.commands.executeCommand as jest.Mock).mockReset();
-    (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (cmd: string) => {
-      if (cmd === 'workbench.extensions.action.checkForUpdates') throw new Error('gone');
-    });
-    const logger = mkLogger();
+    (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
     registerUpdateCommands(mkContext(), {
       codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
       extensions,
       settings: mkSettings(),
-      logger,
-      tree
+      logger: mkLogger(),
+      tree: mkTree()
     });
     await commands[COMMANDS.checkForUpdates]();
-    expect(logger.warn).toHaveBeenCalled();
-    expect(tree.refreshVersionInfo).toHaveBeenCalled();
+    const calls = (vscode.commands.executeCommand as jest.Mock).mock.calls;
+    expect(
+      calls.some(c => c[0] === 'workbench.extensions.action.checkForUpdates')
+    ).toBe(false);
   });
 });

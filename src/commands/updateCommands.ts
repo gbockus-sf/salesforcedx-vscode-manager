@@ -209,23 +209,20 @@ export const registerUpdateCommands = (
     }),
 
     vscode.commands.registerCommand(COMMANDS.checkForUpdates, async () => {
-      // Ask VSCode to refresh its own internal "updates available" state so
-      // users see the familiar Extensions-view Update badges alongside our
-      // tree's arrow indicators. Our MarketplaceVersionService stays as the
-      // structured source since VSCode doesn't expose per-id results to
-      // callers. The native command has been on the verified-available list
-      // since the Phase 5 diagnostic dump; guard anyway so a future rename
-      // doesn't surface as an error toast.
-      try {
-        await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates');
-      } catch (err) {
-        deps.logger.warn(
-          `workbench.extensions.action.checkForUpdates unavailable: ${err instanceof Error ? err.message : String(err)}`
-        );
-      }
+      // Previously we also fired `workbench.extensions.action.checkForUpdates`
+      // to let VSCode refresh its own update state. That command pops a
+      // native modal "All extensions are up to date." / "Install and Reload"
+      // dialog we can't suppress, which is jarring when the user only
+      // expected our own tree to refresh. Our MarketplaceVersionService
+      // already drives the manager's own update indicators, so we stick
+      // to that and surface the result as a sticky notification. Users
+      // who want VSCode's native dialog can still invoke
+      // `Extensions: Check for Extension Updates` from the palette.
       deps.extensions.clearCliVersionCache();
       await deps.tree.refreshVersionInfo();
-      void notifyInfo(getLocalization(LocalizationKeys.checkForUpdatesDone));
+      void notifyInfo(getLocalization(LocalizationKeys.checkForUpdatesDone), {
+        logger: deps.logger
+      });
     })
   );
 };

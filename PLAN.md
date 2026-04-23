@@ -479,13 +479,14 @@ should be addressed before a real release.
   git denial, gpg-pinentry wall) and a briefing-template requirement.
   Second audit (Phase 11 pass): added the foreground-pivot escalation
   rule and a commit-message requirement to cite test-count deltas.
-- [x] **Wire `sfdxManager.checkForUpdates` through VSCode's native
-  `workbench.extensions.action.checkForUpdates`.** The palette command
-  now invokes the native command first (silently swallowing errors so
-  a future rename doesn't surface as a toast) and then runs our own
-  `refreshVersionInfo()` pass. Users see both VSCode's familiar
-  Extensions-view Update badges and our structured tree indicators.
-  Two unit tests (native-command-invoked, graceful-degradation).
+- [x] **Wire `sfdxManager.checkForUpdates` through our own
+  MarketplaceVersionService refresh.** Initially this command also fired
+  VSCode's native `workbench.extensions.action.checkForUpdates`, but
+  that command pops a modal we can't suppress, so the follow-up pass
+  dropped the native call. Users invoking our command now see only our
+  structured tree refresh and a sticky "update check complete"
+  notification. The built-in dialog is still reachable from the palette
+  via `Extensions: Check for Extension Updates`.
 - [x] **Externalize all user-facing strings** from both `package.json` and
   the extension source, following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/` (which in
