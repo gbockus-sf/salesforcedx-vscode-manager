@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import { COMMANDS, CONFIG_NAMESPACE, SETTINGS } from '../constants';
 import { applyGroup } from '../groups/groupApplier';
+import {
+  applyImport,
+  buildExport,
+  parseImport,
+  type ImportConflictStrategy
+} from '../groups/groupIO';
 import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
@@ -272,6 +278,114 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
       await vscode.commands.executeCommand(
         'workbench.action.openSettings',
         `${CONFIG_NAMESPACE}.${SETTINGS.groups}`
+      );
+    }),
+
+    vscode.commands.registerCommand(
+      COMMANDS.moveGroupScope,
+      async (arg?: string | GroupTreeContext) => {
+        let group: Group | undefined;
+        if (typeof arg === 'string') group = deps.store.get(arg);
+        else if (arg && 'group' in arg && arg.group) group = arg.group;
+        else group = await pickGroup(deps);
+        if (!group) return;
+        if (group.builtIn) {
+          void vscode.window.showErrorMessage(
+            getLocalization(LocalizationKeys.moveGroupScopeBuiltInError)
+          );
+          return;
+        }
+        const userLabel = getLocalization(LocalizationKeys.moveGroupScopeToUser);
+        const workspaceLabel = getLocalization(LocalizationKeys.moveGroupScopeToWorkspace);
+        const pick = await vscode.window.showQuickPick(
+          [
+            { label: userLabel, target: 'user' as const },
+            { label: workspaceLabel, target: 'workspace' as const }
+          ],
+          { placeHolder: getLocalization(LocalizationKeys.moveGroupScopePrompt, group.label) }
+        );
+        if (!pick) return;
+        await deps.store.moveToScope(group.id, pick.target);
+        deps.tree.refresh();
+        const scopeName =
+          pick.target === 'workspace'
+            ? getLocalization(LocalizationKeys.scopeBadgeWorkspace)
+            : getLocalization(LocalizationKeys.scopeBadgeUser);
+        void vscode.window.showInformationMessage(
+          getLocalization(LocalizationKeys.moveGroupScopeDone, group.label, scopeName)
+        );
+      }
+    ),
+
+    vscode.commands.registerCommand(COMMANDS.exportGroups, async () => {
+      const payload = buildExport(deps.settings);
+      if (payload.groups.length === 0) {
+        void vscode.window.showInformationMessage(
+          getLocalization(LocalizationKeys.exportNoUserGroups)
+        );
+        return;
+      }
+      const uri = await vscode.window.showSaveDialog({
+        title: getLocalization(LocalizationKeys.exportSaveDialogTitle),
+        saveLabel: getLocalization(LocalizationKeys.exportSaveDialogLabel),
+        defaultUri: vscode.Uri.file('sfdx-manager-groups.json'),
+        filters: { JSON: ['json'] }
+      });
+      if (!uri) return;
+      await vscode.workspace.fs.writeFile(
+        uri,
+        Buffer.from(JSON.stringify(payload, null, 2), 'utf8')
+      );
+      void vscode.window.showInformationMessage(
+        getLocalization(LocalizationKeys.exportSuccess, payload.groups.length, uri.fsPath)
+      );
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.importGroups, async () => {
+      const pick = await vscode.window.showOpenDialog({
+        title: getLocalization(LocalizationKeys.importOpenDialogTitle),
+        openLabel: getLocalization(LocalizationKeys.importOpenDialogLabel),
+        canSelectMany: false,
+        filters: { JSON: ['json'] }
+      });
+      if (!pick || pick.length === 0) return;
+      let parsed;
+      try {
+        const raw = Buffer.from(await vscode.workspace.fs.readFile(pick[0])).toString('utf8');
+        parsed = parseImport(raw);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        void vscode.window.showErrorMessage(
+          getLocalization(LocalizationKeys.importInvalidFile, message)
+        );
+        return;
+      }
+      const result = await applyImport(parsed, deps.settings, async existing => {
+        const overwrite = getLocalization(LocalizationKeys.importConflictOverwrite);
+        const skip = getLocalization(LocalizationKeys.importConflictSkip);
+        const skipAll = getLocalization(LocalizationKeys.importConflictSkipAll);
+        const choice = await vscode.window.showWarningMessage(
+          getLocalization(LocalizationKeys.importConflictPrompt, existing.label),
+          { modal: true },
+          overwrite,
+          skip,
+          skipAll
+        );
+        const map: Record<string, ImportConflictStrategy> = {
+          [overwrite]: 'overwrite',
+          [skip]: 'skip',
+          [skipAll]: 'skip-all'
+        };
+        return map[choice ?? ''] ?? 'skip';
+      });
+      deps.tree.refresh();
+      const skippedSuffix = result.skipped.length ? ` · ${result.skipped.length} skipped` : '';
+      void vscode.window.showInformationMessage(
+        getLocalization(
+          LocalizationKeys.importSummary,
+          result.imported.length,
+          skippedSuffix
+        )
       );
     })
   );

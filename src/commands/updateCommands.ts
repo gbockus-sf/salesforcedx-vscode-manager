@@ -92,6 +92,20 @@ export const registerUpdateCommands = (
     }),
 
     vscode.commands.registerCommand(COMMANDS.checkForUpdates, async () => {
+      // Ask VSCode to refresh its own internal "updates available" state so
+      // users see the familiar Extensions-view Update badges alongside our
+      // tree's arrow indicators. Our MarketplaceVersionService stays as the
+      // structured source since VSCode doesn't expose per-id results to
+      // callers. The native command has been on the verified-available list
+      // since the Phase 5 diagnostic dump; guard anyway so a future rename
+      // doesn't surface as an error toast.
+      try {
+        await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates');
+      } catch (err) {
+        deps.logger.warn(
+          `workbench.extensions.action.checkForUpdates unavailable: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
       deps.extensions.clearCliVersionCache();
       await deps.tree.refreshVersionInfo();
       void vscode.window.showInformationMessage(getLocalization(LocalizationKeys.checkForUpdatesDone));

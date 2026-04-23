@@ -6,6 +6,7 @@ import type { SettingsService } from '../../src/services/settingsService';
 
 const mkSettings = (): SettingsService => ({
   getGroupsRaw: jest.fn(() => ({})),
+  getGroupsByScope: jest.fn(() => ({ user: {}, workspace: {} })),
   updateGroupsRaw: jest.fn()
 } as unknown as SettingsService);
 

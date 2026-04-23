@@ -14,11 +14,33 @@ export class SettingsService {
   }
 
   getGroupsRaw(): Record<string, unknown> {
+    // VSCode's `.get()` already merges layers (workspace over user over
+    // default) before returning a single object, so callers that just need
+    // "the effective groups" use this.
     return this.config().get<Record<string, unknown>>(SETTINGS.groups, {});
   }
 
-  async updateGroupsRaw(groups: Record<string, unknown>): Promise<void> {
-    await this.config().update(SETTINGS.groups, groups, vscode.ConfigurationTarget.Global);
+  /**
+   * Returns the raw entries for each configuration layer separately so the
+   * caller can decide which one to write to. Workspace entries override
+   * user entries at the same id — this is standard VSCode behavior.
+   */
+  getGroupsByScope(): {
+    user: Record<string, unknown>;
+    workspace: Record<string, unknown>;
+  } {
+    const inspected = this.config().inspect<Record<string, unknown>>(SETTINGS.groups);
+    return {
+      user: inspected?.globalValue ?? {},
+      workspace: inspected?.workspaceValue ?? {}
+    };
+  }
+
+  async updateGroupsRaw(
+    groups: Record<string, unknown>,
+    target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global
+  ): Promise<void> {
+    await this.config().update(SETTINGS.groups, groups, target);
   }
 
   getApplyScope(): ApplyScope {

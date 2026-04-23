@@ -1,15 +1,38 @@
+import * as vscode from 'vscode';
 import { GroupStore } from '../../src/groups/groupStore';
 import { BUILT_IN_GROUPS } from '../../src/groups/builtInGroups';
 import type { SettingsService } from '../../src/services/settingsService';
 
-const mkSettings = (initial: Record<string, unknown> = {}): SettingsService => {
-  const state: Record<string, unknown> = { ...initial };
+interface Layers {
+  user: Record<string, unknown>;
+  workspace: Record<string, unknown>;
+}
+
+const mkSettings = (
+  initial: Record<string, unknown> | Partial<Layers> = {}
+): SettingsService => {
+  // Accept either a legacy shape ({ id: { ... }, ... } — goes into user layer)
+  // or a layers shape ({ user, workspace }).
+  const isLayers = 'user' in initial || 'workspace' in initial;
+  const state: Layers = isLayers
+    ? {
+        user: { ...((initial as Partial<Layers>).user ?? {}) },
+        workspace: { ...((initial as Partial<Layers>).workspace ?? {}) }
+      }
+    : { user: { ...(initial as Record<string, unknown>) }, workspace: {} };
+
+  const merged = (): Record<string, unknown> => ({ ...state.user, ...state.workspace });
+
   return {
-    getGroupsRaw: jest.fn(() => state),
-    updateGroupsRaw: jest.fn(async (next: Record<string, unknown>) => {
-      for (const k of Object.keys(state)) delete state[k];
-      Object.assign(state, next);
-    })
+    getGroupsRaw: jest.fn(() => merged()),
+    getGroupsByScope: jest.fn(() => ({ user: state.user, workspace: state.workspace })),
+    updateGroupsRaw: jest.fn(
+      async (next: Record<string, unknown>, target?: vscode.ConfigurationTarget) => {
+        const layer: keyof Layers =
+          target === vscode.ConfigurationTarget.Workspace ? 'workspace' : 'user';
+        state[layer] = { ...next };
+      }
+    )
   } as unknown as SettingsService;
 };
 
@@ -81,6 +104,58 @@ describe('GroupStore', () => {
     await expect(store.upsert({ id: '9bad', label: 'x', extensions: ['a.b'] })).rejects.toThrow(
       /id/i
     );
+  });
+
+  describe('scope', () => {
+    it('workspace entries override user entries at the same id', () => {
+      const store = new GroupStore(
+        mkSettings({
+          user: { custom: { label: 'User', extensions: ['u.ext'] } },
+          workspace: { custom: { label: 'Workspace', extensions: ['ws.ext'] } }
+        })
+      );
+      expect(store.get('custom')!.label).toBe('Workspace');
+    });
+
+    it('getScope() reports the correct layer per id', () => {
+      const store = new GroupStore(
+        mkSettings({
+          user: { onlyUser: { label: 'U', extensions: ['a.b'] } },
+          workspace: { onlyWs: { label: 'W', extensions: ['a.b'] } }
+        })
+      );
+      expect(store.getScope('onlyUser')).toBe('user');
+      expect(store.getScope('onlyWs')).toBe('workspace');
+      expect(store.getScope('apex')).toBe('builtIn'); // built-in with no override
+    });
+
+    it('upsert() with target=workspace lands only in the workspace layer', async () => {
+      const settings = mkSettings();
+      const store = new GroupStore(settings);
+      await store.upsert({ id: 'ws', label: 'W', extensions: ['a.b'] }, 'workspace');
+      expect(store.getScope('ws')).toBe('workspace');
+    });
+
+    it('moveToScope() migrates a group between layers and deletes the old entry', async () => {
+      const settings = mkSettings({
+        user: { travel: { label: 'T', extensions: ['a.b'] } }
+      });
+      const store = new GroupStore(settings);
+      await store.moveToScope('travel', 'workspace');
+      expect(store.getScope('travel')).toBe('workspace');
+      // User-layer entry should be gone now.
+      expect(settings.getGroupsByScope().user).not.toHaveProperty('travel');
+    });
+
+    it('remove() clears both layers for the same id', async () => {
+      const settings = mkSettings({
+        user: { ghost: { label: 'G', extensions: ['a.b'] } },
+        workspace: { ghost: { label: 'G', extensions: ['a.b'] } }
+      });
+      const store = new GroupStore(settings);
+      await store.remove('ghost');
+      expect(settings.getGroupsByScope()).toEqual({ user: {}, workspace: {} });
+    });
   });
 
   it('remove() on a built-in clears the user override (but the group stays visible)', async () => {

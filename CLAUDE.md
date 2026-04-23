@@ -120,6 +120,16 @@ explicit user request:
   touch. If two agents need the same file, serialize them or split the
   responsibilities inside the file (e.g., "agent A owns `applyGroup`,
   agent B owns `ApplyResult.skipped`").
+- **Foreground pivot when subagents die early.** If a backgrounded
+  subagent's first Bash call is denied, do not retry — the environment
+  is hard-blocked. Kill the worktree, clean up the branch, and do the
+  work foreground. This is faster than re-briefing and cheaper than
+  debugging the harness. It's how this session landed the dep-graph
+  cluster after the second parallel attempt failed.
+- **Agent-generated commit messages must cite the test count delta.**
+  `X → Y tests` is the cheapest signal that nothing regressed during a
+  big change; reviewers grep for it. Every feature/fix commit from an
+  agent should carry it in the body.
 
 ## Diagnostic-first debugging
 

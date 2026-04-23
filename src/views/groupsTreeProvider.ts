@@ -109,11 +109,22 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
         node.group.label,
         vscode.TreeItemCollapsibleState.Collapsed
       );
-      item.description = node.isActive
-        ? getLocalization(LocalizationKeys.groupActive)
-        : node.group.builtIn
+      const scope = this.store.getScope(node.group.id);
+      const scopeBadge =
+        scope === 'workspace'
+          ? getLocalization(LocalizationKeys.scopeBadgeWorkspace)
+          : scope === 'user'
+            ? getLocalization(LocalizationKeys.scopeBadgeUser)
+            : undefined;
+      const labels: string[] = [];
+      if (node.isActive) labels.push(getLocalization(LocalizationKeys.groupActive));
+      labels.push(
+        node.group.builtIn
           ? getLocalization(LocalizationKeys.groupBuiltIn)
-          : getLocalization(LocalizationKeys.groupCustom);
+          : getLocalization(LocalizationKeys.groupCustom)
+      );
+      if (scopeBadge) labels.push(scopeBadge);
+      item.description = labels.join(' · ');
       item.tooltip = node.group.description ?? node.group.label;
       item.iconPath = new vscode.ThemeIcon(node.isActive ? 'check' : 'layers');
       item.contextValue = `group:${node.group.builtIn ? 'builtIn' : 'user'}`;

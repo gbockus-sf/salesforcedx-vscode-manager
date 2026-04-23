@@ -114,13 +114,15 @@ describe('update commands', () => {
     expect(installSpy).toHaveBeenNthCalledWith(2, 'salesforce.salesforcedx-vscode-core', { force: true });
   });
 
-  it('checkForUpdates clears caches and refreshes the tree', async () => {
+  it('checkForUpdates clears caches, refreshes the tree, and invokes the native workbench command', async () => {
     const commands = captureCommands();
     const tree = mkTree();
     const extensions = {
       managed: jest.fn(() => []),
       clearCliVersionCache: jest.fn()
     } as unknown as ExtensionService;
+    (vscode.commands.executeCommand as jest.Mock).mockReset();
+    (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
     registerUpdateCommands(mkContext(), {
       codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
       extensions,
@@ -130,6 +132,31 @@ describe('update commands', () => {
     });
     await commands[COMMANDS.checkForUpdates]();
     expect(extensions.clearCliVersionCache).toHaveBeenCalled();
+    expect(tree.refreshVersionInfo).toHaveBeenCalled();
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.extensions.action.checkForUpdates');
+  });
+
+  it('checkForUpdates still completes if the native workbench command throws', async () => {
+    const commands = captureCommands();
+    const tree = mkTree();
+    const extensions = {
+      managed: jest.fn(() => []),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    (vscode.commands.executeCommand as jest.Mock).mockReset();
+    (vscode.commands.executeCommand as jest.Mock).mockImplementation(async (cmd: string) => {
+      if (cmd === 'workbench.extensions.action.checkForUpdates') throw new Error('gone');
+    });
+    const logger = mkLogger();
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger,
+      tree
+    });
+    await commands[COMMANDS.checkForUpdates]();
+    expect(logger.warn).toHaveBeenCalled();
     expect(tree.refreshVersionInfo).toHaveBeenCalled();
   });
 });

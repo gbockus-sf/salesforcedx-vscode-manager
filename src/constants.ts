@@ -25,7 +25,10 @@ export const COMMANDS = {
   showLog: 'sfdxManager.showLog',
   updateExtension: 'sfdxManager.updateExtension',
   updateAllSalesforce: 'sfdxManager.updateAllSalesforce',
-  checkForUpdates: 'sfdxManager.checkForUpdates'
+  checkForUpdates: 'sfdxManager.checkForUpdates',
+  exportGroups: 'sfdxManager.exportGroups',
+  importGroups: 'sfdxManager.importGroups',
+  moveGroupScope: 'sfdxManager.moveGroupScope'
 } as const;
 
 export const SETTINGS = {

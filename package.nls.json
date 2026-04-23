@@ -24,6 +24,9 @@
   "salesforcedx-vscode-manager.command.updateExtension.title": "Update Extension",
   "salesforcedx-vscode-manager.command.updateAllSalesforce.title": "Update All Salesforce Extensions",
   "salesforcedx-vscode-manager.command.checkForUpdates.title": "Check for Extension Updates",
+  "salesforcedx-vscode-manager.command.exportGroups.title": "Export Groups...",
+  "salesforcedx-vscode-manager.command.importGroups.title": "Import Groups...",
+  "salesforcedx-vscode-manager.command.moveGroupScope.title": "Move Group to User / Workspace...",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",

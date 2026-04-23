@@ -353,9 +353,17 @@ export class VsixStatusBarItem { constructor(installer: VsixInstaller, settings:
 - [ ] Install into a fresh VSCode, run through §7 verification list *(pending user smoke test)*
 
 ### Phase 11 (nice-to-have v0.1.1)
-- [ ] Import / export group JSON
-- [ ] Workspace-scoped override of `groups` setting
-- [ ] Per-group "Open in Quick Pick" keybinding
+- [x] Import / export group JSON — `SFDX Manager: Export Groups...` /
+  `Import Groups...` commands, versioned payload (`{version:1}`),
+  per-id conflict prompts (Overwrite / Skip / Skip All).
+- [x] Workspace-scoped override of `groups` setting —
+  `SettingsService.getGroupsByScope()` exposes user + workspace layers
+  separately; `GroupStore.upsert/remove/moveToScope` route to the
+  right `ConfigurationTarget`; new `SFDX Manager: Move Group to User
+  / Workspace...` command; Groups tree shows a `user` / `workspace`
+  badge next to each user-defined group.
+- [x] Per-group "Open in Quick Pick" keybinding — global keybinding
+  `Cmd+Alt+G` / `Ctrl+Alt+G` fires `sfdxManager.applyGroupQuickPick`.
 
 ---
 
@@ -465,22 +473,19 @@ should be addressed before a real release.
   one row with multiple `ownerExtensionId` entries shown in the
   tooltip. Built-in checks take precedence over shims take
   precedence over manifest-declared when fingerprints collide.
-- [x] **Review CLAUDE.md against a second agent session.** Audit
-  completed: added a concrete "Subagent environment caveats" block
-  distinguishing the three failure modes we hit this session
-  (full-Bash denial, sibling-worktree-git denial, gpg-pinentry wall).
-  Added a briefing template requirement and an overlap-check step.
-- [ ] **Wire `sfdxManager.checkForUpdates` through VSCode's native
-  `workbench.extensions.action.checkForUpdates` command** rather than
-  relying solely on our custom `MarketplaceVersionService` probe. The
-  native command is on the verified-available list from the Phase 5
-  diagnostic dump; invoking it asks VSCode to refresh its own internal
-  "updates available" state so users see VSCode's familiar Extensions-view
-  Update badges alongside our tree's arrow indicators. Our own probe
-  stays as the structured data source (VSCode doesn't expose per-id
-  results to callers); this just adds a complementary trigger. Pattern:
-  `await vscode.commands.executeCommand('workbench.extensions.action.checkForUpdates')`
-  then `await groupsTree.refreshVersionInfo()`.
+- [x] **Review CLAUDE.md against a second agent session.** First audit
+  (cleanups pass): added the "Subagent environment caveats" block
+  distinguishing three failure modes (full-Bash denial, sibling-worktree
+  git denial, gpg-pinentry wall) and a briefing-template requirement.
+  Second audit (Phase 11 pass): added the foreground-pivot escalation
+  rule and a commit-message requirement to cite test-count deltas.
+- [x] **Wire `sfdxManager.checkForUpdates` through VSCode's native
+  `workbench.extensions.action.checkForUpdates`.** The palette command
+  now invokes the native command first (silently swallowing errors so
+  a future rename doesn't surface as a toast) and then runs our own
+  `refreshVersionInfo()` pass. Users see both VSCode's familiar
+  Extensions-view Update badges and our structured tree indicators.
+  Two unit tests (native-command-invoked, graceful-degradation).
 - [x] **Externalize all user-facing strings** from both `package.json` and
   the extension source, following the Agentforce Vibes pattern at
   `/Users/gbockus/github/AFV/salesforcedx-vscode-einstein-gpt/` (which in

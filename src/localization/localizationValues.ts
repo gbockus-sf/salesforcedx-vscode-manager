@@ -123,5 +123,26 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.validateGroupMissingLabel]: 'Group label is required.',
   [LocalizationKeys.validateGroupEmpty]: 'Group "{0}" is empty. Add at least one extension before saving.',
 
-  [LocalizationKeys.groupNotFound]: 'Group "{0}" not found.'
+  [LocalizationKeys.groupNotFound]: 'Group "{0}" not found.',
+
+  [LocalizationKeys.exportSaveDialogTitle]: 'Export SFDX Manager Groups',
+  [LocalizationKeys.exportSaveDialogLabel]: 'Export Groups',
+  [LocalizationKeys.exportSuccess]: 'Exported {0} group(s) to {1}.',
+  [LocalizationKeys.exportNoUserGroups]: 'No user-defined groups to export. Built-in groups are already shipped in code.',
+  [LocalizationKeys.importOpenDialogTitle]: 'Import SFDX Manager Groups',
+  [LocalizationKeys.importOpenDialogLabel]: 'Import',
+  [LocalizationKeys.importInvalidFile]: 'Import failed: {0}',
+  [LocalizationKeys.importSummary]: 'Imported {0} group(s){1}.',
+  [LocalizationKeys.importConflictPrompt]: 'A group with id "{0}" already exists. Overwrite it?',
+  [LocalizationKeys.importConflictOverwrite]: 'Overwrite',
+  [LocalizationKeys.importConflictSkip]: 'Skip',
+  [LocalizationKeys.importConflictSkipAll]: 'Skip All Conflicts',
+
+  [LocalizationKeys.moveGroupScopePrompt]: 'Move "{0}" to which scope?',
+  [LocalizationKeys.moveGroupScopeToUser]: 'User (applies everywhere)',
+  [LocalizationKeys.moveGroupScopeToWorkspace]: 'Workspace (only this workspace)',
+  [LocalizationKeys.moveGroupScopeBuiltInError]: 'Built-in groups cannot be moved. Create an override first with Edit Group.',
+  [LocalizationKeys.moveGroupScopeDone]: '{0} moved to {1} scope.',
+  [LocalizationKeys.scopeBadgeUser]: 'user',
+  [LocalizationKeys.scopeBadgeWorkspace]: 'workspace'
 };

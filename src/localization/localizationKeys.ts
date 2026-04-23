@@ -136,5 +136,28 @@ export enum LocalizationKeys {
   validateGroupEmpty = 'validateGroupEmpty',
 
   // group errors
-  groupNotFound = 'groupNotFound'
+  groupNotFound = 'groupNotFound',
+
+  // import / export groups
+  exportSaveDialogTitle = 'exportSaveDialogTitle',
+  exportSaveDialogLabel = 'exportSaveDialogLabel',
+  exportSuccess = 'exportSuccess',
+  exportNoUserGroups = 'exportNoUserGroups',
+  importOpenDialogTitle = 'importOpenDialogTitle',
+  importOpenDialogLabel = 'importOpenDialogLabel',
+  importInvalidFile = 'importInvalidFile',
+  importSummary = 'importSummary',
+  importConflictPrompt = 'importConflictPrompt',
+  importConflictOverwrite = 'importConflictOverwrite',
+  importConflictSkip = 'importConflictSkip',
+  importConflictSkipAll = 'importConflictSkipAll',
+
+  // scope commands
+  moveGroupScopePrompt = 'moveGroupScopePrompt',
+  moveGroupScopeToUser = 'moveGroupScopeToUser',
+  moveGroupScopeToWorkspace = 'moveGroupScopeToWorkspace',
+  moveGroupScopeBuiltInError = 'moveGroupScopeBuiltInError',
+  moveGroupScopeDone = 'moveGroupScopeDone',
+  scopeBadgeUser = 'scopeBadgeUser',
+  scopeBadgeWorkspace = 'scopeBadgeWorkspace'
 }

@@ -37,7 +37,10 @@
       { "command": "sfdxManager.showLog", "title": "%salesforcedx-vscode-manager.command.showLog.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(output)" },
       { "command": "sfdxManager.updateExtension", "title": "%salesforcedx-vscode-manager.command.updateExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-circle-up)" },
       { "command": "sfdxManager.updateAllSalesforce", "title": "%salesforcedx-vscode-manager.command.updateAllSalesforce.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(sync)" },
-      { "command": "sfdxManager.checkForUpdates", "title": "%salesforcedx-vscode-manager.command.checkForUpdates.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(search-refresh)" }
+      { "command": "sfdxManager.checkForUpdates", "title": "%salesforcedx-vscode-manager.command.checkForUpdates.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(search-refresh)" },
+      { "command": "sfdxManager.exportGroups", "title": "%salesforcedx-vscode-manager.command.exportGroups.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-upload)" },
+      { "command": "sfdxManager.importGroups", "title": "%salesforcedx-vscode-manager.command.importGroups.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
+      { "command": "sfdxManager.moveGroupScope", "title": "%salesforcedx-vscode-manager.command.moveGroupScope.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-both)" }
     ],
     "menus": {
       "commandPalette": [
@@ -168,6 +171,13 @@
         }
       }
     },
+    "keybindings": [
+      {
+        "command": "sfdxManager.applyGroupQuickPick",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g"
+      }
+    ],
     "walkthroughs": [
       {
         "id": "sfdxManager.getStarted",
