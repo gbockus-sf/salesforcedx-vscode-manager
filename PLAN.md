@@ -1054,11 +1054,10 @@ should be addressed before a real release.
   `sfdxManager.dependencies`, with markdown copy sourced from two
   new `package.nls.json` keys
   (`salesforcedx-vscode-manager.viewsWelcome.groups` /
-  `.dependencies`). Each has a short description + `command:`
-  links (Apply Group, Browse Catalog, Run Dependency Check) so the
-  empty state is also a first-run affordance. New
-  `test/unit/viewsWelcome.test.ts` (3 cases) asserts every view has
-  a welcome entry, every welcome contents field is an `%nls-key%`
-  that resolves, and every `command:<id>` link references a
-  registered command. 275 → 278 tests. Followup on switching
-  `activationEvents` to `onView:*` stays open.
+  `.dependencies`). The welcome is intentionally button-free —
+  purely descriptive text — so it doesn't crowd the real tree
+  rows once they load. New `test/unit/viewsWelcome.test.ts` (3
+  cases) asserts every view has a welcome entry, every welcome
+  contents field is an `%nls-key%` that resolves, and the copy is
+  plain text (no `command:` links). 275 → 278 tests. Followup on
+  switching `activationEvents` to `onView:*` stays open.

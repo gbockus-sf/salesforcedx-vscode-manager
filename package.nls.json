@@ -70,6 +70,6 @@
   "salesforcedx-vscode-manager.walkthrough.statusBar.title": "Status bar indicators",
   "salesforcedx-vscode-manager.walkthrough.statusBar.description": "The status bar shows the active group and any VSIX overrides; click either to manage.",
 
-  "salesforcedx-vscode-manager.viewsWelcome.groups": "Loading Salesforce Extensions Manager…\n\nApply a group to enable the extensions you need, install or update individual extensions, or browse the full Salesforce publisher catalog.\n[Apply a Group](command:sfdxManager.applyGroupQuickPick)\n[Browse Salesforce Extensions](command:sfdxManager.browseSalesforceExtensions)",
-  "salesforcedx-vscode-manager.viewsWelcome.dependencies": "Loading Salesforce Extensions Manager…\n\nVerify that the Salesforce CLI, Java, Node, and other prerequisites needed by the managed extensions are installed and on PATH.\n[Run Dependency Check](command:sfdxManager.runDependencyCheck)"
+  "salesforcedx-vscode-manager.viewsWelcome.groups": "Loading Salesforce Extensions Manager…\n\nApply a group to enable the extensions you need, install or update individual extensions, or browse the full Salesforce publisher catalog.",
+  "salesforcedx-vscode-manager.viewsWelcome.dependencies": "Loading Salesforce Extensions Manager…\n\nVerify that the Salesforce CLI, Java, Node, and other prerequisites needed by the managed extensions are installed and on PATH."
 }

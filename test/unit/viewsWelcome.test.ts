@@ -46,22 +46,19 @@ describe('viewsWelcome contributions', () => {
     }
   });
 
-  it('welcome copy points at commands the extension actually registers', () => {
-    // Prevents stale command links that would render as broken buttons
-    // (VSCode silently no-ops `command:<unknown>` clicks).
-    const declaredCommands = new Set(
-      (pkg as unknown as { contributes: { commands: Array<{ command: string }> } })
-        .contributes.commands.map(c => c.command)
-    );
+  it('welcome copy is plain descriptive text with no command-link buttons', () => {
+    // The welcome is intentionally button-free — VSCode renders
+    // `[label](command:<id>)` markdown as buttons, and on cold start
+    // those buttons looked like the only things a user could do,
+    // which crowded the real tree rows once they loaded. Keep the
+    // welcome purely informational. If a future change reintroduces
+    // command: links, also verify they reference a declared command
+    // (grep the registered-command list as the old test did).
     for (const entry of pkg.contributes.viewsWelcome ?? []) {
       const key = /^%([^%]+)%$/.exec(entry.contents)?.[1];
       expect(key).toBeDefined();
       const copy = nls[key!];
-      const commandMatches = Array.from(copy.matchAll(/command:([A-Za-z0-9._-]+)/g));
-      expect(commandMatches.length).toBeGreaterThan(0);
-      for (const [, cmd] of commandMatches) {
-        expect(declaredCommands.has(cmd)).toBe(true);
-      }
+      expect(copy).not.toMatch(/command:/);
     }
   });
 });
