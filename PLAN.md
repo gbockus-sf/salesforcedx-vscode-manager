@@ -1061,3 +1061,87 @@ should be addressed before a real release.
   contents field is an `%nls-key%` that resolves, and the copy is
   plain text (no `command:` links). 275 → 278 tests. Followup on
   switching `activationEvents` to `onView:*` stays open.
+
+- [x] **Prefix-based VSIX override matching.** Today
+  `parseVsixFilename` in `src/vsix/vsixScanner.ts` only accepts
+  files that match the strict `<publisher>.<name>-<version>.vsix`
+  shape `vsce package` emits. Internal / CI builds often drop the
+  publisher and use a renamed artifact — e.g.
+  `salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix` — and those
+  currently fail to parse at all, so the override is silently
+  skipped. User intent when dropping an oddly-named VSIX in the
+  override directory is *"match this to the extension whose id
+  starts similarly"*; we should honor that.
+
+  Proposed behavior:
+
+  1. Keep the existing strict parser as the fast path (still the
+     vendored / marketplace-emitted shape).
+  2. When the strict parser fails, fall back to a fuzzy match that:
+     - strips the trailing `-<version>.vsix`,
+     - normalizes the prefix (lowercase, `_` → `-`),
+     - compares against the set of ids `ExtensionService.managed()`
+       reports, resolving to the **longest** managed id whose `.name`
+       portion (id minus publisher prefix) is a prefix of the
+       filename stem. Example matches:
+       - `salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix` →
+         `salesforce.salesforcedx-einstein-gpt`
+       - `salesforcedx-vscode-apex-63.1.0.vsix` →
+         `salesforce.salesforcedx-vscode-apex`
+       - `salesforcedx-vscode-apex-replay-debugger-63.1.0.vsix` →
+         `salesforce.salesforcedx-vscode-apex-replay-debugger`
+         (longest-prefix wins over `salesforce.salesforcedx-vscode-apex`)
+     - falls back to `undefined` if nothing matches (current
+       behavior).
+  3. `VsixScanner.scan()` needs the managed-id catalog to resolve
+     fuzzy matches. Options:
+     a. Inject a lookup hook (`setManagedIdLookup: () => string[]`)
+        — same pattern as `setCatalogDisplayNameLookup` in
+        `ExtensionService`. Keeps the scanner side-effect-free.
+     b. Pass the id list into `scan(managedIds)` on each call. Less
+        coupling, but every caller (watcher, installer, commands)
+        has to pass it through.
+     Option (a) is the lighter-touch choice. Wire it in
+     `extension.ts` after `ExtensionService` is constructed.
+  4. When a fuzzy match fires, log a one-line info: `vsix:
+     matched '<filename>' to '<id>' via prefix.` so users can
+     spot an unintended match in the output channel. If two
+     managed ids tie on prefix length (rare — would require a
+     managed id that's also a strict prefix of another managed
+     id), log a warning and pick the first by sort order; the
+     user can rename the VSIX to disambiguate.
+  5. Status-bar + groups-tree VSIX badges already key off the
+     resolved extension id, so they light up automatically once
+     the scanner returns the mapped id.
+
+  Tests: extend `vsixScanner.test.ts` with cases for the
+  real-world examples above (match, no-match on nonsense names,
+  longest-prefix wins, unchanged behavior when the strict parser
+  still matches). Keep the existing strict-parser tests as the
+  fast-path regression.
+
+  Docs: `README.md` VSIX section + the Phase-8 walkthrough step
+  need a line documenting the relaxed matching rule. `CHANGELOG`
+  bullet.
+
+  Out of scope: matching against ids that aren't `managed()`.
+  The override directory is opt-in for the user's *Salesforce*
+  workflow — dropping a random third-party VSIX in there and
+  expecting it to override some unrelated installed extension
+  would be surprising. If/when that use case surfaces, extend
+  the lookup to fall back to `vscode.extensions.all` ids.
+
+  **Shipped** — new `parseVsixFilenameFuzzy(filename, managedIds)`
+  in `src/vsix/vsixScanner.ts` does the longest-prefix resolution
+  with a `stem[name.length] in {'-', '.', ''}` boundary guard
+  (so `apex` doesn't match `apexoas`). `VsixOverride` gained an
+  optional `matchedBy: 'strict' | 'prefix'` tag; `VsixInstaller.
+  tryInstall` logs `vsix: matched '<file>' to '<id>' via prefix.`
+  when the fuzzy path fires. Wired through `scanner.
+  setManagedIdLookup(() => extensions.managed().map(e => e.id))`
+  in `extension.ts` (both on first construction and in the
+  `vsixDirectory`-change rebuild block). Filenames without a
+  trailing version get a `0.0.0` sentinel so downstream install
+  still works; install uses the filepath, not the parsed version.
+  278 → 287 tests (+9). Matching against non-`managed()` ids
+  stays out of scope per the note above.

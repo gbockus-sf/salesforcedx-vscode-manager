@@ -25,6 +25,12 @@ export class VsixInstaller {
     const overrides = this.scanner.scan();
     const match = overrides.get(extensionId);
     if (!match) return 'marketplace';
+    if (match.matchedBy === 'prefix') {
+      // Make prefix-matched overrides discoverable in the output
+      // channel. If the match looks wrong, the user can rename the
+      // file to disambiguate.
+      this.logger.info(`vsix: matched '${match.filePath}' to '${extensionId}' via prefix.`);
+    }
     const { exitCode, stderr } = await this.codeCli.installExtension(match.filePath, true);
     if (exitCode === 0) {
       await this.state.setInstallSource(extensionId, 'vsix');

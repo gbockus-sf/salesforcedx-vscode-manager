@@ -47,6 +47,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   const registry = new DependencyRegistry(runners);
 
   let scanner = new VsixScanner(settings.getVsixDirectory());
+  scanner.setManagedIdLookup(() => extensions.managed().map(e => e.id));
   let installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
   extensions.setVsixInstaller(installer);
 
@@ -117,6 +118,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
       if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.vsixDirectory}`)) {
         vsixWatcher?.dispose();
         scanner = new VsixScanner(settings.getVsixDirectory());
+        scanner.setManagedIdLookup(() => extensions.managed().map(e => e.id));
         installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
         extensions.setVsixInstaller(installer);
         extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');

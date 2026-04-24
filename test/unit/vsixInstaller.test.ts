@@ -59,6 +59,25 @@ describe('VsixInstaller', () => {
     expect(state.setInstallSource).toHaveBeenCalledWith('foo.bar', 'vsix');
   });
 
+  it('tryInstall logs when the override was resolved via prefix match', async () => {
+    // Prefix-match is non-obvious — the user dropped a file with a
+    // different name than the id it resolved to. Logging the mapping
+    // keeps the decision auditable without surfacing a toast.
+    const overrides = new Map([
+      ['salesforce.salesforcedx-einstein-gpt', {
+        extensionId: 'salesforce.salesforcedx-einstein-gpt',
+        version: '3.28.0',
+        filePath: '/fake/dir/salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix',
+        matchedBy: 'prefix' as const
+      }]
+    ]);
+    const logger = mkLogger();
+    const installer = new VsixInstaller(mkScanner(overrides), mkCli(), mkState(), logger);
+    await installer.tryInstall('salesforce.salesforcedx-einstein-gpt');
+    const infoCalls = (logger.info as jest.Mock).mock.calls.map(c => c[0]);
+    expect(infoCalls.some(m => /via prefix\./.test(m))).toBe(true);
+  });
+
   it('tryInstall returns skipped when local install fails', async () => {
     const overrides = new Map([
       ['foo.bar', { extensionId: 'foo.bar', version: '1.0.0', filePath: '/fake/dir/foo.bar-1.0.0.vsix' }]

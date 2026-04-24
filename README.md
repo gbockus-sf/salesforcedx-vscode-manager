@@ -80,6 +80,13 @@ time. The Groups tree tags every VSIX-sourced extension with a
 `$(package)` badge so you can tell at a glance which rows are
 running a local build.
 
+Filenames that don't match the strict `<publisher>.<name>-<version>.vsix`
+shape (common for CI builds and renamed artifacts, e.g.
+`salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix`) also resolve via
+longest-prefix match against your managed extension ids. Check the
+`SFDX Manager: Show Log` output channel to see exactly which file
+got matched to which extension id.
+
 Useful for QA engineers, release testing, and pre-release developer
 previews — no more manually juggling `code --install-extension` for
 a dozen `.vsix` files.
