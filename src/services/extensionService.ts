@@ -171,17 +171,62 @@ export class ExtensionService {
   }
 
   managed(): vscode.Extension<unknown>[] {
-    const thirdParty = new Set(this.settings.getThirdPartyExtensionIds());
+    // Publisher comparison is case-insensitive because VSCode and the
+    // marketplace treat publisher.name ids that way. Historically
+    // `salesforcedx-vscode-agents` shipped with `"publisher": "Salesforce"`
+    // (capital S) while every pack referenced it as lowercase — without
+    // normalization, agents was silently skipped from managed(), which
+    // then bricked the disable-cascade because everything agents depends
+    // on looked "blocked by an outside-candidate extension".
+    const thirdParty = new Set(this.settings.getThirdPartyExtensionIds().map(normalizeId));
+    const publisher = normalizeId(SALESFORCE_PUBLISHER);
+    const selfId = normalizeId(EXTENSION_ID);
     return vscode.extensions.all.filter(ext => {
-      const id = ext.id;
-      if (id === EXTENSION_ID) return false; // never toggle self
-      const publisher = id.split('.')[0];
-      return publisher === SALESFORCE_PUBLISHER || thirdParty.has(id);
+      const id = normalizeId(ext.id);
+      if (id === selfId) return false; // never toggle self
+      const extPublisher = id.split('.')[0];
+      return extPublisher === publisher || thirdParty.has(id);
     });
   }
 
   isInstalled(id: string): boolean {
-    return vscode.extensions.getExtension(id) !== undefined;
+    // `vscode.extensions.getExtension` uses a snapshot captured at window
+    // startup and does NOT reflect mid-session `code --uninstall-extension`
+    // calls. Result: after uninstalling an extension from our own UI, the
+    // runtime lookup keeps returning truthy for the rest of the session
+    // and the tree re-renders it as installed.
+    //
+    // Disk is the authoritative answer mid-session. We combine the two:
+    //   - If the runtime lookup AND the disk match both agree (either
+    //     both find it or both don't), return that.
+    //   - If they disagree (almost always disk=false, runtime=true,
+    //     meaning the extension was uninstalled mid-session), trust disk.
+    //   - If the disk scan can't run (no extensions directory we can
+    //     find), trust the runtime lookup.
+    const runtime = vscode.extensions.getExtension(id) !== undefined;
+    const disk = this.readInstalledOnDiskAnswer(id);
+    if (disk === undefined) return runtime;
+    return disk;
+  }
+
+  /**
+   * Returns true/false when the user's VSCode extensions directory can be
+   * scanned (the authoritative answer mid-session), or `undefined` when
+   * we can't locate an extensions directory (e.g. in unit tests that
+   * don't point VSCODE_EXTENSIONS at a real path).
+   */
+  private readInstalledOnDiskAnswer(id: string): boolean | undefined {
+    const dir = resolveExtensionsDir();
+    if (!dir) return undefined;
+    try {
+      const prefix = `${id.toLowerCase()}-`;
+      for (const entry of fs.readdirSync(dir)) {
+        if (entry.toLowerCase().startsWith(prefix)) return true;
+      }
+      return false;
+    } catch {
+      return undefined;
+    }
   }
 
   /**
@@ -212,9 +257,11 @@ export class ExtensionService {
   }
 
   isEnabled(id: string): boolean {
-    // getExtension only returns extensions that are both installed AND enabled
-    // in the current session. Returns undefined for installed-but-disabled.
-    return vscode.extensions.getExtension(id) !== undefined;
+    // Under the codeCli backend we uninstall-to-disable, so "enabled" and
+    // "installed" are effectively the same signal — and `isInstalled`
+    // already does the disk-authoritative check that masks
+    // `vscode.extensions.getExtension`'s stale-snapshot behavior.
+    return this.isInstalled(id);
   }
 
   readManifest<T = unknown>(id: string): T | undefined {
@@ -596,7 +643,10 @@ export class ExtensionService {
 
 /**
  * Resolves the VSCode user-extensions directory. Order of preference:
- *   1. `VSCODE_EXTENSIONS` env var — explicitly set, trust it.
+ *   1. `VSCODE_EXTENSIONS` env var — when set, we honor it as the
+ *      authoritative answer even if the path doesn't exist on disk.
+ *      (A missing path means the caller explicitly told us "don't look
+ *      elsewhere"; unit tests rely on this to suppress disk scans.)
  *   2. `~/.vscode-insiders/extensions` when the running VSCode is Insiders
  *      (detected via `vscode.env.appRoot` path hint).
  *   3. `~/.vscode/extensions` — the stable default.
@@ -604,7 +654,7 @@ export class ExtensionService {
  */
 const resolveExtensionsDir = (): string | undefined => {
   const envDir = process.env.VSCODE_EXTENSIONS;
-  if (envDir && fs.existsSync(envDir)) return envDir;
+  if (envDir) return envDir;
   const home = os.homedir();
   const candidates = [
     path.join(home, '.vscode-insiders', 'extensions'),

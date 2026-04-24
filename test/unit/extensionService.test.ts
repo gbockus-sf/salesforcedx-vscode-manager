@@ -33,11 +33,26 @@ describe('ExtensionService', () => {
     info: jest.fn(), warn: jest.fn(), error: jest.fn(), dispose: jest.fn()
   } as unknown as Logger);
 
+  // Point the extensions-dir resolver at a path that doesn't exist for
+  // the happy-path suite below, so `isInstalled` falls back to whatever
+  // `vscode.extensions.getExtension` is mocked to return rather than
+  // consulting the dev machine's real ~/.vscode/extensions. Individual
+  // tests that DO want the disk path (the augmentGraphFromDisk / isLocked
+  // / displayName fixtures below) re-point this to a real tmpdir in their
+  // own beforeEach.
+  const envSentinel = '/does/not/exist/sfdx-manager-test';
+  let originalEnv: string | undefined;
   beforeEach(() => {
     (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
     (vscode.extensions.getExtension as jest.Mock).mockReset();
     (vscode.commands.executeCommand as jest.Mock).mockReset();
     (vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined);
+    originalEnv = process.env.VSCODE_EXTENSIONS;
+    process.env.VSCODE_EXTENSIONS = envSentinel;
+  });
+  afterEach(() => {
+    if (originalEnv === undefined) delete process.env.VSCODE_EXTENSIONS;
+    else process.env.VSCODE_EXTENSIONS = originalEnv;
   });
 
   it('managed() returns salesforce publisher + listed third parties', () => {
@@ -339,6 +354,48 @@ describe('ExtensionService', () => {
         fs.mkdirSync(extDir, { recursive: true });
         fs.writeFileSync(path.join(extDir, 'package.json'), JSON.stringify(manifest));
       };
+
+      it('isInstalled trusts disk over the stale runtime snapshot', () => {
+        // Regression: after `code --uninstall-extension` runs mid-session,
+        // `vscode.extensions.getExtension(id)` keeps returning truthy
+        // until a window reload. The tree then re-rendered uninstalled
+        // rows as installed, and re-applying a group tried to cascade
+        // them again. isInstalled now consults disk and returns false
+        // when the directory is gone, even if the runtime snapshot
+        // disagrees.
+        (vscode.extensions.getExtension as jest.Mock).mockReturnValue(
+          makeExt('salesforce.salesforcedx-vscode-apex')
+        );
+        // Nothing written to disk — the extension was uninstalled
+        // after the runtime snapshot was captured.
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isInstalled('salesforce.salesforcedx-vscode-apex')).toBe(false);
+      });
+
+      it('isInstalled returns true when both disk and runtime agree', () => {
+        writeInstalled('salesforce.salesforcedx-vscode-apex', '66.8.0', {
+          name: 'salesforcedx-vscode-apex',
+          publisher: 'salesforce'
+        });
+        (vscode.extensions.getExtension as jest.Mock).mockReturnValue(
+          makeExt('salesforce.salesforcedx-vscode-apex')
+        );
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isInstalled('salesforce.salesforcedx-vscode-apex')).toBe(true);
+      });
+
+      it('isInstalled returns true when disk has the extension but the runtime snapshot is stale in the other direction', () => {
+        // A mid-session install lands on disk before extensions.all
+        // picks it up. isInstalled should still return true so freshly
+        // installed rows don't look missing in the tree.
+        writeInstalled('salesforce.freshly-installed', '1.0.0', {
+          name: 'freshly-installed',
+          publisher: 'salesforce'
+        });
+        (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isInstalled('salesforce.freshly-installed')).toBe(true);
+      });
 
       it('getDependencyGraph picks up ids installed on disk that vscode.extensions.all does not know about', () => {
         // vscode.extensions.all is empty — mimics the "installed after window
