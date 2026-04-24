@@ -170,6 +170,19 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
     await deps.extensions.showManualToggleHint(result.needsManualEnable, 'Enable');
   }
 
+  // When apply touched state, fire a dependency check so the user
+  // sees any missing prerequisites before they try to use the newly-
+  // enabled extensions. Routing through the registered command gives
+  // us the existing progress indicator + summary toast on warn/fail
+  // for free; clean checks stay silent (the Dependencies tree is the
+  // visible feedback). Fire-and-forget — apply flow shouldn't wait
+  // on the check to complete before returning.
+  const touched =
+    result.enabled.length + result.disabled.length + result.installedFromVsix.length > 0;
+  if (touched) {
+    void vscode.commands.executeCommand(COMMANDS.runDependencyCheck);
+  }
+
   await maybeReloadAfterApply(result, deps);
 };
 

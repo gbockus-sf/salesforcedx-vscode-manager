@@ -70,9 +70,11 @@ else logs to the output channel.
 ## 2. Groups — bulk + apply
 
 - [ ] **Apply a clean group.** Click `Apex` → **Apply Group** → pick a scope.
-  _Expected:_ progress → tree rows flip → **reload prompt** if anything was touched (the one info toast we kept — it's an action). If you dismiss, silent.
+  _Expected:_ progress → tree rows flip → **reload prompt** if anything was touched (the one info toast we kept — it's an action). If you dismiss, silent. Dependency check fires in the Dependencies view (rows re-render); if everything passes, no extra toast.
 - [ ] **Re-apply the same group.** Apply `Apex` again immediately.
-  _Expected:_ progress → no changes → no reload prompt → **silent**.
+  _Expected:_ progress → no changes → no reload prompt → **silent**. Dependency check does NOT re-run (no-op apply skips it).
+- [ ] **Apply a group with a broken dep.** Break `java` (e.g. `export PATH=<…without Java>`), apply Apex.
+  _Expected:_ apply succeeds; Dependencies view's Java row flips to fail; a **warn toast** from the auto-run dep check surfaces with a `Show Dependencies` button.
 - [ ] **Apply with dep-blocked state.** Apply a group where a disable would strand a dependent.
   _Expected:_ **info toast** summarizing `depBlocked: N` / `Skipped: N` / `Manual disable: N` with a `Show Log` action. Apply itself succeeded — the toast is informational, not a warning.
 - [ ] **Apply the catalog group.** Right-click `All Salesforce Extensions` → **Apply Group**.
