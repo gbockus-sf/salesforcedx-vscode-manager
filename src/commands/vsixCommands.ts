@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as vscode from 'vscode';
 import { COMMANDS, CONFIG_NAMESPACE, SETTINGS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
@@ -9,6 +10,7 @@ import type { Logger } from '../util/logger';
 import type { VsixInstaller } from '../vsix/vsixInstaller';
 import type { VsixScanner } from '../vsix/vsixScanner';
 import type { GroupsTreeProvider } from '../views/groupsTreeProvider';
+import type { VsixTreeProvider } from '../views/vsixTreeProvider';
 
 interface Deps {
   scanner: VsixScanner;
@@ -18,8 +20,28 @@ interface Deps {
   workspaceState: WorkspaceStateService;
   logger: Logger;
   groupsTree: GroupsTreeProvider;
+  vsixTree: VsixTreeProvider;
   busy?: BusyState;
 }
+
+/**
+ * Commands like `removeVsixOverride` are dispatched from the VSIX
+ * tree's row context menu. VSCode hands the `VsixNode` to the
+ * handler; this extracts the filePath regardless of whether the
+ * caller passed the node, a string, or nothing.
+ */
+interface VsixNodeContext {
+  kind?: 'vsix';
+  filePath?: string;
+  extensionId?: string;
+}
+
+const extractVsixArgs = (arg: unknown): { filePath?: string; extensionId?: string } => {
+  if (typeof arg === 'string') return { filePath: arg };
+  if (!arg || typeof arg !== 'object') return {};
+  const node = arg as VsixNodeContext;
+  return { filePath: node.filePath, extensionId: node.extensionId };
+};
 
 const withBusy = async <T>(
   deps: Deps,
@@ -116,6 +138,46 @@ export const registerVsixCommands = (
       // VSIX item hides itself. The modal above already asked for
       // explicit confirmation.
       deps.logger.info(`clearVsixOverrides: reinstalled ${ids.length} from marketplace.`);
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.revealVsixFile, async (arg?: unknown) => {
+      const { filePath } = extractVsixArgs(arg);
+      const target = filePath ?? deps.scanner.getDirectory();
+      if (!target) return;
+      // Reveals in the OS file explorer. Works for both a specific
+      // .vsix and the override directory as a fallback.
+      try {
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(target));
+      } catch {
+        await vscode.env.openExternal(vscode.Uri.file(target));
+      }
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.removeVsixOverride, async (arg?: unknown) => {
+      const { filePath } = extractVsixArgs(arg);
+      if (!filePath) return;
+      const filename = filePath.split('/').pop() ?? filePath;
+      const proceed = getLocalization(LocalizationKeys.vsixRemoveProceed);
+      const confirm = await vscode.window.showWarningMessage(
+        getLocalization(LocalizationKeys.vsixRemoveConfirm, filename),
+        { modal: true },
+        proceed
+      );
+      if (confirm !== proceed) return;
+      try {
+        fs.unlinkSync(filePath);
+      } catch (err) {
+        deps.logger.warn(
+          `vsix: remove ${filePath} failed (${err instanceof Error ? err.message : String(err)})`
+        );
+        return;
+      }
+      deps.logger.info(`vsix: removed override file ${filePath}`);
+      // File-system watcher fires on unlink and drives the same
+      // refresh/auto-install path, but force a refresh here so the
+      // view updates without depending on watcher latency.
+      deps.vsixTree.refresh();
+      deps.groupsTree.refresh();
     }),
 
     vscode.commands.registerCommand(COMMANDS.vsixMenu, async () => {

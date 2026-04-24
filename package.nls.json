@@ -32,9 +32,12 @@
   "salesforcedx-vscode-manager.command.installExtension.title": "Install Extension",
   "salesforcedx-vscode-manager.command.uninstallExtension.title": "Uninstall Extension",
   "salesforcedx-vscode-manager.command.openInMarketplace.title": "Open in Marketplace",
+  "salesforcedx-vscode-manager.command.removeVsixOverride.title": "Remove VSIX Override",
+  "salesforcedx-vscode-manager.command.revealVsixFile.title": "Reveal VSIX File in Finder",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",
+  "salesforcedx-vscode-manager.view.vsix.name": "VSIX Overrides",
   "salesforcedx-vscode-manager.view.dependencies.name": "Dependencies",
 
   "salesforcedx-vscode-manager.configuration.title": "Salesforce Extensions Manager",
@@ -46,7 +49,7 @@
   "salesforcedx-vscode-manager.configuration.autoRunDependencyChecks.description": "Run dependency checks automatically on startup.",
   "salesforcedx-vscode-manager.configuration.thirdPartyExtensionIds.description": "Non-Salesforce extensions the manager may enable/disable as part of a group.",
   "salesforcedx-vscode-manager.configuration.vsixDirectory.description": "Absolute path to a directory of local .vsix files. When a managed extension has a matching vsix, it is installed from there instead of the marketplace.",
-  "salesforcedx-vscode-manager.configuration.vsixAutoReinstallOnChange.description": "Automatically reinstall a managed extension when a new matching vsix appears in the vsix directory.",
+  "salesforcedx-vscode-manager.configuration.vsixAutoInstall.description": "Automatically install every .vsix found in the VSIX directory at activation and whenever a file is added, changed, or removed. Overrides are authoritative — the Groups view hides install/uninstall/update actions for VSIX-backed extensions so the override directory stays the single source of truth.",
   "salesforcedx-vscode-manager.configuration.statusBar.showGroup.description": "Show the active group in the status bar.",
   "salesforcedx-vscode-manager.configuration.reloadAfterApply.description": "How to handle the 'reload required' signal at the end of a group apply. Consolidates VSCode's per-uninstall reload banners into a single prompt.",
   "salesforcedx-vscode-manager.configuration.reloadAfterApply.auto": "Automatically reload the window after a group apply finishes if any extensions were installed or uninstalled.",
@@ -71,5 +74,6 @@
   "salesforcedx-vscode-manager.walkthrough.statusBar.description": "The status bar shows the active group and any VSIX overrides; click either to manage.",
 
   "salesforcedx-vscode-manager.viewsWelcome.groups": "Loading Salesforce Extensions Manager…\n\nApply a group to enable the extensions you need, install or update individual extensions, or browse the full Salesforce publisher catalog.",
+  "salesforcedx-vscode-manager.viewsWelcome.vsix": "No VSIX overrides present.\n\nDrop a `.vsix` file in the configured VSIX directory and it will auto-install; the matching row in the Groups view becomes locked so the override directory stays the single source of truth.",
   "salesforcedx-vscode-manager.viewsWelcome.dependencies": "Loading Salesforce Extensions Manager…\n\nVerify that the Salesforce CLI, Java, Node, and other prerequisites needed by the managed extensions are installed and on PATH."
 }

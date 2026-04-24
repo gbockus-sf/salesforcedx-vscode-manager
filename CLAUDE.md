@@ -60,6 +60,21 @@ explicit user request:
 - **VSIX overrides never silently fall back to marketplace.** If a match
   exists but the install fails, surface it as a vsix failure (`exitCode≠0`,
   `source='vsix'`) — the user asked for local, say so when it didn't work.
+- **VSIX overrides are authoritative.** The scanner's current
+  snapshot IS the install state for matched ids: every `.vsix` is
+  auto-installed at activation and on every file-system change
+  (`VsixInstaller.autoInstallAll` wrapped in `busy.withBusy` so the
+  Groups panel freezes during the install pass). Matching rows in
+  the Groups view pick up `:vsixLocked` in their `contextValue`;
+  the `package.json` menu clauses for install / uninstall / update
+  append `!(viewItem =~ /:vsixLocked/)` so those row actions
+  disappear — users who want to change state edit the override
+  directory, not the Groups row. The dedicated `sfdxManager.vsix`
+  view (a third tree alongside Groups and Dependencies) is gated
+  by the `sfdxManager.hasVsixOverrides` context key so it only
+  appears when the directory has at least one `.vsix`. The
+  `salesforcedx-vscode-manager.vsixAutoInstall` setting (default
+  `true`) is the kill switch; do not add new toggles on top of it.
 - **No `extensionDependencies` on the manager itself.** It must function
   when every target extension is disabled.
 - **User-facing strings are externalized.** `package.json` uses `%key%`

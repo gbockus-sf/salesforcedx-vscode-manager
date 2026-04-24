@@ -74,18 +74,30 @@ doc.
 ### Test unreleased builds with local VSIX
 
 Set `salesforcedx-vscode-manager.vsixDirectory` to a folder of
-`.vsix` files (named `<publisher>.<name>-<version>.vsix`) and those
-local builds take priority over the marketplace version at install
-time. The Groups tree tags every VSIX-sourced extension with a
-`$(package)` badge so you can tell at a glance which rows are
-running a local build.
+`.vsix` files and everything there auto-installs at activation —
+and re-installs automatically whenever you add, change, or remove
+a file in that directory. The override directory is authoritative:
+matching extensions in the **Groups** view get a `vsix-managed`
+badge and their install / uninstall / update actions disappear so
+you can't accidentally drift from the override set.
 
-Filenames that don't match the strict `<publisher>.<name>-<version>.vsix`
-shape (common for CI builds and renamed artifacts, e.g.
-`salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix`) also resolve via
-longest-prefix match against your managed extension ids. Check the
-`SFDX Manager: Show Log` output channel to see exactly which file
-got matched to which extension id.
+A dedicated **VSIX Overrides** view appears under the activity-bar
+icon whenever at least one `.vsix` is present, listing every
+override file with inline actions to reveal in Finder or delete
+the file.
+
+Filename resolution is flexible: the strict
+`<publisher>.<name>-<version>.vsix` shape works first, and
+anything else (CI-renamed artifacts like
+`salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix`, files with
+no publisher prefix) falls back to longest-prefix matching
+against the ids the manager knows about. `SFDX Manager: Show Log`
+reports exactly which file got matched to which extension.
+
+The auto-install behavior is controlled by
+`salesforcedx-vscode-manager.vsixAutoInstall` (default `true`).
+Set it to `false` to keep manual control via `Refresh from VSIX
+Directory`.
 
 Useful for QA engineers, release testing, and pre-release developer
 previews — no more manually juggling `code --install-extension` for

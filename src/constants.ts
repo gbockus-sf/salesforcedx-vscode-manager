@@ -5,6 +5,17 @@ export const CONFIG_NAMESPACE = 'salesforcedx-vscode-manager';
 export const VIEW_CONTAINER_ID = 'sfdxManager';
 export const VIEW_GROUPS_ID = 'sfdxManager.groups';
 export const VIEW_DEPENDENCIES_ID = 'sfdxManager.dependencies';
+export const VIEW_VSIX_ID = 'sfdxManager.vsix';
+
+/**
+ * VSCode context keys toggled from `executeCommand('setContext', ...)`.
+ * Kept in one place so view `when` clauses and runtime
+ * `setContext` calls can't drift apart.
+ */
+export const CONTEXT_KEYS = {
+  anyBusy: 'sfdxManager.anyBusy',
+  hasVsixOverrides: 'sfdxManager.hasVsixOverrides'
+} as const;
 
 export const COMMANDS = {
   applyGroup: 'sfdxManager.applyGroup',
@@ -22,6 +33,8 @@ export const COMMANDS = {
   openVsixDirectory: 'sfdxManager.openVsixDirectory',
   clearVsixOverrides: 'sfdxManager.clearVsixOverrides',
   vsixMenu: 'sfdxManager.vsixMenu',
+  removeVsixOverride: 'sfdxManager.removeVsixOverride',
+  revealVsixFile: 'sfdxManager.revealVsixFile',
   showLog: 'sfdxManager.showLog',
   updateExtension: 'sfdxManager.updateExtension',
   updateAllSalesforce: 'sfdxManager.updateAllSalesforce',
@@ -43,7 +56,7 @@ export const SETTINGS = {
   autoRunDependencyChecks: 'autoRunDependencyChecks',
   thirdPartyExtensionIds: 'thirdPartyExtensionIds',
   vsixDirectory: 'vsixDirectory',
-  vsixAutoReinstallOnChange: 'vsixAutoReinstallOnChange',
+  vsixAutoInstall: 'vsixAutoInstall',
   statusBarShowGroup: 'statusBar.showGroup',
   statusBarShowVsix: 'statusBar.showVsix',
   updateCheck: 'updateCheck',

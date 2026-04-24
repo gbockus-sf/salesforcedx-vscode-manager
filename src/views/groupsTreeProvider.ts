@@ -260,7 +260,12 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     const bits: string[] = [];
     if (node.installedVersion) bits.push(`v${stripLeadingV(node.installedVersion)}`);
     if (!node.enabled) bits.push(getLocalization(LocalizationKeys.extensionDisabled));
-    if (node.source === 'vsix') bits.push(getLocalization(LocalizationKeys.extensionVsixBadge));
+    if (node.source === 'vsix' || node.vsixFilename) {
+      // "Managed" wins over the plain "vsix" badge: if an override
+      // exists for this id, interactions are disabled and we want
+      // the description to make that obvious.
+      bits.push(getLocalization(LocalizationKeys.extensionVsixLockedBadge));
+    }
     if (node.updateAvailable && node.latestVersion) {
       bits.push(getLocalization(LocalizationKeys.extensionUpdateBadge, stripLeadingV(node.latestVersion)));
     }
@@ -284,20 +289,16 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
         getLocalization(LocalizationKeys.extensionMarketplaceUpdateLine, stripLeadingV(node.latestVersion))
       );
     }
-    if (node.source === 'vsix') {
+    if (node.vsixFilename) {
+      // An override exists for this id. VSIX is authoritative — the
+      // row's install/uninstall/update actions are gone via the
+      // `:vsixLocked` context value. Tooltip explains why and names
+      // the file so the user can act on the override directory
+      // instead.
       lines.push(
-        node.vsixFilename
-          ? getLocalization(LocalizationKeys.extensionVsixTooltip, node.vsixFilename)
-          : getLocalization(LocalizationKeys.extensionVsixTooltipGeneric)
+        getLocalization(LocalizationKeys.extensionVsixLockedTooltip, node.vsixFilename)
       );
       lines.push(getLocalization(LocalizationKeys.extensionVsixWalkthroughHint));
-    } else if (!node.installed && node.vsixFilename) {
-      // Uninstalled + override present: tooltip surfaces the filename
-      // so the user knows which VSIX will be used when they click
-      // Install on this row.
-      lines.push(
-        getLocalization(LocalizationKeys.extensionVsixAvailableTooltip, node.vsixFilename)
-      );
     }
     if (this.extensions.isLocked(node.extensionId)) {
       lines.push(getLocalization(LocalizationKeys.extensionLockedTooltip));
@@ -329,6 +330,12 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
     // refuses to uninstall them while manager is installed; the menu
     // when-clauses in package.json hide install/uninstall for this flag.
     if (this.extensions.isLocked(node.extensionId)) flags.push('locked');
+    // `:vsixLocked` fires as soon as the scanner sees a matching .vsix
+    // — even BEFORE the auto-install completes. Gives the menu
+    // when-clauses (package.json) something to match against so the
+    // Install / Uninstall / Update actions disappear immediately; the
+    // user learns the override is the source of truth.
+    if (node.vsixFilename) flags.push('vsixLocked');
     return flags.join(':');
   }
 

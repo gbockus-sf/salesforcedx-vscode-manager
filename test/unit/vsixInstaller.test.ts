@@ -91,6 +91,58 @@ describe('VsixInstaller', () => {
     expect(await installer.tryInstall('foo.bar')).toBe('skipped');
   });
 
+  it('autoInstallAll force-installs every override and records vsix provenance', async () => {
+    // The authoritative-VSIX contract: on activation/watcher fire,
+    // every .vsix in the directory gets installed with --force,
+    // regardless of current state. State writes prove provenance.
+    const overrides = new Map([
+      ['foo.a', { extensionId: 'foo.a', version: '1.0.0', filePath: '/d/foo.a-1.0.0.vsix' }],
+      ['foo.b', { extensionId: 'foo.b', version: '2.0.0', filePath: '/d/foo.b-2.0.0.vsix' }]
+    ]);
+    const cli = mkCli();
+    const state = mkState();
+    const installer = new VsixInstaller(mkScanner(overrides), cli, state, mkLogger());
+    const result = await installer.autoInstallAll();
+    expect(result.installed.sort()).toEqual(['foo.a', 'foo.b']);
+    expect(result.failed).toEqual([]);
+    expect(cli.installExtension).toHaveBeenCalledWith('/d/foo.a-1.0.0.vsix', true);
+    expect(cli.installExtension).toHaveBeenCalledWith('/d/foo.b-2.0.0.vsix', true);
+    expect(state.setInstallSource).toHaveBeenCalledWith('foo.a', 'vsix');
+    expect(state.setInstallSource).toHaveBeenCalledWith('foo.b', 'vsix');
+  });
+
+  it('autoInstallAll reports failures and keeps going past the first error', async () => {
+    const overrides = new Map([
+      ['foo.a', { extensionId: 'foo.a', version: '1.0.0', filePath: '/d/foo.a-1.0.0.vsix' }],
+      ['foo.b', { extensionId: 'foo.b', version: '2.0.0', filePath: '/d/foo.b-2.0.0.vsix' }]
+    ]);
+    const cli = {
+      installExtension: jest.fn()
+        .mockResolvedValueOnce({ stdout: '', stderr: 'boom', exitCode: 1 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }),
+      uninstallExtension: jest.fn()
+    } as unknown as CodeCliService;
+    const installer = new VsixInstaller(mkScanner(overrides), cli, mkState(), mkLogger());
+    const result = await installer.autoInstallAll();
+    expect(result.failed).toEqual(['foo.a']);
+    expect(result.installed).toEqual(['foo.b']);
+  });
+
+  it('autoInstallAll is a no-op when the scanner is not configured', async () => {
+    // Defensive: don't fire `code --install` with a non-path when the
+    // user hasn't set vsixDirectory. The command would error, but we
+    // shouldn't be trying in the first place.
+    const scanner = {
+      isConfigured: jest.fn(() => false),
+      scan: jest.fn(() => new Map())
+    } as unknown as VsixScanner;
+    const cli = mkCli();
+    const installer = new VsixInstaller(scanner, cli, mkState(), mkLogger());
+    const result = await installer.autoInstallAll();
+    expect(result.installed).toEqual([]);
+    expect(cli.installExtension).not.toHaveBeenCalled();
+  });
+
   it('clearAllOverrides uninstalls vsix-sourced, reinstalls from marketplace, updates provenance', async () => {
     const state = mkState({ 'foo.a': 'vsix', 'foo.b': 'marketplace' });
     const cli = mkCli();

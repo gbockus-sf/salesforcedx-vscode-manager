@@ -314,6 +314,49 @@ describe('GroupsTreeProvider', () => {
     expect(String(extItem.description)).toContain('update → v63.1.0');
   });
 
+  it('appends :vsixLocked to the contextValue when an override is present', () => {
+    // Drives the Groups view menu gates in package.json — install /
+    // uninstall / update row actions disappear as soon as the scanner
+    // sees a matching .vsix, even BEFORE auto-install records the
+    // provenance. VSIX is authoritative; the row is frozen in place.
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
+    const uninstalledWithOverride = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      groupId: 'apex',
+      installed: false,
+      enabled: false,
+      source: 'unknown',
+      vsixFilename: 'salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix',
+      updateAvailable: false
+    });
+    expect(uninstalledWithOverride.contextValue).toContain('vsixLocked');
+    const installedWithOverride = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'vsix',
+      vsixFilename: 'salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix',
+      installedVersion: '3.28.0',
+      updateAvailable: false
+    });
+    expect(installedWithOverride.contextValue).toContain('vsixLocked');
+    // Sanity: no override, no flag.
+    const plain = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-vscode-apex',
+      groupId: 'apex',
+      installed: true,
+      enabled: true,
+      source: 'marketplace',
+      installedVersion: '63.0.0',
+      updateAvailable: false
+    });
+    expect(plain.contextValue).not.toContain('vsixLocked');
+  });
+
   it('shows a "vsix available" badge on an uninstalled row when a local VSIX is waiting', () => {
     // Regression against a report that dropping a local VSIX showed
     // no indication until the user actually installed the row. The

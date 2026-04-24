@@ -51,7 +51,9 @@
       { "command": "sfdxManager.refreshSalesforceCatalog", "title": "%salesforcedx-vscode-manager.command.refreshSalesforceCatalog.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
       { "command": "sfdxManager.installExtension", "title": "%salesforcedx-vscode-manager.command.installExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(cloud-download)" },
       { "command": "sfdxManager.uninstallExtension", "title": "%salesforcedx-vscode-manager.command.uninstallExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
-      { "command": "sfdxManager.openInMarketplace", "title": "%salesforcedx-vscode-manager.command.openInMarketplace.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" }
+      { "command": "sfdxManager.openInMarketplace", "title": "%salesforcedx-vscode-manager.command.openInMarketplace.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" },
+      { "command": "sfdxManager.removeVsixOverride", "title": "%salesforcedx-vscode-manager.command.removeVsixOverride.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
+      { "command": "sfdxManager.revealVsixFile", "title": "%salesforcedx-vscode-manager.command.revealVsixFile.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(folder-opened)" }
     ],
     "menus": {
       "commandPalette": [
@@ -60,7 +62,9 @@
         { "command": "sfdxManager.updateExtension", "when": "false" },
         { "command": "sfdxManager.installExtension", "when": "false" },
         { "command": "sfdxManager.uninstallExtension", "when": "false" },
-        { "command": "sfdxManager.openInMarketplace", "when": "false" }
+        { "command": "sfdxManager.openInMarketplace", "when": "false" },
+        { "command": "sfdxManager.removeVsixOverride", "when": "false" },
+        { "command": "sfdxManager.revealVsixFile", "when": "false" }
       ],
       "view/title": [
         { "command": "sfdxManager.createCustomGroup", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy", "group": "navigation" },
@@ -68,6 +72,9 @@
         { "command": "sfdxManager.updateAllSalesforce", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy", "group": "navigation" },
         { "command": "sfdxManager.checkForUpdates", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy", "group": "navigation" },
         { "command": "sfdxManager.browseSalesforceExtensions", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy", "group": "navigation" },
+        { "command": "sfdxManager.refreshFromVsixDirectory", "when": "view == sfdxManager.vsix && !sfdxManager.anyBusy", "group": "navigation@1" },
+        { "command": "sfdxManager.openVsixDirectory", "when": "view == sfdxManager.vsix", "group": "navigation@2" },
+        { "command": "sfdxManager.clearVsixOverrides", "when": "view == sfdxManager.vsix && !sfdxManager.anyBusy", "group": "navigation@3" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies", "group": "navigation" },
         { "command": "sfdxManager.copyDependencyReport", "when": "view == sfdxManager.dependencies", "group": "navigation" }
       ],
@@ -78,15 +85,17 @@
         { "command": "sfdxManager.moveGroupScope", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem == group:user", "group": "1_modify@3" },
         { "command": "sfdxManager.refreshSalesforceCatalog", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem == group:catalog", "group": "inline" },
         { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem == group:pack", "group": "inline@2" },
-        { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /notInstalled/ && !(viewItem =~ /:locked/)", "group": "inline@1" },
-        { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /(^|:)installed/ && !(viewItem =~ /:locked/)", "group": "inline@3" },
-        { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /updateAvailable/", "group": "inline@2" },
+        { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /notInstalled/ && !(viewItem =~ /:locked/) && !(viewItem =~ /:vsixLocked/)", "group": "inline@1" },
+        { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /(^|:)installed/ && !(viewItem =~ /:locked/) && !(viewItem =~ /:vsixLocked/)", "group": "inline@3" },
+        { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && viewItem =~ /updateAvailable/ && !(viewItem =~ /:vsixLocked/)", "group": "inline@2" },
         { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/", "group": "inline@4" },
         { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension:child:/", "group": "inline@1" },
-        { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /notInstalled/ && !(viewItem =~ /:locked/)", "group": "1_ext@1" },
-        { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /updateAvailable/", "group": "1_ext@2" },
-        { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /(^|:)installed/ && !(viewItem =~ /:locked/)", "group": "1_ext@3" },
+        { "command": "sfdxManager.installExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /notInstalled/ && !(viewItem =~ /:locked/) && !(viewItem =~ /:vsixLocked/)", "group": "1_ext@1" },
+        { "command": "sfdxManager.updateExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /updateAvailable/ && !(viewItem =~ /:vsixLocked/)", "group": "1_ext@2" },
+        { "command": "sfdxManager.uninstallExtension", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/ && !(viewItem =~ /^extension:child:/) && viewItem =~ /(^|:)installed/ && !(viewItem =~ /:locked/) && !(viewItem =~ /:vsixLocked/)", "group": "1_ext@3" },
         { "command": "sfdxManager.openInMarketplace", "when": "view == sfdxManager.groups && !sfdxManager.anyBusy && viewItem =~ /^extension/", "group": "2_ext_nav@1" },
+        { "command": "sfdxManager.revealVsixFile", "when": "view == sfdxManager.vsix && viewItem == vsix:override", "group": "inline@1" },
+        { "command": "sfdxManager.removeVsixOverride", "when": "view == sfdxManager.vsix && !sfdxManager.anyBusy && viewItem == vsix:override", "group": "inline@2" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies && viewItem =~ /^check/", "group": "inline" },
         { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" }
       ]
@@ -107,6 +116,11 @@
           "name": "%salesforcedx-vscode-manager.view.groups.name%"
         },
         {
+          "id": "sfdxManager.vsix",
+          "name": "%salesforcedx-vscode-manager.view.vsix.name%",
+          "when": "sfdxManager.hasVsixOverrides"
+        },
+        {
           "id": "sfdxManager.dependencies",
           "name": "%salesforcedx-vscode-manager.view.dependencies.name%"
         }
@@ -116,6 +130,10 @@
       {
         "view": "sfdxManager.groups",
         "contents": "%salesforcedx-vscode-manager.viewsWelcome.groups%"
+      },
+      {
+        "view": "sfdxManager.vsix",
+        "contents": "%salesforcedx-vscode-manager.viewsWelcome.vsix%"
       },
       {
         "view": "sfdxManager.dependencies",
@@ -168,10 +186,10 @@
           "scope": "machine-overridable",
           "description": "%salesforcedx-vscode-manager.configuration.vsixDirectory.description%"
         },
-        "salesforcedx-vscode-manager.vsixAutoReinstallOnChange": {
+        "salesforcedx-vscode-manager.vsixAutoInstall": {
           "type": "boolean",
-          "default": false,
-          "description": "%salesforcedx-vscode-manager.configuration.vsixAutoReinstallOnChange.description%"
+          "default": true,
+          "description": "%salesforcedx-vscode-manager.configuration.vsixAutoInstall.description%"
         },
         "salesforcedx-vscode-manager.statusBar.showGroup": {
           "type": "boolean",

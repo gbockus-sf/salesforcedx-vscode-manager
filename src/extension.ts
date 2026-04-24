@@ -4,7 +4,16 @@ import { registerDependencyCommands } from './commands/dependencyCommands';
 import { registerGroupCommands } from './commands/groupCommands';
 import { registerUpdateCommands } from './commands/updateCommands';
 import { registerVsixCommands } from './commands/vsixCommands';
-import { COMMANDS, CONFIG_NAMESPACE, SALESFORCE_PUBLISHER, SETTINGS, VIEW_DEPENDENCIES_ID, VIEW_GROUPS_ID } from './constants';
+import {
+  COMMANDS,
+  CONFIG_NAMESPACE,
+  CONTEXT_KEYS,
+  SALESFORCE_PUBLISHER,
+  SETTINGS,
+  VIEW_DEPENDENCIES_ID,
+  VIEW_GROUPS_ID,
+  VIEW_VSIX_ID
+} from './constants';
 import { DependencyRegistry } from './dependencies/registry';
 import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
@@ -25,6 +34,7 @@ import { VsixInstaller } from './vsix/vsixInstaller';
 import { VsixScanner } from './vsix/vsixScanner';
 import { DependenciesTreeProvider } from './views/dependenciesTreeProvider';
 import { GroupsTreeProvider } from './views/groupsTreeProvider';
+import { VsixTreeProvider } from './views/vsixTreeProvider';
 
 export const activate = async (context: vscode.ExtensionContext): Promise<void> => {
   const hrStart = process.hrtime();
@@ -103,15 +113,60 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState, busy);
   groupsTree.setVsixSources(() => installer.currentSources());
   groupsTree.setVsixOverrides(() => installer.vsixOverrides());
+  const vsixTree = new VsixTreeProvider(scanner, extensions);
   const dependenciesTree = new DependenciesTreeProvider(registry);
 
   const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings, busy);
   const vsixStatusBar = new VsixStatusBarItem(settings, installer, busy);
   context.subscriptions.push(groupStatusBar, vsixStatusBar);
 
-  let vsixWatcher: vscode.Disposable | undefined = scanner.watch(() => {
+  /**
+   * Keep the `sfdxManager.hasVsixOverrides` context key in sync with
+   * the scanner's current snapshot. The key drives the `when` clause
+   * on the VSIX tree view (`package.json`) so the view appears as
+   * soon as the first override shows up and hides itself when the
+   * last one goes away — users with no overrides never see it.
+   */
+  const updateHasOverridesContext = (): void => {
+    const has = scanner.scan().size > 0;
+    void vscode.commands.executeCommand('setContext', CONTEXT_KEYS.hasVsixOverrides, has);
+  };
+  updateHasOverridesContext();
+
+  /**
+   * Auto-install every VSIX in the override directory. Runs at
+   * activation and on any file-system change under the directory.
+   * Idempotent: already-installed rows at the matching version are
+   * skipped. Wrapped in `busy.withBusy` so the Groups panel freezes
+   * for the duration — users can't double-click a row while the
+   * override install is landing. Silent on success; logs every
+   * decision to the output channel.
+   */
+  const runAutoInstall = async (): Promise<void> => {
+    if (!settings.getVsixAutoInstall()) return;
+    if (!scanner.isConfigured()) return;
+    const overrideIds = [...scanner.scan().keys()];
+    if (overrideIds.length === 0) return;
+    const result = await busy.withBusy(overrideIds, () => installer.autoInstallAll());
     groupsTree.refresh();
+    vsixTree.refresh();
     vsixStatusBar.update();
+    if (result.failed.length > 0) {
+      void vscode.window.showWarningMessage(
+        getLocalization(LocalizationKeys.vsixAutoInstallFailed, result.failed.length)
+      );
+    }
+    logger.info(
+      `vsixAutoInstall: installed=${result.installed.length} skipped=${result.skipped.length} failed=${result.failed.length}`
+    );
+  };
+
+  let vsixWatcher: vscode.Disposable | undefined = scanner.watch(() => {
+    updateHasOverridesContext();
+    groupsTree.refresh();
+    vsixTree.refresh();
+    vsixStatusBar.update();
+    void runAutoInstall();
   });
   if (vsixWatcher) context.subscriptions.push(vsixWatcher);
 
@@ -134,6 +189,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(VIEW_GROUPS_ID, groupsTree),
+    vscode.window.registerTreeDataProvider(VIEW_VSIX_ID, vsixTree),
     vscode.window.registerTreeDataProvider(VIEW_DEPENDENCIES_ID, dependenciesTree),
     settings.onDidChange(e => {
       if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.telemetryEnabled}`)) {
@@ -148,14 +204,21 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
         extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');
         groupsTree.setVsixSources(() => installer.currentSources());
         groupsTree.setVsixOverrides(() => installer.vsixOverrides());
+        vsixTree.setScanner(scanner);
         vsixStatusBar.setInstaller(installer);
+        updateHasOverridesContext();
         vsixWatcher = scanner.watch(() => {
+          updateHasOverridesContext();
           groupsTree.refresh();
+          vsixTree.refresh();
           vsixStatusBar.update();
+          void runAutoInstall();
         });
         if (vsixWatcher) context.subscriptions.push(vsixWatcher);
+        void runAutoInstall();
       }
       groupsTree.refresh();
+      vsixTree.refresh();
       dependenciesTree.refresh();
       groupStatusBar.update();
       vsixStatusBar.update();
@@ -190,6 +253,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
     workspaceState,
     logger,
     groupsTree,
+    vsixTree,
     busy
   });
 
@@ -230,6 +294,12 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   if (settings.getUpdateCheck() !== 'never') {
     void publisherCatalog.refresh().then(() => groupsTree.refresh());
   }
+
+  // VSIX overrides are authoritative — if the user has files in the
+  // directory, make sure they're installed now. Kicked off in the
+  // background so activation stays snappy; the BusyState freezes the
+  // Groups panel for the duration so clicks can't race the install.
+  void runAutoInstall();
 
   // Populate installed-version descriptions immediately (no network), and
   // optionally probe the marketplace for update availability on startup.

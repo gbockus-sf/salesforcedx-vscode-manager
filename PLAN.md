@@ -1157,3 +1157,49 @@ should be addressed before a real release.
   `extensionVsixAvailableTooltip`) surface the signal.
 
   278 → 289 tests (+11).
+
+- [x] **VSIX overrides become authoritative: auto-install, lock
+  Groups rows, add a dedicated view.** Shift the whole flow so the
+  override directory IS the install state for matched ids. Details:
+
+  - New `VsixInstaller.autoInstallAll()` force-installs every
+    `.vsix` in the directory at activation + whenever the scanner's
+    `FileSystemWatcher` fires. Idempotent: rows already at the
+    matching version with vsix provenance are skipped. Wrapped in
+    `busy.withBusy(overrideIds, …)` so the Groups panel freezes
+    during the install.
+  - Groups tree: `vsixFilename` present → contextValue gains
+    `:vsixLocked`, description shows `vsix-managed`, tooltip
+    explains "edit the override directory to change". The
+    `package.json` view/item/context entries for install /
+    uninstall / update append `!(viewItem =~ /:vsixLocked/)` so
+    those actions vanish.
+  - New `src/views/vsixTreeProvider.ts` — a third top-level tree
+    under the activity-bar container, gated by a new
+    `sfdxManager.hasVsixOverrides` context key (set from the
+    scanner's watcher). Row per `.vsix` with `package` icon,
+    display-name label, version + filename description,
+    `vsix:override` contextValue. Row actions: `$(folder-opened)`
+    reveal, `$(trash)` remove (deletes the file — modal-
+    confirmed — and the watcher drives the re-sync).
+  - View-title buttons on the new view: refresh from directory,
+    open directory, clear all overrides (reuse existing
+    commands).
+  - `viewsWelcome` entry for the new view covers the
+    configured-but-empty case.
+  - Setting: `salesforcedx-vscode-manager.vsixAutoInstall` (default
+    `true`) replaces the dead `vsixAutoReinstallOnChange`.
+  - Constants: new `CONTEXT_KEYS` export and `VIEW_VSIX_ID`;
+    two new COMMANDS entries (`removeVsixOverride`,
+    `revealVsixFile`).
+  - Tests: new `vsixTreeProvider.test.ts` (root-children sort,
+    row rendering, `setScanner` rebind); three new
+    `autoInstallAll` cases on `vsixInstaller.test.ts` (happy
+    path + partial failure + unconfigured); one contextValue
+    test on `groupsTreeProvider.test.ts`; two new `viewsWelcome`
+    contract tests (VSIX-view `when` clause, Groups-view
+    `!vsixLocked` guard on install/update/uninstall entries).
+    CLAUDE.md adds the "VSIX overrides are authoritative" rule
+    so future changes can't accidentally bypass the lockdown.
+
+  289 → 298 tests (+9).

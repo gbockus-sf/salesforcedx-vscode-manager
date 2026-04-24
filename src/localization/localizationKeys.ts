@@ -69,6 +69,16 @@ export enum LocalizationKeys {
   extensionVsixWalkthroughHint = 'extensionVsixWalkthroughHint',
   extensionVsixAvailableBadge = 'extensionVsixAvailableBadge',
   extensionVsixAvailableTooltip = 'extensionVsixAvailableTooltip',
+  extensionVsixLockedBadge = 'extensionVsixLockedBadge',
+  extensionVsixLockedTooltip = 'extensionVsixLockedTooltip',
+
+  // vsix tree
+  vsixTreeNodeDescription = 'vsixTreeNodeDescription',
+  vsixTreeNodeTooltip = 'vsixTreeNodeTooltip',
+  vsixRemoveConfirm = 'vsixRemoveConfirm',
+  vsixRemoveProceed = 'vsixRemoveProceed',
+  vsixAutoInstallSummary = 'vsixAutoInstallSummary',
+  vsixAutoInstallFailed = 'vsixAutoInstallFailed',
   dependencyChildDep = 'dependencyChildDep',
   dependencyChildPack = 'dependencyChildPack',
   dependencyChildEnabled = 'dependencyChildEnabled',

@@ -65,8 +65,15 @@ export class SettingsService {
     return this.config().get<string>(SETTINGS.vsixDirectory, '').trim();
   }
 
-  getVsixAutoReinstallOnChange(): boolean {
-    return this.config().get<boolean>(SETTINGS.vsixAutoReinstallOnChange, false);
+  /**
+   * Controls whether the manager auto-installs every VSIX in the
+   * override directory at activation / on file change. Defaults to
+   * `true` — VSIX overrides are the authoritative source of truth for
+   * the managed extensions. Users who want the old "apply-to-use"
+   * behavior can set this to `false`.
+   */
+  getVsixAutoInstall(): boolean {
+    return this.config().get<boolean>(SETTINGS.vsixAutoInstall, true);
   }
 
   getStatusBarShowGroup(): boolean {

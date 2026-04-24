@@ -151,7 +151,20 @@ else logs to the output channel.
 
 ---
 
-## 7. VSIX
+## 7. VSIX authoritative overrides
+
+- [ ] **Auto-install on file drop.** With `vsixDirectory` configured, drop a `.vsix` into the directory while VSCode is running.
+  _Expected:_ the **VSIX Overrides** view appears (if not already visible), the dropped row shows up there, and the matching Groups row picks up the `vsix-managed` badge + `$(package)` icon. Output log has `vsix: auto-installed <id> from <path>`.
+- [ ] **Groups row is locked.** On a `vsix-managed` Groups row, right-click.
+  _Expected:_ **no** Install / Update / Uninstall entries. Open in Marketplace is still there.
+- [ ] **Remove override file via trash button.** In the VSIX Overrides view, click the inline `$(trash)` on an override row → confirm.
+  _Expected:_ file is deleted; row disappears; Groups row loses the `vsix-managed` badge; on the next auto-install pass (triggered by the file-remove watch) the row is no longer VSIX-managed.
+- [ ] **Empty directory.** With `vsixDirectory` configured but empty, open the activity-bar icon.
+  _Expected:_ the VSIX Overrides view is hidden entirely (no row, no empty state — it's gated behind the `sfdxManager.hasVsixOverrides` context key).
+- [ ] **`vsixAutoInstall=false` disables auto-install.** Set the setting to `false`, drop a `.vsix` in the directory.
+  _Expected:_ view still appears; row still surfaces the override; Groups row is **not** locked (no badge, no `:vsixLocked` action gate). Triggering `Refresh from VSIX Directory` manually performs the install.
+
+## 7a. VSIX (legacy commands)
 
 - [ ] **VSIX Management... (unset).** Palette → **VSIX Management...** with `vsixDirectory` unset.
   _Expected:_ Quick Pick. Pick "Configure VSIX Directory" → Settings opens.
