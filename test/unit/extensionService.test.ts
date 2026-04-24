@@ -281,13 +281,30 @@ describe('ExtensionService', () => {
       ]);
     });
 
-    it('transitiveDependents() treats extensionPack membership as a reverse edge', () => {
+    it('transitiveDependents() does NOT treat extensionPack membership as a reverse edge', () => {
+      // Regression: a pack listing Apex in its `extensionPack` is not
+      // a runtime dependent of Apex — VSCode itself happily uninstalls
+      // a pack member and leaves the pack in place. Treating pack
+      // members as reverse edges made cascade-uninstalling Apex try to
+      // also uninstall "Salesforce Extension Pack", which failed with
+      // a confusing "not installed" error on the pack row.
       const graph = new Map([
         ['pack', { id: 'pack', dependsOn: [], packMembers: ['member'] }],
         ['member', { id: 'member', dependsOn: [], packMembers: [] }]
       ]);
       const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
-      expect([...svc.transitiveDependents(['member'], graph)]).toEqual(['pack']);
+      expect([...svc.transitiveDependents(['member'], graph)]).toEqual([]);
+    });
+
+    it('transitiveDependents() walks extensionDependencies edges only', () => {
+      // Belt-and-suspenders: dep on the member still cascades correctly.
+      const graph = new Map([
+        ['pack', { id: 'pack', dependsOn: [], packMembers: ['member'] }],
+        ['needs-member', { id: 'needs-member', dependsOn: ['member'], packMembers: [] }],
+        ['member', { id: 'member', dependsOn: [], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect([...svc.transitiveDependents(['member'], graph)]).toEqual(['needs-member']);
     });
 
     it('transitiveDependencies() walks extensionDependencies edges', () => {

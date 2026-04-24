@@ -10,24 +10,25 @@ else logs to the output channel.
 
 ## Quick setup
 
-- [ ] Launch the F5 Extension Host.
-- [ ] Open the Salesforce Extensions Manager view.
-- [ ] Open the extension output channel (`SFDX Manager: Show Log`).
-- [ ] Keep both visible so you can confirm "silent" paths actually logged.
+- [x] Launch the F5 Extension Host.
+- [x] Open the Salesforce Extensions Manager view.
+- [x] Open the extension output channel (`SFDX Manager: Show Log`).
+- [x] Keep both visible so you can confirm "silent" paths actually logged.
 
 ---
 
 ## 1. Groups — per-extension lifecycle
 
-- [ ] **Install a missing extension.** Right-click any uninstalled row → **Install Extension**.
+- [x] **Install a missing extension.** Right-click any uninstalled row → **Install Extension**.
   _Expected:_ progress → **silent**. Row flips to `installed`. Log: `install(<id>): marketplace.`
-- [ ] **Install an already-installed extension.** Right-click an installed row → **Install Extension**.
+- [x] **Install an already-installed extension.** Right-click an installed row → **Install Extension**.
   _Expected:_ **silent**. Log: `install(<id>): already installed; nothing to do.`
-- [ ] **Update an extension.** Right-click an installed row with an update badge → **Update Extension**.
+  No option to install if already installed. 
+- [x] **Update an extension.** Right-click an installed row with an update badge → **Update Extension**.
   _Expected:_ progress → **silent**. Version badge updates. Log: `update(<id>): reinstalled with --force.`
-- [ ] **Cancel an uninstall modal.** Right-click an installed row → **Uninstall Extension** → dismiss.
+- [x] **Cancel an uninstall modal.** Right-click an installed row → **Uninstall Extension** → dismiss.
   _Expected:_ **silent**, nothing changes.
-- [ ] **Uninstall a leaf extension.** Right-click a row without dependents → **Uninstall Extension** → confirm.
+- [x] **Uninstall a leaf extension.** Right-click a row without dependents → **Uninstall Extension** → confirm.
   _Expected:_ modal "Uninstall X?" → **silent**. Row flips to `not installed`.
 - [ ] **Cascade uninstall.** Right-click `Apex` (with OAS + Replay Debugger installed) → **Uninstall Extension** → confirm.
   _Expected:_ modal lists dependents by display name → **silent**. All three rows flip.

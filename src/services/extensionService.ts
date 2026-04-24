@@ -375,9 +375,15 @@ export class ExtensionService {
    * depend on any of `roots` — directly or transitively. Used by the
    * single-extension uninstall command to enumerate the cascade VSCode
    * would otherwise refuse mid-way with "Cannot uninstall, X depends on
-   * this". Does NOT include the roots themselves. `extensionPack`
-   * membership is treated the same as `extensionDependencies` because a
-   * pack functionally depends on its members.
+   * this". Does NOT include the roots themselves.
+   *
+   * Only `extensionDependencies` counts as a reverse edge here, NOT
+   * `extensionPack` membership. Packs are convenience bundles — a pack
+   * *lists* its members but doesn't *depend* on them. VSCode itself
+   * lets you uninstall pack members without removing the pack; doing
+   * the same preserves the user's intent ("I want this one extension
+   * gone, not the bundle") and avoids the "required by Salesforce
+   * Extension Pack" false-positive in the cascade-confirm modal.
    */
   transitiveDependents(roots: readonly string[], graph: DependencyGraph): Set<string> {
     const normalizedRoots = normalizeIds(roots);
@@ -389,7 +395,7 @@ export class ExtensionService {
       for (const [otherId, node] of graph) {
         if (out.has(otherId)) continue;
         if (rootSet.has(otherId)) continue; // roots themselves aren't dependents-of-themselves
-        if (node.dependsOn.includes(id) || node.packMembers.includes(id)) {
+        if (node.dependsOn.includes(id)) {
           out.add(otherId);
           stack.push(otherId);
         }
@@ -443,7 +449,10 @@ export class ExtensionService {
         for (const [depId, depNode] of graph) {
           if (normalizedCandidates.has(depId)) continue;
           if (blocked.has(depId)) continue;
-          if (depNode.dependsOn.includes(id) || depNode.packMembers.includes(id)) {
+          // Packs list their members but don't runtime-depend on them;
+          // only extensionDependencies is a real block. See
+          // transitiveDependents for the full rationale.
+          if (depNode.dependsOn.includes(id)) {
             blockers.push(depId);
           }
         }
@@ -581,6 +590,17 @@ export class ExtensionService {
 
   async uninstall(id: string): Promise<{ exitCode: number; stderr?: string }> {
     const { exitCode, stderr } = await this.codeCli.uninstallExtension(id);
+    // "Extension X is not installed" means there's nothing to do — the
+    // user's goal (make X go away) is already satisfied. Report it as a
+    // success so cascade callers don't flag it as a partial failure and
+    // trip the "Some uninstalls failed" error toast. Happens legitimately
+    // after a successful uninstall earlier in this session (runtime
+    // snapshot lagged) or when the cascade re-enters an id that a
+    // previous leg already removed.
+    if (exitCode !== 0 && isNotInstalledError(stderr)) {
+      this.logger.info(`uninstall(${id}): already gone; treated as a no-op.`);
+      return { exitCode: 0, stderr };
+    }
     if (exitCode !== 0) {
       this.logger.error(`Uninstall failed for ${id}`, stderr);
     }
@@ -718,6 +738,17 @@ const resolveExtensionsDir = (): string | undefined => {
     }
   }
   return undefined;
+};
+
+/**
+ * Matches the `code` CLI's "Extension X is not installed." stderr.
+ * Treated as a non-error because the caller's intent (make X go away)
+ * is already satisfied. Case-insensitive match keeps us robust if the
+ * CLI copy ever shifts casing.
+ */
+const isNotInstalledError = (stderr: string | undefined): boolean => {
+  if (!stderr) return false;
+  return /is not installed/i.test(stderr);
 };
 
 /**
