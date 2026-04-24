@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
 import { notifyInfo, notifyWarn } from '../util/notify';
 import type { ExtensionService } from '../services/extensionService';
 import type { PublisherCatalogService } from '../services/publisherCatalogService';
@@ -13,7 +14,14 @@ interface Deps {
   extensions: ExtensionService;
   logger: Logger;
   tree: GroupsTreeProvider;
+  busy?: BusyState;
 }
+
+const withBusy = async <T>(
+  deps: Deps,
+  ids: readonly string[],
+  fn: () => Promise<T>
+): Promise<T> => (deps.busy ? deps.busy.withBusy(ids, fn) : fn());
 
 export const registerCatalogCommands = (
   context: vscode.ExtensionContext,
@@ -80,37 +88,40 @@ export const registerCatalogCommands = (
         }
       );
       if (!picks || picks.length === 0) return;
-      let ok = 0;
-      let failed = 0;
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: getLocalization(LocalizationKeys.browseInstallProgress)
-        },
-        async progress => {
-          for (const pick of picks) {
-            progress.report({ message: deps.extensions.label(pick.extensionId) });
-            const result = await deps.extensions.install(pick.extensionId);
-            if (result.exitCode === 0) ok++;
-            else {
-              failed++;
-              deps.logger.warn(
-                `browse: install ${pick.extensionId} exit ${result.exitCode} ${result.stderr ?? ''}`
-              );
+      const pickedIds = picks.map(p => p.extensionId);
+      await withBusy(deps, [BUSY_SENTINELS.browseInstall, ...pickedIds], async () => {
+        let ok = 0;
+        let failed = 0;
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: getLocalization(LocalizationKeys.browseInstallProgress)
+          },
+          async progress => {
+            for (const pick of picks) {
+              progress.report({ message: deps.extensions.label(pick.extensionId) });
+              const result = await deps.extensions.install(pick.extensionId);
+              if (result.exitCode === 0) ok++;
+              else {
+                failed++;
+                deps.logger.warn(
+                  `browse: install ${pick.extensionId} exit ${result.exitCode} ${result.stderr ?? ''}`
+                );
+              }
             }
           }
-        }
-      );
-      deps.tree.refresh();
-      if (failed > 0) {
-        void notifyWarn(
-          getLocalization(LocalizationKeys.browseInstallSummaryFailed, ok, failed),
-          { logger: deps.logger }
         );
-      } else {
-        // Success: tree already shows the new installed rows.
-        deps.logger.info(`browse: installed ${ok} extension(s).`);
-      }
+        deps.tree.refresh();
+        if (failed > 0) {
+          void notifyWarn(
+            getLocalization(LocalizationKeys.browseInstallSummaryFailed, ok, failed),
+            { logger: deps.logger }
+          );
+        } else {
+          // Success: tree already shows the new installed rows.
+          deps.logger.info(`browse: installed ${ok} extension(s).`);
+        }
+      });
     })
   );
 };

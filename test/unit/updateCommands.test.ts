@@ -4,6 +4,7 @@ import { COMMANDS } from '../../src/constants';
 import type { CodeCliService } from '../../src/services/codeCliService';
 import type { ExtensionService } from '../../src/services/extensionService';
 import type { SettingsService } from '../../src/services/settingsService';
+import { BusyState } from '../../src/util/busyState';
 import type { Logger } from '../../src/util/logger';
 import type { GroupsTreeProvider } from '../../src/views/groupsTreeProvider';
 
@@ -519,6 +520,107 @@ describe('update commands', () => {
     expect(prompt).toContain('Apex OpenAPI Specification');
     // Cascade member should render as a display name, not the raw id.
     expect(prompt).not.toContain('salesforce.salesforcedx-vscode-apex-oas');
+  });
+
+  it('installExtension marks the id busy for the duration of the install', async () => {
+    // The busy flag drives both the row spinner and the `anyBusy` menu
+    // gate, so the wiring needs to survive refactors. Assertion strategy:
+    // resolve install only after observing the busy flag, then verify
+    // release after the handler returns.
+    const cmds = captureCommands();
+    const busy = new BusyState();
+    let observedDuringInstall = false;
+    const extensions = {
+      isInstalled: jest.fn(() => false),
+      isLocked: jest.fn(() => false),
+      install: jest.fn(async (id: string) => {
+        observedDuringInstall = busy.isBusy(id);
+        return { source: 'marketplace' as const, exitCode: 0 };
+      }),
+      label: makeLabel(),
+      clearCliVersionCache: jest.fn()
+    } as unknown as ExtensionService;
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree(),
+      busy
+    });
+    await cmds[COMMANDS.installExtension]({ extensionId: 'salesforce.new' });
+    expect(observedDuringInstall).toBe(true);
+    expect(busy.isBusy('salesforce.new')).toBe(false);
+  });
+
+  it('uninstallExtension cascade marks every member busy during the uninstall loop', async () => {
+    // Spins every row in the cascade, not just the clicked one — users
+    // need to see the whole chain is working.
+    const cmds = captureCommands();
+    const busy = new BusyState();
+    const observed = new Set<string>();
+    const extensions = mkExtensionsForUninstall({
+      transitiveDependents: jest.fn(
+        () => new Set(['salesforce.apex-oas', 'salesforce.apex-replay-debugger'])
+      ),
+      topologicalUninstallOrder: jest.fn((ids: readonly string[]) =>
+        ['salesforce.apex-oas', 'salesforce.apex-replay-debugger', 'salesforce.apex'].filter(
+          id => ids.includes(id)
+        )
+      ),
+      uninstall: jest.fn(async (id: string) => {
+        // Every victim should read as busy at the moment its uninstall
+        // runs — and so should the other cascade members, because we
+        // mark them all up-front.
+        observed.add(id);
+        if (busy.isBusy('salesforce.apex')) observed.add('root-busy');
+        if (busy.isBusy('salesforce.apex-oas')) observed.add('oas-busy');
+        if (busy.isBusy('salesforce.apex-replay-debugger')) observed.add('rd-busy');
+        return { exitCode: 0 };
+      })
+    });
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue('Uninstall');
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree(),
+      busy
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.apex' });
+    expect(observed.has('root-busy')).toBe(true);
+    expect(observed.has('oas-busy')).toBe(true);
+    expect(observed.has('rd-busy')).toBe(true);
+    expect(busy.hasAny()).toBe(false);
+  });
+
+  it('updateExtension releases busy even when the underlying CLI errors', async () => {
+    // try/finally keeps the panel unlocked when the underlying op blows
+    // up — without this, a single failure would freeze the tree until
+    // reload.
+    const cmds = captureCommands();
+    const busy = new BusyState();
+    const codeCli = {
+      installExtension: jest.fn(async () => ({ stdout: '', stderr: 'boom', exitCode: 1 })),
+      uninstallExtension: jest.fn(),
+      listInstalledWithVersions: jest.fn()
+    } as unknown as CodeCliService;
+    registerUpdateCommands(mkContext(), {
+      codeCli,
+      extensions: {
+        managed: jest.fn(() => []),
+        label: makeLabel(),
+        clearCliVersionCache: jest.fn()
+      } as unknown as ExtensionService,
+      settings: mkSettings(),
+      logger: mkLogger(),
+      tree: mkTree(),
+      busy
+    });
+    await cmds[COMMANDS.updateExtension]({ extensionId: 'salesforce.foo' });
+    expect(busy.isBusy('salesforce.foo')).toBe(false);
+    expect(busy.hasAny()).toBe(false);
   });
 
   it('checkForUpdates does not fire the native workbench "check for updates" modal', async () => {

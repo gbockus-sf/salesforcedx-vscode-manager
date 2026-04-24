@@ -4,6 +4,7 @@ import type { GroupStore } from '../groups/groupStore';
 import { getLocalization, LocalizationKeys } from '../localization';
 import type { ExtensionService, NodeVersionInfo } from '../services/extensionService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
+import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
 
 export type GroupsNode = GroupNode | ExtensionNode | DependencyChildNode;
 
@@ -52,8 +53,15 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   constructor(
     private readonly store: GroupStore,
     private readonly extensions: ExtensionService,
-    private readonly workspaceState: WorkspaceStateService
-  ) {}
+    private readonly workspaceState: WorkspaceStateService,
+    private readonly busy?: BusyState
+  ) {
+    // When a row action starts or settles, re-render the tree so the
+    // acting row's icon swaps to/from `sync~spin`. We intentionally fire
+    // undefined (re-read everything) — precise deltas are possible but
+    // the render is cheap and this keeps the subscription trivial.
+    this.busy?.onChange(() => this.refresh());
+  }
 
   setVsixSources(fn: () => Record<string, 'vsix' | 'marketplace'>): void {
     this.getVsixSources = fn;
@@ -154,16 +162,22 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
       }
       item.description = labels.join(' · ');
       // Read-only synthesized groups get distinct icons so they stand out
-      // from the handcrafted Apex / Lightning / React built-ins.
-      item.iconPath = new vscode.ThemeIcon(
-        node.isActive
-          ? 'check'
-          : isExtensionPack
-            ? 'package'
-            : node.group.source === 'catalog'
-              ? 'cloud'
-              : 'layers'
-      );
+      // from the handcrafted Apex / Lightning / React built-ins. When the
+      // group itself is mid-apply (sentinel id `__group_apply__:<id>`
+      // busy), swap in the codicon spinner so the user sees which group
+      // is working.
+      const groupBusy = this.busy?.isBusy(BUSY_SENTINELS.groupApply(node.group.id)) ?? false;
+      item.iconPath = groupBusy
+        ? new vscode.ThemeIcon('sync~spin')
+        : new vscode.ThemeIcon(
+            node.isActive
+              ? 'check'
+              : isExtensionPack
+                ? 'package'
+                : node.group.source === 'catalog'
+                  ? 'cloud'
+                  : 'layers'
+          );
       // Pack groups (discovered OR hardcoded with marketplaceExtensionId)
       // share the `group:pack` contextValue so the view/item/context
       // contribution can match both with one `when` clause. When the
@@ -275,6 +289,9 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   }
 
   private resolveIcon(node: ExtensionNode): vscode.ThemeIcon {
+    // Spinner wins over every other state — the user needs to see that
+    // their click is working, not the pre-op state of the row.
+    if (this.busy?.isBusy(node.extensionId)) return new vscode.ThemeIcon('sync~spin');
     if (!node.installed) return new vscode.ThemeIcon('circle-slash');
     if (!node.enabled) return new vscode.ThemeIcon('circle-outline');
     if (node.updateAvailable) return new vscode.ThemeIcon('arrow-circle-up');

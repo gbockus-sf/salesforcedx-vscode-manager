@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS, CONFIG_NAMESPACE, SETTINGS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import type { WorkspaceStateService } from '../services/workspaceStateService';
@@ -17,7 +18,14 @@ interface Deps {
   workspaceState: WorkspaceStateService;
   logger: Logger;
   groupsTree: GroupsTreeProvider;
+  busy?: BusyState;
 }
+
+const withBusy = async <T>(
+  deps: Deps,
+  ids: readonly string[],
+  fn: () => Promise<T>
+): Promise<T> => (deps.busy ? deps.busy.withBusy(ids, fn) : fn());
 
 export const registerVsixCommands = (
   context: vscode.ExtensionContext,
@@ -46,31 +54,34 @@ export const registerVsixCommands = (
         );
         return;
       }
-      let ok = 0;
-      let failed = 0;
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: getLocalization(LocalizationKeys.vsixReinstallProgressTitle)
-        },
-        async () => {
-          for (const id of overrides.keys()) {
-            const outcome = await deps.installer.tryInstall(id);
-            if (outcome === 'vsix') ok++;
-            else failed++;
+      const overrideIds = [...overrides.keys()];
+      await withBusy(deps, [BUSY_SENTINELS.vsixRefresh, ...overrideIds], async () => {
+        let ok = 0;
+        let failed = 0;
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: getLocalization(LocalizationKeys.vsixReinstallProgressTitle)
+          },
+          async () => {
+            for (const id of overrideIds) {
+              const outcome = await deps.installer.tryInstall(id);
+              if (outcome === 'vsix') ok++;
+              else failed++;
+            }
           }
-        }
-      );
-      deps.groupsTree.refresh();
-      if (failed) {
-        void vscode.window.showWarningMessage(
-          getLocalization(LocalizationKeys.vsixRefreshSummaryFailed, ok, failed)
         );
-      } else {
-        // Success: the tree re-renders with `$(package)` badges on every
-        // VSIX-sourced row. No toast needed.
-        deps.logger.info(`vsixRefresh: reinstalled ${ok} from VSIX directory.`);
-      }
+        deps.groupsTree.refresh();
+        if (failed) {
+          void vscode.window.showWarningMessage(
+            getLocalization(LocalizationKeys.vsixRefreshSummaryFailed, ok, failed)
+          );
+        } else {
+          // Success: the tree re-renders with `$(package)` badges on every
+          // VSIX-sourced row. No toast needed.
+          deps.logger.info(`vsixRefresh: reinstalled ${ok} from VSIX directory.`);
+        }
+      });
     }),
 
     vscode.commands.registerCommand(COMMANDS.openVsixDirectory, async () => {

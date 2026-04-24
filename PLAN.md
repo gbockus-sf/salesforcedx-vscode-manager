@@ -921,3 +921,70 @@ should be addressed before a real release.
     `/Users/gbockus/github/IDEx/salesforcedx-vscode/packages/*/package.json`
     adding `salesforceExtensionRequirements` where appropriate. The
     shim catalog is the bridge until that adoption completes.
+
+- [x] **In-progress spinner on the acting row + freeze the Groups
+  panel until the action settles.** Today when a user triggers
+  install / uninstall / update / apply on a row, the inline icon
+  stays static and the rest of the panel remains clickable — users
+  can fire a second action mid-flight and there's no clear signal
+  which row is currently working. Proposed behavior:
+
+  - Track a per-id "busy" set in the `GroupsTreeProvider` (or a new
+    `BusyState` singleton so the status bar can subscribe too).
+    Entering a handler (`installExtension`, `uninstallExtension`,
+    `updateExtension`, `applyGroup`, `updateAll`, `enableAllManaged`,
+    `disableAllManaged`, cascade-uninstall members) marks every
+    affected id busy; the handler's `finally` clears them. For
+    cascades mark each cascade member so the spinner lights up on
+    every row in the chain.
+  - Swap the row's `iconPath` to a `ThemeIcon('sync~spin')` while
+    busy (codicon's built-in spin animation — same glyph the
+    Extensions view uses). Override only the leaf `TreeItem.icon`;
+    don't touch `contextValue`, so the existing menu machinery keeps
+    working after the action settles.
+  - Gate the whole Groups panel while *anything* is busy. Cheapest
+    option: add an `isAnyBusy` context key
+    (`vscode.commands.executeCommand('setContext',
+    'sfdxManager.anyBusy', true)`) and append `&& !sfdxManager.anyBusy`
+    to every `view/item/context`, `view/title`, and
+    `commandPalette`-visible `when` clause in `package.json` that
+    targets the Groups view. That hides the inline buttons, greys
+    out the view-title buttons, and yanks the right-click actions
+    without us having to intercept each command.
+  - Status-bar group item and VSIX item should mirror the freeze —
+    either disable their click handlers via the same context key or
+    at least show the spinner codicon so the user sees the whole
+    extension is mid-flight.
+  - Edge cases: a handler that throws synchronously still needs to
+    release the busy flag (wrap dispatch in a helper
+    `withBusy(ids, fn)` that owns the try/finally). Reload-prompt
+    responses should fire *after* busy clears so the tree isn't
+    frozen underneath the prompt.
+  - Tests: unit-test the `BusyState` transitions (enter/exit, nested
+    overlaps, throw-in-handler releases). Integration is manual F5
+    — add a checklist row under `docs/notification-verification.md`
+    ("Row spinner + panel freeze during install / cascade / apply").
+
+  Nice-to-have follow-ups: `Escape` cancels the current op where
+  possible (e.g., abort `code --install-extension` via the
+  `ProcessService` handle), and a subtle status-bar "N operations
+  running" indicator when multiple rows are in flight.
+
+  **Shipped** — `src/util/busyState.ts` is the refcounted busy
+  registry and context-key broadcaster (`sfdxManager.anyBusy`). Every
+  mutating command (`installExtension`, `uninstallExtension` cascade,
+  `updateExtension`, `updateAllSalesforce`, `applyGroup`,
+  `enableAllSalesforce`, `disableAllSalesforce`,
+  `browseSalesforceExtensions` install phase,
+  `refreshFromVsixDirectory`) now wraps its work in `busy.withBusy(ids,
+  fn)` via a per-file `withBusy` helper. The Groups tree provider
+  subscribes to `busy.onChange` and swaps icons to
+  `ThemeIcon('sync~spin')` for any busy extension id or the
+  `__group_apply__:<id>` sentinel. Both status-bar items prefix their
+  text with `$(sync~spin)` when anything's in flight. Every
+  `view/title` and `view/item/context` entry targeting
+  `sfdxManager.groups` now appends `&& !sfdxManager.anyBusy`, so
+  inline buttons / context menu items / view-title buttons disappear
+  while an op runs. 262 → 275 tests; new `busyState.test.ts` (7
+  cases) plus spinner + cascade-busy assertions added to the existing
+  tree-provider and update-commands suites.

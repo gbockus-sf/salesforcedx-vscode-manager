@@ -10,6 +10,7 @@ import {
 import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
 import { notifyWarn } from '../util/notify';
 import { maybeReloadAfterChange } from '../util/reloadPrompt';
 import type { ExtensionService } from '../services/extensionService';
@@ -26,8 +27,15 @@ interface Deps {
   workspaceState: WorkspaceStateService;
   logger: Logger;
   tree: GroupsTreeProvider;
+  busy?: BusyState;
   onAfterApply?: () => void;
 }
+
+const withBusy = async <T>(
+  deps: Deps,
+  ids: readonly string[],
+  fn: () => Promise<T>
+): Promise<T> => (deps.busy ? deps.busy.withBusy(ids, fn) : fn());
 
 interface GroupTreeContext {
   group?: Group;
@@ -81,7 +89,17 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   deps.logger.info(
     `Applying "${group.label}" (scope=${scope}). Members=${group.extensions.length}, managedIds=${managedIds.length}`
   );
-  const result = await applyGroup(group, scope, managedIds, deps.extensions);
+  // Spin every row that apply might touch: the group members (the
+  // enable/install set) and every managed id (the disable set). The
+  // group-apply sentinel also flips the group row itself to a spinner.
+  const busyIds = [
+    BUSY_SENTINELS.groupApply(group.id),
+    ...group.extensions,
+    ...managedIds
+  ];
+  const result = await withBusy(deps, busyIds, () =>
+    applyGroup(group, scope, managedIds, deps.extensions)
+  );
   await deps.workspaceState.setActiveGroupId(group.id);
   deps.tree.refresh();
   deps.onAfterApply?.();
@@ -216,10 +234,12 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
 
     vscode.commands.registerCommand(COMMANDS.enableAllSalesforce, async () => {
       const ids = deps.extensions.managed().map(e => e.id);
-      for (const id of ids) await deps.extensions.enable(id);
-      deps.tree.refresh();
-      // Toast suppressed: the tree rows flip from disabled to enabled.
-      deps.logger.info(`enableAllSalesforce: enabled ${ids.length} managed extensions.`);
+      await withBusy(deps, [BUSY_SENTINELS.enableAll, ...ids], async () => {
+        for (const id of ids) await deps.extensions.enable(id);
+        deps.tree.refresh();
+        // Toast suppressed: the tree rows flip from disabled to enabled.
+        deps.logger.info(`enableAllSalesforce: enabled ${ids.length} managed extensions.`);
+      });
     }),
 
     vscode.commands.registerCommand(COMMANDS.disableAllSalesforce, async () => {
@@ -230,11 +250,13 @@ export const registerGroupCommands = (context: vscode.ExtensionContext, deps: De
         .managed()
         .map(e => e.id)
         .filter(id => !deps.extensions.isLocked(id));
-      for (const id of ids) await deps.extensions.disable(id);
-      await deps.workspaceState.setActiveGroupId(undefined);
-      deps.tree.refresh();
-      // Toast suppressed: the tree and status bar reflect the state change.
-      deps.logger.info(`disableAllSalesforce: disabled ${ids.length} managed extensions (locked ids skipped).`);
+      await withBusy(deps, [BUSY_SENTINELS.disableAll, ...ids], async () => {
+        for (const id of ids) await deps.extensions.disable(id);
+        await deps.workspaceState.setActiveGroupId(undefined);
+        deps.tree.refresh();
+        // Toast suppressed: the tree and status bar reflect the state change.
+        deps.logger.info(`disableAllSalesforce: disabled ${ids.length} managed extensions (locked ids skipped).`);
+      });
     }),
 
     vscode.commands.registerCommand(COMMANDS.createCustomGroup, async () => {

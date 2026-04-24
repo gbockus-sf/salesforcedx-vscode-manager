@@ -17,6 +17,7 @@ import { PublisherCatalogService } from './services/publisherCatalogService';
 import { SettingsService } from './services/settingsService';
 import { TelemetryService } from './services/telemetryService';
 import { WorkspaceStateService } from './services/workspaceStateService';
+import { BusyState } from './util/busyState';
 import { Logger } from './util/logger';
 import { GroupStatusBarItem } from './statusBar/groupStatusBarItem';
 import { VsixStatusBarItem } from './statusBar/vsixStatusBarItem';
@@ -72,13 +73,15 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   extensions.setCatalogDisplayNameLookup(id =>
     publisherCatalog.current().find(e => e.extensionId === id)?.displayName
   );
-  const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState);
+  const busy = new BusyState();
+  context.subscriptions.push({ dispose: () => busy.dispose() });
+  const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState, busy);
   groupsTree.setVsixSources(() => installer.currentSources());
   groupsTree.setVsixOverrides(() => installer.vsixOverrides());
   const dependenciesTree = new DependenciesTreeProvider(registry);
 
-  const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings);
-  const vsixStatusBar = new VsixStatusBarItem(settings, installer);
+  const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings, busy);
+  const vsixStatusBar = new VsixStatusBarItem(settings, installer, busy);
   context.subscriptions.push(groupStatusBar, vsixStatusBar);
 
   let vsixWatcher: vscode.Disposable | undefined = scanner.watch(() => {
@@ -140,6 +143,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
     workspaceState,
     logger,
     tree: groupsTree,
+    busy,
     onAfterApply: () => {
       groupStatusBar.update();
       vsixStatusBar.update();
@@ -159,14 +163,16 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
     settings,
     workspaceState,
     logger,
-    groupsTree
+    groupsTree,
+    busy
   });
 
   registerCatalogCommands(context, {
     catalog: publisherCatalog,
     extensions,
     logger,
-    tree: groupsTree
+    tree: groupsTree,
+    busy
   });
 
   registerUpdateCommands(context, {
@@ -174,7 +180,8 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
     extensions,
     settings,
     logger,
-    tree: groupsTree
+    tree: groupsTree,
+    busy
   });
 
   context.subscriptions.push(

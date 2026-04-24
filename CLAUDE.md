@@ -176,6 +176,36 @@ explicit user request:
   Do not add a "force uninstall" path that bypasses the cascade —
   VSCode does not expose one, and silently skipping the dependents
   strands them in a broken state.
+- **Mutating Groups commands run inside `busy.withBusy(ids, fn)`.**
+  Every install / uninstall / update / apply / bulk op acquires the
+  acting row ids (and for bulk ops, a sentinel from `BUSY_SENTINELS`)
+  in `src/util/busyState.ts`. Entering marks those ids busy so the
+  Groups tree swaps their icon to `ThemeIcon('sync~spin')`; leaving
+  (via the built-in `try/finally`) releases them and flips the
+  `sfdxManager.anyBusy` context key back to false. Every
+  `view/title` and `view/item/context` entry in `package.json`
+  targeting `sfdxManager.groups` includes `&& !sfdxManager.anyBusy`,
+  so inline / menu / view-title actions vanish while any op runs.
+  Rules for new work:
+  1. If a command mutates extension state, wrap its body in
+     `busy.withBusy([...ids], async () => { ... })` — the per-file
+     `withBusy` helper is fine. Never roll your own `try/finally`
+     over a raw `busy.acquire` / `busy.release`; use the wrapper so
+     throws stay safe.
+  2. For cascades, pass *every* row the op will touch — spinning only
+     the clicked row hides the chain. For bulk ops without a single
+     row (update-all, apply-group, enable/disable-all, VSIX refresh,
+     browse-install) also include the matching sentinel so
+     `hasAny()` flips and the group row / status bar signals
+     activity.
+  3. Menu contributions added for the Groups view MUST include
+     `&& !sfdxManager.anyBusy` in the `when` clause. The
+     context-key gate is the UX defense; the `withBusy` registry is
+     the correctness defense.
+  4. Do NOT surface busy state via a new toast or an ad-hoc context
+     key — the spinner + context key + status-bar prefix ARE the
+     user feedback. Adding a "Please wait" info toast on top of
+     that is noise.
 
 ## Code style
 

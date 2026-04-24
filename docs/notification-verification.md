@@ -30,7 +30,7 @@ else logs to the output channel.
   _Expected:_ **silent**, nothing changes.
 - [x] **Uninstall a leaf extension.** Right-click a row without dependents → **Uninstall Extension** → confirm.
   _Expected:_ modal "Uninstall X?" → **silent**. Row flips to `not installed`.
-- [ ] **Cascade uninstall.** Right-click `Apex` (with OAS + Replay Debugger installed) → **Uninstall Extension** → confirm.
+- [x] **Cascade uninstall.** Right-click `Apex` (with OAS + Replay Debugger installed) → **Uninstall Extension** → confirm.
   _Expected:_ modal lists dependents by display name → **silent**. All three rows flip.
 - [ ] **Cancel a cascade.** Same setup, dismiss the modal.
   _Expected:_ **silent**, no changes.
@@ -45,6 +45,25 @@ else logs to the output channel.
 
 - [ ] **Install failure.** Disconnect Wi-Fi, right-click an uninstalled row → **Install Extension**.
   _Expected:_ red error toast naming the extension (display name) + `Dismiss` button. Output log has the stderr.
+
+### Row spinner + panel freeze
+
+- [ ] **Install row spinner.** Right-click an uninstalled row → **Install Extension**.
+  _Expected:_ acting row's icon flips to `$(sync~spin)` for the duration of the install; on completion it settles back to `check` / `package` / etc.
+- [ ] **Update row spinner.** Right-click an installed row with an update badge → **Update Extension**.
+  _Expected:_ row flips to `sync~spin` during the reinstall, settles back after.
+- [ ] **Uninstall row spinner.** Uninstall a leaf extension.
+  _Expected:_ row flips to `sync~spin` during the uninstall, then to `circle-slash` ("not installed") afterward.
+- [ ] **Cascade row spinner.** Cascade-uninstall Apex with its dependents installed.
+  _Expected:_ Apex AND all cascade members (OAS, Replay Debugger) spin **simultaneously** through the whole cascade. Rows all settle to `circle-slash` when done.
+- [ ] **Panel freeze during install.** Start an install; while it's running, right-click another row / hover the view-title buttons.
+  _Expected:_ inline `$(cloud-download)` / `$(trash)` / `$(arrow-circle-up)` buttons disappear from every row in the panel; the context menu's Install / Uninstall / Update / Edit / Delete / Move Scope / Apply Group entries are gone; view-title buttons (`$(play)`, `$(sync)`, `$(search-refresh)`, `$(cloud)`, `$(add)`) are hidden.
+- [ ] **Panel re-hydrates after op settles.** Wait for the op to finish.
+  _Expected:_ every button / menu entry reappears; the tree is clickable again.
+- [ ] **Status-bar spinner.** While any op is running, look at the `$(layers) Salesforce Extensions Manager` status-bar item (and `$(package) VSIX` item if configured).
+  _Expected:_ text is prefixed with `$(sync~spin)` while busy; prefix clears on completion.
+- [ ] **Apply-group group spinner.** Apply the Apex group.
+  _Expected:_ the `Apex` group **row** itself shows `sync~spin` (not just its children) while the apply is running.
 
 ---
 

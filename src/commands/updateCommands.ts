@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { COMMANDS } from '../constants';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
 import { notifyError, notifyInfo, notifyWarn } from '../util/notify';
 import type { CodeCliService } from '../services/codeCliService';
 import type { ExtensionService } from '../services/extensionService';
@@ -16,7 +17,20 @@ interface Deps {
   settings: SettingsService;
   logger: Logger;
   tree: GroupsTreeProvider;
+  busy?: BusyState;
 }
+
+/**
+ * `withBusy` is optional because many unit tests wire commands up
+ * without a BusyState. The production path always passes one; the
+ * optional chaining keeps the tests untouched without requiring a
+ * full stub for every test.
+ */
+const withBusy = async <T>(
+  deps: Deps,
+  ids: readonly string[],
+  fn: () => Promise<T>
+): Promise<T> => (deps.busy ? deps.busy.withBusy(ids, fn) : fn());
 
 /**
  * Shapes VSCode can hand our `view/item/context` menu handlers:
@@ -60,25 +74,27 @@ export const registerUpdateCommands = (
         void notifyWarn(getLocalization(LocalizationKeys.updateRequiresNode));
         return;
       }
-      const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
-      const label = deps.extensions.label(id);
-      TelemetryService.sendExtensionOp('update', {
-        extensionId: id,
-        source: 'marketplace',
-        exitCode
+      await withBusy(deps, [id], async () => {
+        const { exitCode, stderr } = await deps.codeCli.installExtension(id, true);
+        const label = deps.extensions.label(id);
+        TelemetryService.sendExtensionOp('update', {
+          extensionId: id,
+          source: 'marketplace',
+          exitCode
+        });
+        if (exitCode !== 0) {
+          deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
+          void notifyError(getLocalization(LocalizationKeys.updateFailed, label), { logger: deps.logger });
+          return;
+        }
+        deps.logger.info(`update(${id}): reinstalled with --force.`);
+        deps.extensions.clearCliVersionCache();
+        void deps.tree.refreshVersionInfo();
+        // `vscode.extensions.all` only refreshes on reload, so the tree
+        // keeps showing the pre-update state until the user reloads.
+        // Prompt (or auto, per setting) so the update is actually live.
+        void maybeReloadAfterChange(true, deps.settings);
       });
-      if (exitCode !== 0) {
-        deps.logger.error(`update(${id}): exit ${exitCode}`, stderr);
-        void notifyError(getLocalization(LocalizationKeys.updateFailed, label), { logger: deps.logger });
-        return;
-      }
-      deps.logger.info(`update(${id}): reinstalled with --force.`);
-      deps.extensions.clearCliVersionCache();
-      void deps.tree.refreshVersionInfo();
-      // `vscode.extensions.all` only refreshes on reload, so the tree
-      // keeps showing the pre-update state until the user reloads.
-      // Prompt (or auto, per setting) so the update is actually live.
-      void maybeReloadAfterChange(true, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
@@ -87,35 +103,37 @@ export const registerUpdateCommands = (
         void notifyInfo(getLocalization(LocalizationKeys.updateAllNone));
         return;
       }
-      let ok = 0;
-      let failed = 0;
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: getLocalization(LocalizationKeys.updateAllProgressTitle)
-        },
-        async progress => {
-          for (const id of ids) {
-            progress.report({ message: id });
-            const result = await deps.extensions.install(id, { force: true });
-            if (result.exitCode === 0) {
-              ok++;
-            } else {
-              failed++;
-              deps.logger.warn(`updateAll: ${id} exit ${result.exitCode} ${result.stderr ?? ''}`);
+      await withBusy(deps, [BUSY_SENTINELS.updateAll, ...ids], async () => {
+        let ok = 0;
+        let failed = 0;
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: getLocalization(LocalizationKeys.updateAllProgressTitle)
+          },
+          async progress => {
+            for (const id of ids) {
+              progress.report({ message: id });
+              const result = await deps.extensions.install(id, { force: true });
+              if (result.exitCode === 0) {
+                ok++;
+              } else {
+                failed++;
+                deps.logger.warn(`updateAll: ${id} exit ${result.exitCode} ${result.stderr ?? ''}`);
+              }
             }
           }
-        }
-      );
-      deps.extensions.clearCliVersionCache();
-      void deps.tree.refreshVersionInfo();
-      void notifyInfo(
-        failed
-          ? getLocalization(LocalizationKeys.updateAllSummaryFailed, ok, failed)
-          : getLocalization(LocalizationKeys.updateAllSummaryOk, ok),
-        { logger: failed ? deps.logger : undefined }
-      );
-      void maybeReloadAfterChange(ok > 0, deps.settings);
+        );
+        deps.extensions.clearCliVersionCache();
+        void deps.tree.refreshVersionInfo();
+        void notifyInfo(
+          failed
+            ? getLocalization(LocalizationKeys.updateAllSummaryFailed, ok, failed)
+            : getLocalization(LocalizationKeys.updateAllSummaryOk, ok),
+          { logger: failed ? deps.logger : undefined }
+        );
+        void maybeReloadAfterChange(ok > 0, deps.settings);
+      });
     }),
 
     vscode.commands.registerCommand(COMMANDS.installExtension, async (arg?: unknown) => {
@@ -131,28 +149,30 @@ export const registerUpdateCommands = (
         deps.logger.info(`install(${id}): already installed; nothing to do.`);
         return;
       }
-      const result = await deps.extensions.install(id);
-      TelemetryService.sendExtensionOp('install', {
-        extensionId: id,
-        source: result.source,
-        exitCode: result.exitCode
+      await withBusy(deps, [id], async () => {
+        const result = await deps.extensions.install(id);
+        TelemetryService.sendExtensionOp('install', {
+          extensionId: id,
+          source: result.source,
+          exitCode: result.exitCode
+        });
+        if (result.exitCode !== 0) {
+          deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
+          void notifyError(
+            getLocalization(LocalizationKeys.installExtensionFailed, label),
+            { logger: deps.logger }
+          );
+          return;
+        }
+        deps.logger.info(`install(${id}): ${result.source}.`);
+        deps.extensions.clearCliVersionCache();
+        void deps.tree.refreshVersionInfo();
+        deps.tree.refresh();
+        // Install lands on disk but vscode.extensions.all won't pick up
+        // the new entry until a reload. Prompt so the tree and the
+        // Extensions view finally agree on state.
+        void maybeReloadAfterChange(true, deps.settings);
       });
-      if (result.exitCode !== 0) {
-        deps.logger.error(`install(${id}): exit ${result.exitCode}`, result.stderr);
-        void notifyError(
-          getLocalization(LocalizationKeys.installExtensionFailed, label),
-          { logger: deps.logger }
-        );
-        return;
-      }
-      deps.logger.info(`install(${id}): ${result.source}.`);
-      deps.extensions.clearCliVersionCache();
-      void deps.tree.refreshVersionInfo();
-      deps.tree.refresh();
-      // Install lands on disk but vscode.extensions.all won't pick up
-      // the new entry until a reload. Prompt so the tree and the
-      // Extensions view finally agree on state.
-      void maybeReloadAfterChange(true, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
@@ -207,44 +227,48 @@ export const registerUpdateCommands = (
       // step. topologicalUninstallOrder orders dependents-first for us.
       const victims = [id, ...installedDependents];
       const order = deps.extensions.topologicalUninstallOrder(victims, graph);
-      const uninstalled: string[] = [];
-      let failed = 0;
-      for (const victim of order) {
-        const result = await deps.extensions.uninstall(victim);
-        TelemetryService.sendExtensionOp('uninstall', {
-          extensionId: victim,
-          source: 'marketplace',
-          exitCode: result.exitCode
-        });
-        if (result.exitCode !== 0) {
-          failed++;
-          deps.logger.error(`uninstall(${victim}): exit ${result.exitCode}`, result.stderr);
-          continue;
+      // Spin every row in the cascade simultaneously so the user sees
+      // the whole chain is working, not just the one they clicked.
+      await withBusy(deps, order, async () => {
+        const uninstalled: string[] = [];
+        let failed = 0;
+        for (const victim of order) {
+          const result = await deps.extensions.uninstall(victim);
+          TelemetryService.sendExtensionOp('uninstall', {
+            extensionId: victim,
+            source: 'marketplace',
+            exitCode: result.exitCode
+          });
+          if (result.exitCode !== 0) {
+            failed++;
+            deps.logger.error(`uninstall(${victim}): exit ${result.exitCode}`, result.stderr);
+            continue;
+          }
+          uninstalled.push(victim);
+          deps.logger.info(`uninstall(${victim}): ok.`);
         }
-        uninstalled.push(victim);
-        deps.logger.info(`uninstall(${victim}): ok.`);
-      }
-      deps.extensions.clearCliVersionCache();
-      void deps.tree.refreshVersionInfo();
-      deps.tree.refresh();
+        deps.extensions.clearCliVersionCache();
+        void deps.tree.refreshVersionInfo();
+        deps.tree.refresh();
 
-      if (failed > 0) {
-        void notifyError(
-          getLocalization(
-            LocalizationKeys.uninstallExtensionPartialCascade,
-            uninstalled.length,
-            order.length
-          ),
-          { logger: deps.logger }
-        );
-        return;
-      }
-      // Uninstall tombstones the extension directory for cleanup on
-      // next window start, but vscode.extensions.all keeps the row
-      // alive for the rest of this session. Prompt for a reload so
-      // the tree, the Extensions view, and the runtime snapshot all
-      // agree the extension is gone.
-      void maybeReloadAfterChange(uninstalled.length > 0, deps.settings);
+        if (failed > 0) {
+          void notifyError(
+            getLocalization(
+              LocalizationKeys.uninstallExtensionPartialCascade,
+              uninstalled.length,
+              order.length
+            ),
+            { logger: deps.logger }
+          );
+          return;
+        }
+        // Uninstall tombstones the extension directory for cleanup on
+        // next window start, but vscode.extensions.all keeps the row
+        // alive for the rest of this session. Prompt for a reload so
+        // the tree, the Extensions view, and the runtime snapshot all
+        // agree the extension is gone.
+        void maybeReloadAfterChange(uninstalled.length > 0, deps.settings);
+      });
     }),
 
     vscode.commands.registerCommand(COMMANDS.openInMarketplace, async (arg?: unknown) => {

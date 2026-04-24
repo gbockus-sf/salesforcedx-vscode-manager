@@ -1,9 +1,11 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import * as vscode from 'vscode';
 import { GroupsTreeProvider } from '../../src/views/groupsTreeProvider';
 import { GroupStore } from '../../src/groups/groupStore';
 import type { ExtensionService, NodeVersionInfo } from '../../src/services/extensionService';
 import type { WorkspaceStateService } from '../../src/services/workspaceStateService';
 import type { SettingsService } from '../../src/services/settingsService';
+import { BUSY_SENTINELS, BusyState } from '../../src/util/busyState';
 
 const mkSettings = (): SettingsService => ({
   getGroupsRaw: jest.fn(() => ({})),
@@ -433,5 +435,55 @@ describe('GroupsTreeProvider', () => {
     expect(info?.updateAvailable).toBe(true);
     expect(info?.latestVersion).toBe('63.1.0');
     expect(ext.refreshInstalledCliVersions).toHaveBeenCalled();
+  });
+
+  describe('busy spinner', () => {
+    it('swaps the extension row icon to sync~spin while the id is busy', async () => {
+      const busy = new BusyState();
+      const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState(), busy);
+      const node = {
+        kind: 'extension' as const,
+        extensionId: 'salesforce.salesforcedx-vscode-apex',
+        groupId: 'apex',
+        installed: true,
+        enabled: true,
+        source: 'marketplace' as const,
+        updateAvailable: false
+      };
+      // Not busy yet → the usual `check` icon.
+      const idle = tree.getTreeItem(node);
+      expect((idle.iconPath as vscode.ThemeIcon).id).toBe('check');
+      // Busy → spinner wins over every other icon state.
+      await busy.withBusy([node.extensionId], async () => {
+        const busyItem = tree.getTreeItem(node);
+        expect((busyItem.iconPath as vscode.ThemeIcon).id).toBe('sync~spin');
+      });
+      // Released → back to idle icon.
+      const afterwards = tree.getTreeItem(node);
+      expect((afterwards.iconPath as vscode.ThemeIcon).id).toBe('check');
+    });
+
+    it('swaps the group row icon to sync~spin while the group-apply sentinel is busy', async () => {
+      const busy = new BusyState();
+      const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState(), busy);
+      const roots = tree.getChildren();
+      const apex = roots.find(r => r.kind === 'group' && r.group.id === 'apex')!;
+      const idle = tree.getTreeItem(apex);
+      expect((idle.iconPath as vscode.ThemeIcon).id).not.toBe('sync~spin');
+      await busy.withBusy([BUSY_SENTINELS.groupApply('apex')], async () => {
+        const busyItem = tree.getTreeItem(apex);
+        expect((busyItem.iconPath as vscode.ThemeIcon).id).toBe('sync~spin');
+      });
+    });
+
+    it('re-renders the tree when busy state transitions', async () => {
+      const busy = new BusyState();
+      const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState(), busy);
+      const fires: unknown[] = [];
+      tree.onDidChangeTreeData(e => fires.push(e));
+      await busy.withBusy(['salesforce.foo'], async () => undefined);
+      // Two events: one on acquire, one on release.
+      expect(fires.length).toBeGreaterThanOrEqual(2);
+    });
   });
 });
