@@ -397,6 +397,53 @@ describe('ExtensionService', () => {
         expect(svc.isInstalled('salesforce.freshly-installed')).toBe(true);
       });
 
+      it('isInstalled respects the .obsolete tombstone file', () => {
+        // VSCode marks uninstalled-but-not-yet-cleaned-up directories as
+        // tombstoned in a JSON file at the extensions-dir root; the
+        // actual directory removal happens at next window start. Without
+        // honoring the tombstone our disk scan would false-positive on
+        // every recently-uninstalled extension for the rest of the
+        // session, which is the same bug (flipped) as trusting the
+        // stale runtime snapshot.
+        writeInstalled('salesforce.salesforcedx-vscode-apex', '66.8.0', {
+          name: 'salesforcedx-vscode-apex',
+          publisher: 'salesforce'
+        });
+        fs.writeFileSync(
+          path.join(tmp, '.obsolete'),
+          JSON.stringify({ 'salesforce.salesforcedx-vscode-apex-66.8.0': true })
+        );
+        (vscode.extensions.getExtension as jest.Mock).mockReturnValue(
+          makeExt('salesforce.salesforcedx-vscode-apex')
+        );
+        const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+        expect(svc.isInstalled('salesforce.salesforcedx-vscode-apex')).toBe(false);
+      });
+
+      it('isInstalled skips the disk check under Remote-SSH / WSL / Codespaces', () => {
+        // Remote dev hosts the user-extensions dir on the remote
+        // filesystem; our local disk scan has no visibility there. The
+        // runtime snapshot IS authoritative in remote mode (the remote
+        // extension host tracks state in real time), so fall back to it.
+        writeInstalled('salesforce.salesforcedx-vscode-apex', '66.8.0', {
+          name: 'salesforcedx-vscode-apex',
+          publisher: 'salesforce'
+        });
+        const env = vscode.env as unknown as { remoteName?: string };
+        const originalRemote = env.remoteName;
+        env.remoteName = 'ssh-remote';
+        try {
+          (vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined);
+          const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+          // Disk says yes, but remoteName forces the disk check to
+          // short-circuit as "undefined"; we fall back to the runtime
+          // lookup (undefined = not installed).
+          expect(svc.isInstalled('salesforce.salesforcedx-vscode-apex')).toBe(false);
+        } finally {
+          env.remoteName = originalRemote;
+        }
+      });
+
       it('getDependencyGraph picks up ids installed on disk that vscode.extensions.all does not know about', () => {
         // vscode.extensions.all is empty — mimics the "installed after window
         // startup" case. Disk-augmentation should still surface the node.

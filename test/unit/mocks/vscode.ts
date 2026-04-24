@@ -60,7 +60,10 @@ export const extensions = {
 export const env = {
   appRoot: '/fake/app/root',
   openExternal: jest.fn(),
-  clipboard: { writeText: jest.fn() }
+  clipboard: { writeText: jest.fn() },
+  // Undefined simulates running locally; tests that need Remote-SSH /
+  // WSL / Codespaces semantics set this to a truthy string.
+  remoteName: undefined as string | undefined
 };
 
 /**

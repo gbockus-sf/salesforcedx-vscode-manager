@@ -212,16 +212,34 @@ export class ExtensionService {
   /**
    * Returns true/false when the user's VSCode extensions directory can be
    * scanned (the authoritative answer mid-session), or `undefined` when
-   * we can't locate an extensions directory (e.g. in unit tests that
-   * don't point VSCODE_EXTENSIONS at a real path).
+   * we can't get a reliable disk answer so callers fall back to the
+   * runtime snapshot. Returns `undefined` in these cases:
+   *   - Remote dev (Remote-SSH / WSL / Codespaces): extensions live on
+   *     the remote host under `~/.vscode-server/extensions`, which we
+   *     can't see from the local filesystem. The remote extension host
+   *     provides authoritative state via `vscode.extensions` anyway.
+   *   - No extensions directory we can locate (unit tests with a stubbed
+   *     VSCODE_EXTENSIONS path, exotic installs, etc.).
+   *   - The readdir call throws (permissions, race with VSCode's own
+   *     cleanup, etc.).
+   * When disk can answer, it also honors VSCode's `.obsolete` tombstone
+   * file so directories that are pending-removal are treated as
+   * uninstalled.
    */
   private readInstalledOnDiskAnswer(id: string): boolean | undefined {
+    // Remote dev: skip disk entirely. vscode.extensions.all reflects
+    // the remote host's state authoritatively, so the runtime snapshot
+    // is actually right in this mode.
+    if (vscode.env.remoteName) return undefined;
     const dir = resolveExtensionsDir();
     if (!dir) return undefined;
     try {
       const prefix = `${id.toLowerCase()}-`;
+      const obsolete = readObsoleteTombstones(dir);
       for (const entry of fs.readdirSync(dir)) {
-        if (entry.toLowerCase().startsWith(prefix)) return true;
+        if (!entry.toLowerCase().startsWith(prefix)) continue;
+        if (obsolete.has(entry)) continue; // tombstoned — treat as uninstalled
+        return true;
       }
       return false;
     } catch {
@@ -647,14 +665,46 @@ export class ExtensionService {
  *      authoritative answer even if the path doesn't exist on disk.
  *      (A missing path means the caller explicitly told us "don't look
  *      elsewhere"; unit tests rely on this to suppress disk scans.)
- *   2. `~/.vscode-insiders/extensions` when the running VSCode is Insiders
- *      (detected via `vscode.env.appRoot` path hint).
- *   3. `~/.vscode/extensions` — the stable default.
- * Returns `undefined` when none of these exist.
+ *   2. The parent of any known-installed extension's `extensionPath`
+ *      — this is the most reliable cross-OS signal because VSCode
+ *      itself populates `extensionPath` wherever it actually reads
+ *      extensions from. Covers:
+ *        - macOS / Linux default ~/.vscode/extensions
+ *        - Windows default %USERPROFILE%/.vscode/extensions
+ *        - Portable mode (<install-dir>/data/extensions)
+ *        - Custom `--extensions-dir` launches
+ *        - Insiders (~/.vscode-insiders/extensions)
+ *      We filter out user-scope extensions first (any non-built-in
+ *      extension under the extensions folder), because built-ins live
+ *      under the VSCode install root which is the wrong directory.
+ *   3. Fall back to the historical `~/.vscode-insiders/extensions` /
+ *      `~/.vscode/extensions` guess. Exists as a last-ditch on edge
+ *      cases where no user-installed extensions are present yet.
+ * Returns `undefined` when none of these resolve.
  */
 const resolveExtensionsDir = (): string | undefined => {
   const envDir = process.env.VSCODE_EXTENSIONS;
   if (envDir) return envDir;
+  // Primary: derive from any non-built-in extension's path. VSCode's
+  // `isBuiltin` flag (not always typed in older @types/vscode) and the
+  // path pattern (extensions under appRoot are built-ins) are both
+  // signals; the path check is cheaper and sufficient.
+  const appRoot = vscode.env.appRoot;
+  for (const ext of vscode.extensions.all) {
+    const extPath = (ext as unknown as { extensionPath?: string }).extensionPath;
+    if (!extPath) continue;
+    // Skip built-in extensions — those live under VSCode's install root,
+    // not the user-extensions directory.
+    if (appRoot && extPath.startsWith(appRoot)) continue;
+    const parent = path.dirname(extPath);
+    try {
+      if (fs.existsSync(parent)) return parent;
+    } catch {
+      // continue
+    }
+  }
+  // Fallback: the historical guess. Reached on fresh installs with no
+  // user extensions, or hosts where `extensionPath` is unavailable.
   const home = os.homedir();
   const candidates = [
     path.join(home, '.vscode-insiders', 'extensions'),
@@ -668,6 +718,29 @@ const resolveExtensionsDir = (): string | undefined => {
     }
   }
   return undefined;
+};
+
+/**
+ * VSCode writes a `.obsolete` JSON file in the extensions directory
+ * mapping `<publisher>.<name>-<version>` entries to `true` when an
+ * extension is uninstalled but its directory hasn't been cleaned up
+ * yet (cleanup happens at next window start). Our disk scan has to
+ * respect this or we'll false-positive recently-uninstalled extensions
+ * as installed — same net bug as trusting the stale runtime snapshot.
+ * Returns an empty set if the file is missing or unparseable.
+ */
+const readObsoleteTombstones = (extensionsDir: string): Set<string> => {
+  const out = new Set<string>();
+  try {
+    const raw = fs.readFileSync(path.join(extensionsDir, '.obsolete'), 'utf8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value === true) out.add(key);
+    }
+  } catch {
+    // File missing or malformed — no tombstones to apply.
+  }
+  return out;
 };
 
 /**
