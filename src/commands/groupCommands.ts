@@ -11,7 +11,7 @@ import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
 import { BUSY_SENTINELS, type BusyState } from '../util/busyState';
-import { notifyWarn } from '../util/notify';
+import { notifyInfo, notifyWarn } from '../util/notify';
 import { maybeReloadAfterChange } from '../util/reloadPrompt';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
@@ -144,11 +144,16 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
     skipped: result.skipped.length,
     installedFromVsix: result.installedFromVsix.length
   });
-  // Only notify when the apply result contains something the user needs
-  // to know about that isn't visible in the tree: anything blocked by
-  // dependents, extensions needing manual enable/disable, or skipped ids.
-  // The reload prompt (maybeReloadAfterApply) handles the "touched, go
-  // reload" path separately, so clean applies stay silent.
+  // Apply finished — surface the summary when it includes anything the
+  // user can't see in the tree (a dependency we refused to disable, a
+  // manual follow-up in the Extensions view, a skipped id). This is
+  // informational: the apply itself ran to completion and the
+  // individual failure paths (install / update errors) already emit
+  // their own error toasts. Using `warn` here gave a misleading
+  // triangle-icon "something went wrong" vibe for a normal outcome.
+  // Clean applies with nothing to report stay silent; the reload
+  // prompt (maybeReloadAfterApply) handles the "touched, go reload"
+  // path separately.
   const hasActionable =
     result.dependencyBlocked.length +
       result.needsManualEnable.length +
@@ -156,7 +161,7 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
       result.skipped.length >
     0;
   if (hasActionable) {
-    await notifyWarn(summary, { logger: deps.logger });
+    await notifyInfo(summary, { logger: deps.logger });
   }
 
   if (result.needsManualDisable.length) {

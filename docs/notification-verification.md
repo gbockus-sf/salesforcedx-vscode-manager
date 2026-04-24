@@ -74,7 +74,7 @@ else logs to the output channel.
 - [ ] **Re-apply the same group.** Apply `Apex` again immediately.
   _Expected:_ progress → no changes → no reload prompt → **silent**.
 - [ ] **Apply with dep-blocked state.** Apply a group where a disable would strand a dependent.
-  _Expected:_ **warn toast** summarizing `depBlocked: N` / `Skipped: N` / `Manual disable: N` with a `Show Log` action.
+  _Expected:_ **info toast** summarizing `depBlocked: N` / `Skipped: N` / `Manual disable: N` with a `Show Log` action. Apply itself succeeded — the toast is informational, not a warning.
 - [ ] **Apply the catalog group.** Right-click `All Salesforce Extensions` → **Apply Group**.
   _Expected:_ **warn toast** — catalog is too big to apply.
 - [ ] **Enable All Managed Extensions.** From palette.
