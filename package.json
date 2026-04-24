@@ -112,6 +112,16 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "sfdxManager.groups",
+        "contents": "%salesforcedx-vscode-manager.viewsWelcome.groups%"
+      },
+      {
+        "view": "sfdxManager.dependencies",
+        "contents": "%salesforcedx-vscode-manager.viewsWelcome.dependencies%"
+      }
+    ],
     "configuration": {
       "title": "%salesforcedx-vscode-manager.configuration.title%",
       "properties": {

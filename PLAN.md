@@ -989,7 +989,7 @@ should be addressed before a real release.
   cases) plus spinner + cascade-busy assertions added to the existing
   tree-provider and update-commands suites.
 
-- [ ] **Replace VSCode's "no data provider registered" placeholder
+- [x] **Replace VSCode's "no data provider registered" placeholder
   with friendly copy.** On a cold VSCode start the Groups and
   Dependencies views briefly render VSCode's built-in message
   *"There is no data provider registered that can provide view
@@ -1048,3 +1048,17 @@ should be addressed before a real release.
   `onView:sfdxManager.groups` so we don't activate until the user
   opens the view. That trades startup time for first-click
   latency; leave the decision for a profiling pass.
+
+  **Shipped** — `contributes.viewsWelcome` in `package.json` now
+  declares welcome entries for both `sfdxManager.groups` and
+  `sfdxManager.dependencies`, with markdown copy sourced from two
+  new `package.nls.json` keys
+  (`salesforcedx-vscode-manager.viewsWelcome.groups` /
+  `.dependencies`). Each has a short description + `command:`
+  links (Apply Group, Browse Catalog, Run Dependency Check) so the
+  empty state is also a first-run affordance. New
+  `test/unit/viewsWelcome.test.ts` (3 cases) asserts every view has
+  a welcome entry, every welcome contents field is an `%nls-key%`
+  that resolves, and every `command:<id>` link references a
+  registered command. 275 → 278 tests. Followup on switching
+  `activationEvents` to `onView:*` stays open.

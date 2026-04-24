@@ -178,6 +178,10 @@ else logs to the output channel.
   _Expected:_ VSIX management Quick Pick opens.
 - [ ] **Activation quiet.** Reload window.
   _Expected:_ **silent**. No toasts during startup. Output channel shows `Salesforce Extensions Manager activated.`
+- [ ] **Welcome copy on cold start.** Reload window, immediately open the Salesforce Extensions Manager activity-bar view.
+  _Expected:_ the Groups and Dependencies views show the friendly welcome copy (with `Apply a Group` / `Browse Salesforce Extensions` / `Run Dependency Check` links) — NOT VSCode's built-in *"There is no data provider registered that can provide view data."* message. Welcome disappears once the tree populates.
+- [ ] **Welcome buttons work.** From a cold-start welcome state, click each command link.
+  _Expected:_ the associated command fires (group picker opens, catalog browser opens, dependency check runs).
 
 ---
 
