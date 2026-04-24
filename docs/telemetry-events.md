@@ -13,13 +13,12 @@ events from core's.
 
 ## Governance
 
-- **Global gate:** VSCode's `telemetry.telemetryLevel` always wins — if
-  the user has telemetry off, nothing fires regardless of the settings
-  below. This is enforced downstream by the ServiceProvider.
-- **Extension gate:** `salesforcedx-vscode-manager.telemetry.enabled`
-  (default `true`) is an extension-specific kill switch. Flip it off
-  to mute manager events while leaving the rest of VSCode telemetry
-  alone.
+- **Gated by the shared telemetry service.** The manager does not
+  expose its own opt-out. The `ServiceProvider.getService(Telemetry)`
+  pipeline from `@salesforce/vscode-service-provider` honors
+  `telemetry.telemetryLevel` and any Salesforce-side enablement
+  logic; when that decides to drop events, manager helpers go
+  along with it automatically.
 - **No PII:** payloads carry extension ids (public marketplace data),
   group ids, scope enums, counts, durations in ms, and exit codes.
   File paths, workspace names, org ids, and usernames are **never**
@@ -46,15 +45,12 @@ events from core's.
   NOT call `reporter.sendCommandEvent(...)` directly from feature
   code. The typed helpers exist so callers can't typo event names or
   omit required fields.
-- The helpers are safe no-ops when:
-  - The core reporter couldn't be acquired (core missing / wedged).
-  - `telemetry.enabled` is `false`.
-  - The global `telemetry.telemetryLevel` disables it downstream.
+- The helpers are safe no-ops when the core reporter couldn't be
+  acquired (core missing / wedged) or when the downstream telemetry
+  pipeline has opted out (`telemetry.telemetryLevel` etc.).
 - Every `activate()` in `src/extension.ts` runs `TelemetryService.init`
   **before** any other service init, so the reporter is ready for
-  anything a sibling service might emit. Config changes to
-  `telemetry.enabled` call `TelemetryService.refreshEnabled` without
-  re-initializing the reporter.
+  anything a sibling service might emit.
 
 ## Adding a new event
 
@@ -65,7 +61,6 @@ events from core's.
    `reporter.sendCommandEvent` (or `sendException` for errors).
 3. Call the helper from the command handler at the right moment.
 4. Add a unit test in `test/unit/telemetryService.test.ts` covering
-   the happy path + the two no-op paths (reporter missing;
-   `telemetry.enabled = false`).
+   the happy path and the reporter-missing no-op path.
 5. **Update this file.** Add the row to the event catalog above.
    Agent directions in `CLAUDE.md` require this step.

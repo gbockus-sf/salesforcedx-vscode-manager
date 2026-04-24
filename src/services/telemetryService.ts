@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ServiceProvider, ServiceType } from '@salesforce/vscode-service-provider';
 import type { TelemetryServiceInterface } from '@salesforce/vscode-service-provider';
-import { CONFIG_NAMESPACE, EXTENSION_ID, SETTINGS } from '../constants';
+import { EXTENSION_ID } from '../constants';
 import type { Logger } from '../util/logger';
 
 /**
@@ -27,11 +27,11 @@ type Measurements = Record<string, number>;
 /**
  * Singleton owning the extension's connection to the core telemetry
  * reporter. Call `init(context, logger)` once from `activate()`, then use
- * the typed emit helpers anywhere. Helpers are safe no-ops when:
- *   - The core reporter couldn't be acquired (core missing / wedged).
- *   - The user set `salesforcedx-vscode-manager.telemetry.enabled = false`.
- *   - The global VSCode `telemetry.telemetryLevel` disables it (enforced
- *     downstream by the ServiceProvider; we don't re-check here).
+ * the typed emit helpers anywhere. Helpers are safe no-ops when the
+ * reporter is unavailable (core missing / wedged) or when the shared
+ * telemetry service decides not to send — `telemetry.telemetryLevel`
+ * and whatever else core gates on are handled downstream by the
+ * `ServiceProvider` pipeline, so we don't duplicate that logic here.
  *
  * The no-op behavior is load-bearing: the manager extension must stay
  * functional when telemetry is unavailable for any reason. Throwing out
@@ -39,12 +39,10 @@ type Measurements = Record<string, number>;
  */
 export class TelemetryService {
   private static reporter: TelemetryServiceInterface | undefined;
-  private static enabled = true;
   private static logger: Logger | undefined;
 
   static async init(context: vscode.ExtensionContext, logger?: Logger): Promise<void> {
     TelemetryService.logger = logger;
-    TelemetryService.enabled = TelemetryService.readSettingEnabled();
     try {
       const reporter = await ServiceProvider.getService(ServiceType.Telemetry, EXTENSION_ID);
       await reporter.initializeService(context);
@@ -57,11 +55,6 @@ export class TelemetryService {
       const message = err instanceof Error ? err.message : String(err);
       logger?.warn(`TelemetryService: reporter unavailable (${message}); events will no-op.`);
     }
-  }
-
-  /** Re-read the user-facing opt-out setting. Call on config changes. */
-  static refreshEnabled(): void {
-    TelemetryService.enabled = TelemetryService.readSettingEnabled();
   }
 
   static sendActivation(hrStart: [number, number]): void {
@@ -170,7 +163,6 @@ export class TelemetryService {
   /** Exposed for tests only. */
   static __resetForTests(): void {
     TelemetryService.reporter = undefined;
-    TelemetryService.enabled = true;
     TelemetryService.logger = undefined;
   }
 
@@ -180,12 +172,6 @@ export class TelemetryService {
   }
 
   private static canSend(): boolean {
-    return TelemetryService.enabled && TelemetryService.reporter !== undefined;
-  }
-
-  private static readSettingEnabled(): boolean {
-    return (
-      vscode.workspace.getConfiguration(CONFIG_NAMESPACE).get<boolean>(SETTINGS.telemetryEnabled) !== false
-    );
+    return TelemetryService.reporter !== undefined;
   }
 }

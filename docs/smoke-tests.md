@@ -262,11 +262,12 @@ the flow unless you want to set up a local AppInsights sink.
 
 ### Opt-out
 
-- [ ] Set `salesforcedx-vscode-manager.telemetry.enabled` to `false`.
-  Re-run any of the actions above → no telemetry events fire (the
-  helper no-ops). Output log still shows the action.
-- [ ] Flip back to `true`. Events resume firing without needing a
-  reload (the setting watcher calls `refreshEnabled`).
+The manager no longer has its own telemetry kill switch — the shared
+telemetry service from `@salesforce/vscode-service-provider` handles
+the gate. To exercise the disabled path, flip VSCode's global
+`telemetry.telemetryLevel` to `off` and repeat any of the actions
+above; the manager's typed helpers stop firing because the shared
+reporter drops events.
 
 ### Locked extensions
 
@@ -292,8 +293,8 @@ the flow unless you want to set up a local AppInsights sink.
 
 ### Cleanup
 
-- [ ] Reset `salesforcedx-vscode-manager.telemetry.enabled` to its
-  default. Re-apply your preferred group.
+- [ ] Restore VSCode's `telemetry.telemetryLevel` to its previous
+  value. Re-apply your preferred group.
 
 ---
 

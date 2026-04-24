@@ -7,8 +7,9 @@
  *   - Reporter acquired successfully → typed emit helpers call through.
  *   - Reporter acquisition throws → helpers no-op silently.
  *
- * We also verify the `telemetry.enabled` setting flips every helper to
- * no-op even when the reporter is healthy.
+ * The shared telemetry service owns the `telemetry.telemetryLevel` +
+ * VSCode-global enablement gating; the manager delegates fully and
+ * doesn't duplicate that logic.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -51,10 +52,6 @@ describe('TelemetryService', () => {
     mockReporter.initializeService.mockImplementation(async () => undefined);
     mockReporter.isTelemetryEnabled.mockImplementation(async () => true);
     getServiceMock.mockImplementation(async () => mockReporter);
-    // Default settings mock returns undefined → treated as "telemetry enabled"
-    (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
-      get: jest.fn(() => true)
-    });
   });
 
   it('init acquires the reporter and calls initializeService', async () => {
@@ -115,35 +112,6 @@ describe('TelemetryService', () => {
     expect(mockReporter.sendCommandEvent).not.toHaveBeenCalled();
     expect(mockReporter.sendException).not.toHaveBeenCalled();
     expect(mockReporter.sendExtensionActivationEvent).not.toHaveBeenCalled();
-  });
-
-  it('every helper is a no-op when telemetry.enabled=false even with a healthy reporter', async () => {
-    (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
-      get: jest.fn(() => false)
-    });
-    await TelemetryService.init(mkContext());
-    TelemetryService.sendActivation([0, 0]);
-    TelemetryService.sendCatalogRefresh({ entryCount: 10, durationMs: 100 });
-    TelemetryService.sendExtensionOp('uninstall', {
-      extensionId: 'salesforce.foo',
-      source: 'marketplace',
-      exitCode: 0
-    });
-    expect(mockReporter.sendCommandEvent).not.toHaveBeenCalled();
-    expect(mockReporter.sendExtensionActivationEvent).not.toHaveBeenCalled();
-  });
-
-  it('refreshEnabled picks up a setting flip without re-initializing the reporter', async () => {
-    const getMock = jest.fn(() => true);
-    (vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({ get: getMock });
-    await TelemetryService.init(mkContext());
-    TelemetryService.sendActivation([0, 0]);
-    expect(mockReporter.sendExtensionActivationEvent).toHaveBeenCalledTimes(1);
-    // User flips telemetry.enabled off, config.onDidChange handler runs.
-    getMock.mockReturnValue(false);
-    TelemetryService.refreshEnabled();
-    TelemetryService.sendActivation([0, 0]);
-    expect(mockReporter.sendExtensionActivationEvent).toHaveBeenCalledTimes(1);
   });
 
   it('sendError routes exceptions to sendException with commandId:name namespacing', async () => {

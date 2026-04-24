@@ -222,11 +222,6 @@
           ],
           "default": "manual",
           "description": "%salesforcedx-vscode-manager.configuration.updateCheck.description%"
-        },
-        "salesforcedx-vscode-manager.telemetry.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%salesforcedx-vscode-manager.configuration.telemetry.enabled.description%"
         }
       }
     },

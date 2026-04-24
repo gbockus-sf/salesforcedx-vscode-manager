@@ -60,8 +60,7 @@ export const SETTINGS = {
   statusBarShowGroup: 'statusBar.showGroup',
   statusBarShowVsix: 'statusBar.showVsix',
   updateCheck: 'updateCheck',
-  reloadAfterApply: 'reloadAfterApply',
-  telemetryEnabled: 'telemetry.enabled'
+  reloadAfterApply: 'reloadAfterApply'
 } as const;
 
 export const CORE_EXTENSION_ID = 'salesforce.salesforcedx-vscode-core';

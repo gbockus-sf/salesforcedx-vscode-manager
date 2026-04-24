@@ -60,7 +60,6 @@
   "salesforcedx-vscode-manager.configuration.updateCheck.onStartup": "Probe the Marketplace for newer versions of managed extensions shortly after activation.",
   "salesforcedx-vscode-manager.configuration.updateCheck.manual": "Only check when the user explicitly invokes the 'Check for Extension Updates' command or expands the tree after a refresh.",
   "salesforcedx-vscode-manager.configuration.updateCheck.never": "Never contact the Marketplace; only show the locally installed version.",
-  "salesforcedx-vscode-manager.configuration.telemetry.enabled.description": "Controls whether the Salesforce Extensions Manager emits its own telemetry events. Honors the global `telemetry.telemetryLevel` setting first; this flag is an extension-specific opt-out for users who want manager events suppressed without disabling VSCode telemetry entirely.",
 
   "salesforcedx-vscode-manager.walkthrough.title": "Get Started with the Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.walkthrough.description": "Switch between extension groups, verify dependencies, and swap in local VSIX builds.",

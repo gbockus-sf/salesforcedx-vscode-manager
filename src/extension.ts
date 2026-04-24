@@ -192,9 +192,6 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider(VIEW_VSIX_ID, vsixTree),
     vscode.window.registerTreeDataProvider(VIEW_DEPENDENCIES_ID, dependenciesTree),
     settings.onDidChange(e => {
-      if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.telemetryEnabled}`)) {
-        TelemetryService.refreshEnabled();
-      }
       if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.vsixDirectory}`)) {
         vsixWatcher?.dispose();
         scanner = new VsixScanner(settings.getVsixDirectory());
