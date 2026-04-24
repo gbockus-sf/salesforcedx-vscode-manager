@@ -50,7 +50,7 @@ Legend — **Kind:**
 | warn | `applyGroup` | `catalogCannotApplyAsGroup` | User tried to apply the synthetic `All Salesforce Extensions` catalog group. | — |
 | warn | `applyGroup` | (inline literal: `Group "{0}" has no members.`) | Member list is empty (malformed user group snuck past `validateGroup`). | — |
 | warn | `applyGroup` (summary) | composed from `applySummaryApplied` + sub-keys | Apply finished with `dependencyBlocked`, `needsManualEnable`, `needsManualDisable`, or `skipped` entries. Clean applies are silent. | `Show Log` |
-| info (modal) | `applyGroup` (reload) | `reloadAfterApplyPrompt` + `reloadAfterApplyAction` | Apply touched extensions, `reloadAfterApply` setting is `prompt`. | `Reload Window` |
+| info | `applyGroup` / `installExtension` / `uninstallExtension` / `updateExtension` / `updateAllSalesforce` (reload) | `reloadAfterApplyPrompt` + `reloadAfterApplyAction` | Any command that changed installed-extension state, `reloadAfterApply` setting is `prompt` (default). `auto` reloads silently; `never` skips the prompt entirely. Consolidated via `src/util/reloadPrompt.ts` — not a modal, so it stacks with other toasts. | `Reload Window` |
 | modal | `deleteGroup` | `deleteGroupConfirm` | Before delete/reset of a group. | `Delete` / `Reset to default` |
 | error | `moveGroupScope` | `moveGroupScopeBuiltInError` | User tried to move a built-in group's scope. Built-ins live in code; can't be moved. | — |
 | info | `exportGroups` | `exportNoUserGroups` | User triggered Export but has no user groups (nothing to write). | — |

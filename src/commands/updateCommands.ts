@@ -7,6 +7,7 @@ import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import { TelemetryService } from '../services/telemetryService';
 import type { Logger } from '../util/logger';
+import { maybeReloadAfterChange } from '../util/reloadPrompt';
 import type { GroupsTreeProvider } from '../views/groupsTreeProvider';
 
 interface Deps {
@@ -74,9 +75,10 @@ export const registerUpdateCommands = (
       deps.logger.info(`update(${id}): reinstalled with --force.`);
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
-      // Success toast suppressed: the tree row re-renders with the new
-      // version badge, which is the feedback the user needs. Logging is
-      // enough as a trail.
+      // `vscode.extensions.all` only refreshes on reload, so the tree
+      // keeps showing the pre-update state until the user reloads.
+      // Prompt (or auto, per setting) so the update is actually live.
+      void maybeReloadAfterChange(true, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.updateAllSalesforce, async () => {
@@ -113,6 +115,7 @@ export const registerUpdateCommands = (
           : getLocalization(LocalizationKeys.updateAllSummaryOk, ok),
         { logger: failed ? deps.logger : undefined }
       );
+      void maybeReloadAfterChange(ok > 0, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.installExtension, async (arg?: unknown) => {
@@ -146,8 +149,10 @@ export const registerUpdateCommands = (
       deps.extensions.clearCliVersionCache();
       void deps.tree.refreshVersionInfo();
       deps.tree.refresh();
-      // Success toast suppressed: the Groups tree row flips to the
-      // installed state on refresh, which is the feedback the user needs.
+      // Install lands on disk but vscode.extensions.all won't pick up
+      // the new entry until a reload. Prompt so the tree and the
+      // Extensions view finally agree on state.
+      void maybeReloadAfterChange(true, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.uninstallExtension, async (arg?: unknown) => {
@@ -234,9 +239,12 @@ export const registerUpdateCommands = (
         );
         return;
       }
-      // Success toast suppressed: the Groups tree reflects the removed
-      // rows (including cascade members). Cascade details are already in
-      // the log lines above for the curious.
+      // Uninstall tombstones the extension directory for cleanup on
+      // next window start, but vscode.extensions.all keeps the row
+      // alive for the rest of this session. Prompt for a reload so
+      // the tree, the Extensions view, and the runtime snapshot all
+      // agree the extension is gone.
+      void maybeReloadAfterChange(uninstalled.length > 0, deps.settings);
     }),
 
     vscode.commands.registerCommand(COMMANDS.openInMarketplace, async (arg?: unknown) => {

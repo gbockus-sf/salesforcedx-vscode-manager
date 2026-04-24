@@ -11,6 +11,7 @@ import type { GroupStore } from '../groups/groupStore';
 import type { ApplyScope, Group } from '../groups/types';
 import { getLocalization, LocalizationKeys } from '../localization';
 import { notifyWarn } from '../util/notify';
+import { maybeReloadAfterChange } from '../util/reloadPrompt';
 import type { ExtensionService } from '../services/extensionService';
 import type { SettingsService } from '../services/settingsService';
 import { TelemetryService } from '../services/telemetryService';
@@ -155,21 +156,7 @@ const maybeReloadAfterApply = async (
 ): Promise<void> => {
   const touched =
     result.enabled.length + result.disabled.length + result.installedFromVsix.length > 0;
-  if (!touched) return;
-  const mode = deps.settings.getReloadAfterApply();
-  if (mode === 'never') return;
-  if (mode === 'auto') {
-    await vscode.commands.executeCommand('workbench.action.reloadWindow');
-    return;
-  }
-  const reloadChoice = getLocalization(LocalizationKeys.reloadAfterApplyAction);
-  const pick = await vscode.window.showInformationMessage(
-    getLocalization(LocalizationKeys.reloadAfterApplyPrompt),
-    reloadChoice
-  );
-  if (pick === reloadChoice) {
-    await vscode.commands.executeCommand('workbench.action.reloadWindow');
-  }
+  await maybeReloadAfterChange(touched, deps.settings);
 };
 
 const pickGroup = async (deps: Deps, placeholder?: string): Promise<Group | undefined> => {

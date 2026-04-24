@@ -29,7 +29,12 @@ const mkTree = (): GroupsTreeProvider => ({
 } as unknown as GroupsTreeProvider);
 
 const mkSettings = (): SettingsService => ({
-  getUpdateCheck: jest.fn(() => 'manual' as const)
+  getUpdateCheck: jest.fn(() => 'manual' as const),
+  // `never` keeps maybeReloadAfterChange a no-op so tests don't have
+  // to mock showInformationMessage / reloadWindow for every state
+  // change. Individual tests can override if they're asserting the
+  // reload flow specifically.
+  getReloadAfterApply: jest.fn(() => 'never' as const)
 } as unknown as SettingsService);
 
 const mkLogger = (): Logger => ({
@@ -214,6 +219,30 @@ describe('update commands', () => {
     expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
     expect(extensions.uninstall).not.toHaveBeenCalled();
     expect(vscode.window.showInformationMessage).toHaveBeenCalled();
+  });
+
+  it('uninstallExtension prompts to reload after a successful uninstall', async () => {
+    // vscode.extensions.all keeps the uninstalled extension's row alive
+    // for the rest of the session, so the tree and Extensions view look
+    // stale until the user reloads. The reload prompt is the honest fix.
+    const cmds = captureCommands();
+    const extensions = mkExtensionsForUninstall();
+    (vscode.window.showWarningMessage as jest.Mock).mockResolvedValue('Uninstall');
+    (vscode.window.showInformationMessage as jest.Mock).mockReset();
+    const settings = {
+      getUpdateCheck: jest.fn(() => 'manual' as const),
+      getReloadAfterApply: jest.fn(() => 'prompt' as const)
+    } as unknown as SettingsService;
+    registerUpdateCommands(mkContext(), {
+      codeCli: { installExtension: jest.fn(), uninstallExtension: jest.fn(), listInstalledWithVersions: jest.fn() } as unknown as CodeCliService,
+      extensions,
+      settings,
+      logger: mkLogger(),
+      tree: mkTree()
+    });
+    await cmds[COMMANDS.uninstallExtension]({ extensionId: 'salesforce.leaf' });
+    const shown = (vscode.window.showInformationMessage as jest.Mock).mock.calls.map(c => c[0]);
+    expect(shown.some(m => typeof m === 'string' && /reload/i.test(m))).toBe(true);
   });
 
   it('uninstallExtension confirms, then delegates to ExtensionService.uninstall', async () => {
