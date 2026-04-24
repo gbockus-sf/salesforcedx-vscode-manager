@@ -988,3 +988,63 @@ should be addressed before a real release.
   while an op runs. 262 → 275 tests; new `busyState.test.ts` (7
   cases) plus spinner + cascade-busy assertions added to the existing
   tree-provider and update-commands suites.
+
+- [ ] **Replace VSCode's "no data provider registered" placeholder
+  with friendly copy.** On a cold VSCode start the Groups and
+  Dependencies views briefly render VSCode's built-in message
+  *"There is no data provider registered that can provide view
+  data."* during the activation gap between the view being declared
+  in `package.json` and our `registerTreeDataProvider` call. We
+  activate on `onStartupFinished`, so the window is usually
+  sub-second but still visible — and on a very slow machine it can
+  linger.
+
+  Fix via a `contributes.viewsWelcome` entry in `package.json` —
+  same mechanism the VSCode SCM/Run views use for their empty-state
+  copy. VSCode renders the welcome content whenever the view has
+  no children to display (including before the provider registers).
+  Concretely:
+
+  ```jsonc
+  "contributes": {
+    "viewsWelcome": [
+      {
+        "view": "sfdxManager.groups",
+        "contents": "%salesforcedx-vscode-manager.viewsWelcome.groups%"
+      },
+      {
+        "view": "sfdxManager.dependencies",
+        "contents": "%salesforcedx-vscode-manager.viewsWelcome.dependencies%"
+      }
+    ]
+  }
+  ```
+
+  The `%key%` placeholders route through `package.nls.json` per the
+  externalized-strings rule; suggested copy for the Groups view:
+
+  > Loading Salesforce Extension Manager…
+  >
+  > This view lets you apply extension groups, install / update /
+  > uninstall individual extensions, and browse the Salesforce
+  > publisher catalog.
+  >
+  > [Refresh](command:sfdxManager.applyGroupQuickPick)
+
+  Dependencies welcome copy should invite the user to run the
+  dependency check (link `command:sfdxManager.runDependencyCheck`).
+
+  Welcome content markdown supports `[label](command:<id>)` links,
+  so the empty state can double as a first-run affordance on
+  machines where no managed extensions are installed yet.
+
+  Tests: a `viewsWelcome` unit (read `package.json`, assert both
+  views have a welcome entry whose `contents` uses a localization
+  key). Manual F5: reload with no managed extensions installed;
+  confirm the welcome copy renders instead of the default message.
+
+  Low-risk follow-up: once the welcome covers the cold-start gap,
+  consider moving `activationEvents` from `onStartupFinished` to
+  `onView:sfdxManager.groups` so we don't activate until the user
+  opens the view. That trades startup time for first-click
+  latency; leave the decision for a profiling pass.
