@@ -67,6 +67,8 @@ export enum LocalizationKeys {
   extensionVsixTooltip = 'extensionVsixTooltip',
   extensionVsixTooltipGeneric = 'extensionVsixTooltipGeneric',
   extensionVsixWalkthroughHint = 'extensionVsixWalkthroughHint',
+  extensionVsixAvailableBadge = 'extensionVsixAvailableBadge',
+  extensionVsixAvailableTooltip = 'extensionVsixAvailableTooltip',
   dependencyChildDep = 'dependencyChildDep',
   dependencyChildPack = 'dependencyChildPack',
   dependencyChildEnabled = 'dependencyChildEnabled',

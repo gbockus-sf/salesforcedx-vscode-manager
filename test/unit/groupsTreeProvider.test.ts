@@ -314,6 +314,28 @@ describe('GroupsTreeProvider', () => {
     expect(String(extItem.description)).toContain('update → v63.1.0');
   });
 
+  it('shows a "vsix available" badge on an uninstalled row when a local VSIX is waiting', () => {
+    // Regression against a report that dropping a local VSIX showed
+    // no indication until the user actually installed the row. The
+    // description now surfaces a "vsix available" badge alongside
+    // the usual "not installed" label, and the tooltip names the
+    // filename so the user knows which file will be installed.
+    const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
+    const extItem = tree.getTreeItem({
+      kind: 'extension',
+      extensionId: 'salesforce.salesforcedx-einstein-gpt',
+      groupId: 'apex',
+      installed: false,
+      enabled: false,
+      source: 'unknown',
+      vsixFilename: 'salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix',
+      updateAvailable: false
+    });
+    expect(String(extItem.description)).toContain('not installed');
+    expect(String(extItem.description)).toContain('vsix available');
+    expect(String(extItem.tooltip)).toContain('salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix');
+  });
+
   it('sets the package icon and VSIX walkthrough tooltip when the extension is sourced from VSIX', () => {
     const tree = new GroupsTreeProvider(new GroupStore(mkSettings()), mkExt(), mkState());
     const extItem = tree.getTreeItem({

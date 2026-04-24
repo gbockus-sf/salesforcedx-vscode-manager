@@ -1137,11 +1137,23 @@ should be addressed before a real release.
   (so `apex` doesn't match `apexoas`). `VsixOverride` gained an
   optional `matchedBy: 'strict' | 'prefix'` tag; `VsixInstaller.
   tryInstall` logs `vsix: matched '<file>' to '<id>' via prefix.`
-  when the fuzzy path fires. Wired through `scanner.
-  setManagedIdLookup(() => extensions.managed().map(e => e.id))`
-  in `extension.ts` (both on first construction and in the
-  `vsixDirectory`-change rebuild block). Filenames without a
-  trailing version get a `0.0.0` sentinel so downstream install
-  still works; install uses the filepath, not the parsed version.
-  278 → 287 tests (+9). Matching against non-`managed()` ids
-  stays out of scope per the note above.
+  when the fuzzy path fires. Filenames without a trailing version
+  get a `0.0.0` sentinel so downstream install still works; install
+  uses the filepath, not the parsed version.
+
+  The `setManagedIdLookup` wiring in `extension.ts` initially
+  passed only `extensions.managed()` (installed-only), which missed
+  the real-world case of the user dropping a VSIX BEFORE installing
+  the target extension. Widened the lookup to the union of
+  (installed `managed()` ids) ∪ (every group-member id from
+  `store.list()`, covering built-in / user / pack / catalog
+  groups) ∪ (publisher catalog snapshot ids). That catches
+  uninstalled Agentforce Vibes and every other pre-install drop.
+
+  Follow-up fix on the UX side: the tree provider now shows a
+  `vsix available` badge on uninstalled rows whose override is
+  waiting, with the filename in the tooltip. Two new
+  localization keys (`extensionVsixAvailableBadge`,
+  `extensionVsixAvailableTooltip`) surface the signal.
+
+  278 → 289 tests (+11).

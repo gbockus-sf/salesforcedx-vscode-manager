@@ -63,6 +63,8 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.extensionVsixTooltip]: 'Installed from local VSIX: {0}',
   [LocalizationKeys.extensionVsixTooltipGeneric]: 'Installed from local VSIX directory',
   [LocalizationKeys.extensionVsixWalkthroughHint]: 'See resources/walkthrough/vsix.md for the VSIX workflow.',
+  [LocalizationKeys.extensionVsixAvailableBadge]: 'vsix available',
+  [LocalizationKeys.extensionVsixAvailableTooltip]: 'Local VSIX available: {0} · Install this row to use it.',
   [LocalizationKeys.dependencyChildDep]: 'dependency',
   [LocalizationKeys.dependencyChildPack]: 'pack member',
   [LocalizationKeys.dependencyChildEnabled]: 'enabled',

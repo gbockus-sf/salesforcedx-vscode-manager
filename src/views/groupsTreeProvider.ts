@@ -246,7 +246,17 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
   }
 
   private formatDescription(node: ExtensionNode): string {
-    if (!node.installed) return getLocalization(LocalizationKeys.extensionNotInstalled);
+    if (!node.installed) {
+      // Even when the row is uninstalled, if there's a local VSIX
+      // waiting for it, show a badge so the user sees their override
+      // was recognized — the alternative ("not installed" with no
+      // further clue) looked like the override was ignored entirely.
+      const parts: string[] = [getLocalization(LocalizationKeys.extensionNotInstalled)];
+      if (node.vsixFilename) {
+        parts.push(getLocalization(LocalizationKeys.extensionVsixAvailableBadge));
+      }
+      return parts.join(' · ');
+    }
     const bits: string[] = [];
     if (node.installedVersion) bits.push(`v${stripLeadingV(node.installedVersion)}`);
     if (!node.enabled) bits.push(getLocalization(LocalizationKeys.extensionDisabled));
@@ -281,6 +291,13 @@ export class GroupsTreeProvider implements vscode.TreeDataProvider<GroupsNode> {
           : getLocalization(LocalizationKeys.extensionVsixTooltipGeneric)
       );
       lines.push(getLocalization(LocalizationKeys.extensionVsixWalkthroughHint));
+    } else if (!node.installed && node.vsixFilename) {
+      // Uninstalled + override present: tooltip surfaces the filename
+      // so the user knows which VSIX will be used when they click
+      // Install on this row.
+      lines.push(
+        getLocalization(LocalizationKeys.extensionVsixAvailableTooltip, node.vsixFilename)
+      );
     }
     if (this.extensions.isLocked(node.extensionId)) {
       lines.push(getLocalization(LocalizationKeys.extensionLockedTooltip));

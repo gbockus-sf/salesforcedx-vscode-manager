@@ -47,7 +47,6 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   const registry = new DependencyRegistry(runners);
 
   let scanner = new VsixScanner(settings.getVsixDirectory());
-  scanner.setManagedIdLookup(() => extensions.managed().map(e => e.id));
   let installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
   extensions.setVsixInstaller(installer);
 
@@ -74,6 +73,31 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   extensions.setCatalogDisplayNameLookup(id =>
     publisherCatalog.current().find(e => e.extensionId === id)?.displayName
   );
+
+  /**
+   * Build the id set the scanner uses for prefix-based VSIX matching.
+   * It must include EVERY extension id the manager knows about — not
+   * just `managed()` (which is the *installed* subset). Otherwise a
+   * user dropping a VSIX for an uninstalled extension (the common
+   * case: grabbing a CI-renamed artifact BEFORE installing) gets no
+   * match at all. Sources, in priority order for longest-prefix
+   * resolution (dedup via Set so overlap is free):
+   *   1. `extensions.managed()` — currently installed Salesforce +
+   *      user-allowlisted third-party ids.
+   *   2. `store.list()` group members — every id mentioned by a
+   *      built-in / user / pack / catalog group, even uninstalled.
+   *   3. Publisher catalog snapshot — every Salesforce-published id
+   *      the marketplace knows about, once the catalog has been
+   *      refreshed at least once.
+   */
+  const vsixScannerIdLookup = (): string[] => {
+    const ids = new Set<string>();
+    for (const ext of extensions.managed()) ids.add(ext.id);
+    for (const group of store.list()) for (const id of group.extensions) ids.add(id);
+    for (const entry of publisherCatalog.current()) ids.add(entry.extensionId);
+    return [...ids];
+  };
+  scanner.setManagedIdLookup(vsixScannerIdLookup);
   const busy = new BusyState();
   context.subscriptions.push({ dispose: () => busy.dispose() });
   const groupsTree = new GroupsTreeProvider(store, extensions, workspaceState, busy);
@@ -118,7 +142,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
       if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.vsixDirectory}`)) {
         vsixWatcher?.dispose();
         scanner = new VsixScanner(settings.getVsixDirectory());
-        scanner.setManagedIdLookup(() => extensions.managed().map(e => e.id));
+        scanner.setManagedIdLookup(vsixScannerIdLookup);
         installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);
         extensions.setVsixInstaller(installer);
         extensions.setInstallSourceLookup(id => installer.currentSources()[id] ?? 'unknown');

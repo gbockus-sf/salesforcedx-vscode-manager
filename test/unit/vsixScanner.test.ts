@@ -119,6 +119,20 @@ describe('VsixScanner', () => {
     expect(result.get('redhat.vscode-xml')?.filePath).toBe(path.join(tmp, 'redhat.vscode-xml-0.26.0.vsix'));
   });
 
+  it('scan() fuzzy-matches ids sourced from groups/catalog, not just installed', () => {
+    // Real-world case: user drops the Agentforce Vibes CI build
+    // BEFORE installing vibes. The id must still be found because
+    // every group-member / catalog id is part of the lookup.
+    fs.writeFileSync(path.join(tmp, 'salesforcedx-einstein-gpt-welcome-show-3.28.0.vsix'), '');
+    const scanner = new VsixScanner(tmp);
+    // Lookup mimics extension.ts's vsixScannerIdLookup: includes ids
+    // referenced by groups/catalog even when vscode.extensions.all
+    // wouldn't surface them.
+    scanner.setManagedIdLookup(() => ['salesforce.salesforcedx-einstein-gpt']);
+    const result = scanner.scan();
+    expect(result.get('salesforce.salesforcedx-einstein-gpt')?.matchedBy).toBe('prefix');
+  });
+
   it('scan() falls back to fuzzy matching when a managed-id lookup is wired', () => {
     // Mixed directory: strict artifact + CI-renamed artifact. Both
     // should resolve, each against its proper extension id, tagged
