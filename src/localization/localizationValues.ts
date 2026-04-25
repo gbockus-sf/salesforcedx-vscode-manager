@@ -117,6 +117,8 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.depStateNotRunYet]: 'not run yet',
   [LocalizationKeys.depRequiredBy]: 'Required by: {0}',
   [LocalizationKeys.depFixLabel]: 'Fix: {0}',
+  [LocalizationKeys.depCliUpdateBadge]: '{0} · update → v{1}',
+  [LocalizationKeys.depCliUpdateTooltip]: 'Installed: v{0} · Latest: v{1}. Run `sf update` (or `npm install -g @salesforce/cli`) to upgrade.',
 
   [LocalizationKeys.manualToggleHint]: '{0} the {1} extension(s) shown in the Extensions view.',
 

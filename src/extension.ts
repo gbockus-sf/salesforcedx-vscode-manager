@@ -18,6 +18,7 @@ import { DependencyRegistry } from './dependencies/registry';
 import { DependencyRunners } from './dependencies/runners';
 import { GroupStore } from './groups/groupStore';
 import { getLocalization, LocalizationKeys } from './localization';
+import { CliVersionService } from './services/cliVersionService';
 import { CodeCliService } from './services/codeCliService';
 import { ExtensionService } from './services/extensionService';
 import { MarketplaceVersionService } from './services/marketplaceVersionService';
@@ -116,6 +117,25 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   const vsixTree = new VsixTreeProvider(scanner, extensions);
   const dependenciesTree = new DependenciesTreeProvider(registry);
 
+  /**
+   * Probe the Salesforce CLI's release channel for the latest stable
+   * version so the Dependencies tree can flag an out-of-date `sf`.
+   * Gated by the existing `updateCheck` setting so users on
+   * `never` don't see a new network call. Runs in the background;
+   * the tree renders without a badge until the probe resolves.
+   */
+  const cliVersion = new CliVersionService({ logger });
+  const refreshCliLatestVersion = (): void => {
+    if (settings.getUpdateCheck() === 'never') {
+      dependenciesTree.setCliLatestVersion(undefined);
+      return;
+    }
+    void cliVersion.getLatestVersion().then(version => {
+      dependenciesTree.setCliLatestVersion(version);
+    });
+  };
+  refreshCliLatestVersion();
+
   const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings, busy);
   const vsixStatusBar = new VsixStatusBarItem(settings, installer, busy);
   context.subscriptions.push(groupStatusBar, vsixStatusBar);
@@ -213,6 +233,12 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
         });
         if (vsixWatcher) context.subscriptions.push(vsixWatcher);
         void runAutoInstall();
+      }
+      if (e.affectsConfiguration(`${CONFIG_NAMESPACE}.${SETTINGS.updateCheck}`)) {
+        // User may have flipped updateCheck to/from `never`; reprobe
+        // so the CLI badge respects the new schedule immediately.
+        cliVersion.clearCache();
+        refreshCliLatestVersion();
       }
       groupsTree.refresh();
       vsixTree.refresh();

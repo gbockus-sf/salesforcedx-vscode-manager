@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import type { DependencyRegistry } from '../dependencies/registry';
 import type { DependencyCheck, DependencyStatus } from '../dependencies/types';
 import { getLocalization, LocalizationKeys } from '../localization';
+import { compare } from '../dependencies/versionCompare';
 
 export type DependenciesNode = CategoryNode | CheckNode;
 
@@ -41,13 +42,33 @@ const COLOR_BY_STATE: Record<DependencyStatus['state'], string | undefined> = {
   unknown: undefined
 };
 
+/**
+ * Known ids for checks that render extra badges in the tree. Kept
+ * separate from the generic `CheckNode` logic so adding a new one is
+ * a local change.
+ */
+const SF_CLI_CHECK_ID = 'builtin.sf-cli';
+
 export class DependenciesTreeProvider implements vscode.TreeDataProvider<DependenciesNode> {
   private readonly emitter = new vscode.EventEmitter<DependenciesNode | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
   private statuses = new Map<string, DependencyStatus>();
   private running = false;
+  private cliLatestVersion: string | undefined;
 
   constructor(private readonly registry: DependencyRegistry) {}
+
+  /**
+   * Feeds the tree the latest `sf` CLI version (from
+   * `CliVersionService`) so the Salesforce CLI row can render an
+   * "update available" badge when the installed version is older.
+   * Undefined turns the badge off. Tree re-renders on change.
+   */
+  setCliLatestVersion(version: string | undefined): void {
+    if (this.cliLatestVersion === version) return;
+    this.cliLatestVersion = version;
+    this.refresh();
+  }
 
   refresh(): void {
     this.emitter.fire(undefined);
@@ -93,6 +114,7 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
 
     const status = node.status;
     const item = new vscode.TreeItem(node.check.label, vscode.TreeItemCollapsibleState.None);
+    const cliUpdateAvailable = this.hasCliUpdate(node.check, status);
     const detail =
       status.state === 'unknown'
         ? getLocalization(LocalizationKeys.depStateNotRunYet)
@@ -101,13 +123,30 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
           : status.detail
             ? status.detail
             : status.state;
-    item.description = detail;
+    item.description = cliUpdateAvailable
+      ? getLocalization(LocalizationKeys.depCliUpdateBadge, detail, this.cliLatestVersion ?? '')
+      : detail;
     const colorId = COLOR_BY_STATE[status.state];
-    item.iconPath = colorId
-      ? new vscode.ThemeIcon(ICON_BY_STATE[status.state], new vscode.ThemeColor(colorId))
-      : new vscode.ThemeIcon(ICON_BY_STATE[status.state]);
+    item.iconPath =
+      // Update-available wins over the pass/fail icon so the "hey,
+      // something to do" signal is visible at a glance. Only applies
+      // when the check itself passed; a failing CLI row stays red.
+      cliUpdateAvailable && status.state === 'ok'
+        ? new vscode.ThemeIcon('arrow-circle-up', new vscode.ThemeColor('editorInfo.foreground'))
+        : colorId
+          ? new vscode.ThemeIcon(ICON_BY_STATE[status.state], new vscode.ThemeColor(colorId))
+          : new vscode.ThemeIcon(ICON_BY_STATE[status.state]);
     const tooltipLines = [node.check.label];
     if (status.detail) tooltipLines.push(status.detail);
+    if (cliUpdateAvailable) {
+      tooltipLines.push(
+        getLocalization(
+          LocalizationKeys.depCliUpdateTooltip,
+          status.version ?? '',
+          this.cliLatestVersion ?? ''
+        )
+      );
+    }
     const owners =
       node.check.ownerExtensionIds && node.check.ownerExtensionIds.length > 0
         ? node.check.ownerExtensionIds
@@ -124,6 +163,19 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
     item.tooltip = tooltipLines.join('\n');
     item.contextValue = node.check.remediationUrl ? 'check:withRemediationUrl' : 'check';
     return item;
+  }
+
+  /**
+   * True when this row is the Salesforce CLI check, the check ran
+   * successfully, we parsed its installed version, we have a latest
+   * version cached, and the latest is strictly newer. Any missing
+   * piece suppresses the badge so offline / first-run / fresh-
+   * install paths stay quiet.
+   */
+  private hasCliUpdate(check: DependencyCheck, status: DependencyStatus): boolean {
+    if (check.id !== SF_CLI_CHECK_ID) return false;
+    if (!status.version || !this.cliLatestVersion) return false;
+    return compare(status.version, this.cliLatestVersion) < 0;
   }
 
   async getChildren(parent?: DependenciesNode): Promise<DependenciesNode[]> {

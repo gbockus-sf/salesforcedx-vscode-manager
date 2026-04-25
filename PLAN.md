@@ -1203,3 +1203,59 @@ should be addressed before a real release.
     so future changes can't accidentally bypass the lockdown.
 
   289 → 298 tests (+9).
+
+- [x] **CLI update indicator.** When the Salesforce CLI (`sf`) has a
+  newer version available, surface that in the manager's UI so
+  users don't run months-stale CLIs without realizing it. Distinct
+  from the extension-update probe — this queries the CLI's own
+  release channel.
+
+  Proposed design:
+
+  1. **New `CliVersionService`** (`src/services/cliVersionService.ts`),
+     sibling to `MarketplaceVersionService`. Probes the official
+     latest-version endpoint the CLI itself uses:
+     `https://developer.salesforce.com/media/salesforce-cli/sf/channels/stable/version`
+     (JSON payload contains `version`). 1 h in-memory cache, same
+     offline-safe / graceful-failure pattern as the marketplace
+     probe. Honors the existing `updateCheck` setting
+     (`onStartup` / `manual` / `never`) so the probe schedule
+     matches the rest of the extension.
+  2. **Runner extension.** `DependencyRunners.runExec` or a
+     sibling `runCliVersionCheck` stamps a `latestVersion` field
+     onto the Salesforce CLI check's `DependencyStatus` object
+     whenever the check runs and the CLI service has a latest
+     version cached. No extra check type — we reuse the existing
+     exec check and augment its result.
+  3. **Dependencies tree badge.** The Salesforce CLI row shows
+     `$(arrow-circle-up)` + "v<current> → v<latest>" in the
+     description, with an "Upgrade" remediation URL (the CLI
+     install docs) or a `command:sfdxManager.upgradeCli` link
+     that runs `npm install -g @salesforce/cli` via a terminal.
+  4. **Optional status-bar indicator.** Ship only if demand is
+     high — a new status-bar item visible only when the check
+     has flagged an update, click → focuses the Dependencies
+     view. Leave as a follow-up sub-bullet; start with just the
+     tree badge to keep scope bounded.
+  5. **Tests.** Unit-test `CliVersionService` (cached probe,
+     graceful offline no-op) + the runner augmentation + the
+     tree-render path.
+
+  Out of scope: auto-upgrading the CLI. The user owns their
+  global toolchain; we only surface the information.
+
+  **Shipped** — `src/services/cliVersionService.ts` probes
+  `https://developer.salesforce.com/media/salesforce-cli/sf/channels/stable/version`
+  with a 1 h in-memory cache, `AbortController`-gated timeout, and
+  graceful undefined on offline / non-OK / missing-version paths.
+  Gated by the `updateCheck` setting (`never` suppresses the probe
+  and clears the cached latest); flipping the setting re-probes
+  immediately via the existing `onDidChange` handler. Dependencies
+  tree renders an "update → v<latest>" badge and an upgrade-hint
+  tooltip on the `builtin.sf-cli` row only when the check passed
+  AND the installed version parsed AND the latest is strictly
+  newer; any missing piece suppresses the badge to keep offline
+  / first-run / fresh-install paths quiet. 298 → 308 tests (+10:
+  six on `cliVersionService`, four on the new tree-badge paths).
+  Status-bar indicator and `sf update` command link left as a
+  follow-up sub-bullet.

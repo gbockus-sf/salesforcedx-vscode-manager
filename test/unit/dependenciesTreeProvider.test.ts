@@ -105,6 +105,66 @@ describe('DependenciesTreeProvider', () => {
       'Required by: salesforce.apex, salesforce.soql, salesforce.visualforce'
     );
   });
+
+  describe('Salesforce CLI update badge', () => {
+    it('appends an update badge + tooltip when the latest version is newer', () => {
+      // Regression for the "there's no visible signal my CLI is
+      // stale" report. The passing Salesforce CLI row must make the
+      // upgrade opportunity obvious.
+      const tree = new DependenciesTreeProvider(mkRegistry([]));
+      tree.setCliLatestVersion('2.46.1');
+      const item = tree.getTreeItem({
+        kind: 'check',
+        check: mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' }),
+        status: { state: 'ok', version: '2.45.0' }
+      });
+      expect(String(item.description)).toContain('update → v2.46.1');
+      expect(String(item.tooltip)).toContain('sf update');
+      const icon = item.iconPath as { id: string };
+      expect(icon.id).toBe('arrow-circle-up');
+    });
+
+    it('leaves the row unchanged when installed and latest match', () => {
+      const tree = new DependenciesTreeProvider(mkRegistry([]));
+      tree.setCliLatestVersion('2.46.1');
+      const item = tree.getTreeItem({
+        kind: 'check',
+        check: mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' }),
+        status: { state: 'ok', version: '2.46.1' }
+      });
+      expect(String(item.description)).not.toContain('update →');
+      const icon = item.iconPath as { id: string };
+      expect(icon.id).not.toBe('arrow-circle-up');
+    });
+
+    it('suppresses the badge when the CLI check itself is failing', () => {
+      // A broken `sf --version` call shouldn't pretend everything's
+      // fine; the red error icon stays red and we don't distract
+      // with an update hint.
+      const tree = new DependenciesTreeProvider(mkRegistry([]));
+      tree.setCliLatestVersion('2.46.1');
+      const item = tree.getTreeItem({
+        kind: 'check',
+        check: mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' }),
+        status: { state: 'fail', detail: 'sf not found' }
+      });
+      const icon = item.iconPath as { id: string };
+      expect(icon.id).toBe('error');
+    });
+
+    it('does not affect other check rows that happen to have a version', () => {
+      // Node / Java shouldn't accidentally render the CLI badge if
+      // someone mistakes `builtin.sf-cli` for a category match.
+      const tree = new DependenciesTreeProvider(mkRegistry([]));
+      tree.setCliLatestVersion('2.46.1');
+      const item = tree.getTreeItem({
+        kind: 'check',
+        check: mkCheck({ id: 'builtin.node', label: 'Node.js' }),
+        status: { state: 'ok', version: '18.0.0' }
+      });
+      expect(String(item.description)).not.toContain('update →');
+    });
+  });
 });
 
 describe('formatReport', () => {

@@ -127,6 +127,12 @@ else logs to the output channel.
   _Expected:_ **silent**. Clipboard has the markdown report. Log: `Dependency report copied to clipboard (N chars).`
 - [ ] **Remediation link.** Click a dependency row's inline `$(link-external)` remediation button.
   _Expected:_ external URL opens in browser. No toast.
+- [ ] **Salesforce CLI update badge.** Install an old `sf` (or temporarily shim it) and run the dep check.
+  _Expected:_ the Salesforce CLI row shows an `$(arrow-circle-up)` icon and its description reads `v<installed> · update → v<latest>`. Tooltip says "Run `sf update`…". No toast.
+- [ ] **No CLI badge when up-to-date.** With a current `sf`, run the dep check.
+  _Expected:_ row is plain green. No update arrow.
+- [ ] **No CLI badge offline.** Disconnect Wi-Fi, reload window, run the dep check.
+  _Expected:_ row shows the installed version but no badge (the channel probe fails quietly).
 
 ---
 

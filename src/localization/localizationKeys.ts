@@ -127,6 +127,8 @@ export enum LocalizationKeys {
   depStateNotRunYet = 'depStateNotRunYet',
   depRequiredBy = 'depRequiredBy',
   depFixLabel = 'depFixLabel',
+  depCliUpdateBadge = 'depCliUpdateBadge',
+  depCliUpdateTooltip = 'depCliUpdateTooltip',
 
   // extension service
   manualToggleHint = 'manualToggleHint',
