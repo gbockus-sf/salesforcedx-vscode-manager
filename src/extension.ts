@@ -306,6 +306,15 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
 
   if (settings.getAutoRunDependencyChecks()) {
     void dependenciesTree.runChecks();
+  } else {
+    // Even with the broader auto-run opt-in disabled, probe the
+    // Salesforce CLI check in the background so the update
+    // indicator (status-bar + tree badge) has the installed
+    // version it needs. `sf --version` is a local shell call —
+    // cheap enough to always run, and without it the indicator
+    // only fires once the user manually kicks the dep check,
+    // which most users won't do until something breaks.
+    void dependenciesTree.runOne('builtin.sf-cli');
   }
 
   // Publisher catalog: fire one background refresh per activation unless
