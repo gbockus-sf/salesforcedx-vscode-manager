@@ -339,6 +339,40 @@ describe('ExtensionService', () => {
       expect(blocked.size).toBe(0);
     });
 
+    it('computeBlockedByDependents() propagates blocks transitively — blocked dependents anchor their dependencies', () => {
+      // Regression for: Apex → Lightning apply left `apex`,
+      // `apex-log`, and `apex-replay-debugger` installed because
+      // `agents` depends on `replay-debugger`. The candidate set
+      // included all three; `replay-debugger` was correctly blocked
+      // by `agents`, but the previous algorithm then skipped it when
+      // evaluating `apex` / `apex-log` — producing blocked={replay}
+      // and letting the applier attempt doomed `code --uninstall`
+      // calls against apex + apex-log, which VSCode refused.
+      //
+      // With the fix, a blocked candidate counts as a blocker for
+      // the things it depends on — apex and apex-log end up in the
+      // blocked map alongside replay-debugger, and the applier
+      // skips all three cleanly.
+      const graph = new Map([
+        ['apex', { id: 'apex', dependsOn: [], packMembers: [] }],
+        ['apex-log', { id: 'apex-log', dependsOn: [], packMembers: [] }],
+        [
+          'apex-replay-debugger',
+          { id: 'apex-replay-debugger', dependsOn: ['apex', 'apex-log'], packMembers: [] }
+        ],
+        // Outside the candidate set — stays installed after the apply.
+        ['agents', { id: 'agents', dependsOn: ['apex-replay-debugger'], packMembers: [] }]
+      ]);
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const blocked = svc.computeBlockedByDependents(
+        new Set(['apex', 'apex-log', 'apex-replay-debugger']),
+        graph
+      );
+      expect(blocked.get('apex-replay-debugger')).toEqual(['agents']);
+      expect(blocked.get('apex')).toEqual(['apex-replay-debugger']);
+      expect(blocked.get('apex-log')).toEqual(['apex-replay-debugger']);
+    });
+
     it('topologicalUninstallOrder() puts dependents before dependencies', () => {
       const graph = new Map([
         ['apex', { id: 'apex', dependsOn: ['core'], packMembers: [] }],

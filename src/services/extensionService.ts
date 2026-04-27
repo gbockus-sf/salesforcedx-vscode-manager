@@ -447,8 +447,9 @@ export class ExtensionService {
         if (blocked.has(id)) continue;
         const blockers: string[] = [];
         for (const [depId, depNode] of graph) {
-          if (normalizedCandidates.has(depId)) continue;
-          if (blocked.has(depId)) continue;
+          // A candidate that isn't blocked can still be disabled, so
+          // it's *not* a blocker — its dependencies can go with it.
+          if (normalizedCandidates.has(depId) && !blocked.has(depId)) continue;
           // Packs list their members but don't runtime-depend on them;
           // only extensionDependencies is a real block. See
           // transitiveDependents for the full rationale.
