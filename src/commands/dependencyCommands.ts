@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { COMMANDS, VIEW_DEPENDENCIES_ID } from '../constants';
 import type { DependencyRegistry } from '../dependencies/registry';
 import { getLocalization, LocalizationKeys } from '../localization';
+import type { CliVersionService } from '../services/cliVersionService';
 import { TelemetryService } from '../services/telemetryService';
 import type { Logger } from '../util/logger';
 import {
@@ -13,6 +14,13 @@ interface Deps {
   registry: DependencyRegistry;
   tree: DependenciesTreeProvider;
   logger: Logger;
+  /**
+   * Injected so `upgradeCli` can clear the cached "update available"
+   * answer + kick a fresh probe once the user closes the terminal
+   * the upgrade ran in. Optional for tests that don't care about
+   * the refresh hook.
+   */
+  cliVersion?: CliVersionService;
 }
 
 interface CheckTreeContext {
@@ -87,18 +95,42 @@ export const registerDependencyCommands = (
       // install strategy (npm / brew / installer) — `sf update` is
       // the official self-upgrade path for most distributions, and
       // if the user's setup needs something else the terminal
-      // output will say so. After the command lands we kick the
-      // dep check so the badge clears without a window reload.
+      // output will say so.
       const terminal = vscode.window.createTerminal({
         name: getLocalization(LocalizationKeys.upgradeCliTerminalName)
       });
       terminal.show();
       terminal.sendText('sf update');
       deps.logger.info('upgradeCli: launched `sf update` in a dedicated terminal.');
-      // `sf update` is fire-and-forget — the user needs to kick off
-      // the dep re-check when the terminal finishes. We don't auto-
-      // re-run here because polling for terminal exit is unreliable
-      // and the button is a one-liner in the palette.
+
+      // Once the user closes our upgrade terminal (normally after
+      // watching it finish), assume the upgrade landed and re-probe:
+      //   1. clear the cached "update available" answer so
+      //      CliVersionService re-runs `sf version`,
+      //   2. re-run the Salesforce CLI dep check so the row's
+      //      installed version re-parses.
+      // The tree badge + status-bar item both key off those two
+      // data sources, so they clear automatically.
+      const sub = vscode.window.onDidCloseTerminal(async closed => {
+        if (closed !== terminal) return;
+        sub.dispose();
+        deps.cliVersion?.clearCache();
+        const latest = await deps.cliVersion?.getLatestVersion();
+        deps.tree.setCliLatestVersion(latest);
+        await deps.tree.runOne('builtin.sf-cli');
+        deps.logger.info('upgradeCli: terminal closed; CLI version info refreshed.');
+      });
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.refreshCliVersion, async () => {
+      // Manual escape hatch — handy if the user ran `sf update`
+      // outside our terminal, or wants to confirm the state after
+      // editing PATH.
+      deps.cliVersion?.clearCache();
+      const latest = await deps.cliVersion?.getLatestVersion();
+      deps.tree.setCliLatestVersion(latest);
+      await deps.tree.runOne('builtin.sf-cli');
+      deps.logger.info('refreshCliVersion: CLI version info refreshed.');
     })
   );
 };

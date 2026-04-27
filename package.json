@@ -54,7 +54,8 @@
       { "command": "sfdxManager.openInMarketplace", "title": "%salesforcedx-vscode-manager.command.openInMarketplace.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" },
       { "command": "sfdxManager.removeVsixOverride", "title": "%salesforcedx-vscode-manager.command.removeVsixOverride.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
       { "command": "sfdxManager.revealVsixFile", "title": "%salesforcedx-vscode-manager.command.revealVsixFile.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(folder-opened)" },
-      { "command": "sfdxManager.upgradeCli", "title": "%salesforcedx-vscode-manager.command.upgradeCli.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-circle-up)" }
+      { "command": "sfdxManager.upgradeCli", "title": "%salesforcedx-vscode-manager.command.upgradeCli.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-circle-up)" },
+      { "command": "sfdxManager.refreshCliVersion", "title": "%salesforcedx-vscode-manager.command.refreshCliVersion.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(refresh)" }
     ],
     "menus": {
       "commandPalette": [

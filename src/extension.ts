@@ -259,7 +259,8 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
   registerDependencyCommands(context, {
     registry,
     tree: dependenciesTree,
-    logger
+    logger,
+    cliVersion
   });
 
   registerVsixCommands(context, {

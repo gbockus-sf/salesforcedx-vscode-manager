@@ -26,7 +26,8 @@ export const window = {
     show: jest.fn(),
     sendText: jest.fn(),
     dispose: jest.fn()
-  }))
+  })),
+  onDidCloseTerminal: jest.fn(() => ({ dispose: jest.fn() }))
 };
 
 export const commands = {

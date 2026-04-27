@@ -35,6 +35,7 @@
   "salesforcedx-vscode-manager.command.removeVsixOverride.title": "Remove VSIX Override",
   "salesforcedx-vscode-manager.command.revealVsixFile.title": "Reveal VSIX File in Finder",
   "salesforcedx-vscode-manager.command.upgradeCli.title": "Upgrade Salesforce CLI",
+  "salesforcedx-vscode-manager.command.refreshCliVersion.title": "Refresh Salesforce CLI Version",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",

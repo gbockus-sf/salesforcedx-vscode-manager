@@ -36,6 +36,7 @@ export const COMMANDS = {
   removeVsixOverride: 'sfdxManager.removeVsixOverride',
   revealVsixFile: 'sfdxManager.revealVsixFile',
   upgradeCli: 'sfdxManager.upgradeCli',
+  refreshCliVersion: 'sfdxManager.refreshCliVersion',
   showLog: 'sfdxManager.showLog',
   updateExtension: 'sfdxManager.updateExtension',
   updateAllSalesforce: 'sfdxManager.updateAllSalesforce',
