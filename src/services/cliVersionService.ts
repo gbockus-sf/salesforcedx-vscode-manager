@@ -1,37 +1,49 @@
+import type { ProcessService } from './processService';
 import type { Logger } from '../util/logger';
 
 /**
- * Probes the Salesforce CLI's official latest-version channel so the
- * Dependencies tree can flag when the user's `sf` is behind. Uses
- * the same JSON endpoint the CLI itself consults for self-update,
- * which is cheap, stable, and doesn't require shelling out to npm.
+ * Figures out whether the installed Salesforce CLI has an upgrade
+ * pending. Strategy: shell out to `sf version` and parse the
+ * update-available warning the CLI itself prints on stderr when its
+ * own self-update detector has noticed a newer build. This
+ * intentionally piggybacks on whatever release channel the user's
+ * CLI is configured to read from (npm / oclif / installer), so our
+ * answer matches what `sf update` would do — no second network
+ * probe, no channel-URL guessing, no extra auth considerations.
  *
- * Network failures return `undefined`; callers render the current
- * installed version without any upgrade hint. Responses cache in
- * memory for `cacheTtlMs` (default 1h) so we don't hammer the
- * endpoint across repeated dependency checks within a session.
+ * Example stderr the parser matches:
+ *   › Warning: @salesforce/cli update available from 2.130.9 to 2.131.7.
+ *
+ * When `sf` isn't installed, times out, exits non-zero, or doesn't
+ * print a warning, we return `undefined` and the tree renders
+ * without an upgrade hint — same graceful-no-op as before. Results
+ * cache in memory for `cacheTtlMs` (default 1h).
  */
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000; // 1 hour
-const CLI_CHANNEL_URL =
-  'https://developer.salesforce.com/media/salesforce-cli/sf/channels/stable/version';
+// `sf version` runs the self-update check only occasionally inside
+// the CLI itself; run it here with a generous timeout so the warning
+// path has time to fire. The CLI may block briefly while it refreshes
+// its update cache.
+const DEFAULT_TIMEOUT_MS = 15_000;
 
-type FetchLike = (
-  input: string,
-  init: { method: string; signal?: AbortSignal }
-) => Promise<{
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-}>;
+/**
+ * Match `Warning: @salesforce/cli update available from <installed>
+ * to <latest>.`. Version pattern is deliberately loose — digits,
+ * dots, dashes, pluses, and word chars — so pre-releases like
+ * `2.131.7-beta.3` still parse. The sentence-ending period gets
+ * stripped after the match so it doesn't leak into the captured
+ * version.
+ */
+const UPDATE_WARNING_RE =
+  /update available from\s+(\d[\w.+-]*)\s+to\s+(\d[\w.+-]*)/i;
+
+const stripTrailingPeriod = (v: string): string =>
+  v.endsWith('.') ? v.slice(0, -1) : v;
 
 interface CacheEntry {
   version: string | undefined;
   fetchedAt: number;
-}
-
-interface VersionManifest {
-  version?: string;
 }
 
 export class CliVersionService {
@@ -40,15 +52,22 @@ export class CliVersionService {
   constructor(
     private readonly options: {
       logger: Logger;
+      process: ProcessService;
       cacheTtlMs?: number;
-      fetch?: FetchLike;
       timeoutMs?: number;
+      /**
+       * Injection seam for tests. Defaults to `sf`; production always
+       * resolves the CLI via the user's `PATH`.
+       */
+      command?: string;
     }
   ) {}
 
   /**
-   * Returns the latest stable `sf` version, or `undefined` when the
-   * channel is unreachable. Cached for `cacheTtlMs`.
+   * Returns the latest `sf` version when the CLI has flagged an
+   * update as available; `undefined` otherwise (including when the
+   * installed CLI is already current — no warning, nothing to
+   * report). Cached for `cacheTtlMs`.
    */
   async getLatestVersion(): Promise<string | undefined> {
     if (this.cached && Date.now() - this.cached.fetchedAt < this.ttl()) {
@@ -65,39 +84,37 @@ export class CliVersionService {
   }
 
   private async probe(): Promise<string | undefined> {
-    const fetchImpl = this.options.fetch ?? ((globalThis as unknown as { fetch?: FetchLike }).fetch);
-    if (!fetchImpl) {
-      this.options.logger.warn('cliVersionService: fetch unavailable; skipping probe.');
-      return undefined;
-    }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.options.timeoutMs ?? 5000);
+    const command = this.options.command ?? 'sf';
     try {
-      const res = await fetchImpl(CLI_CHANNEL_URL, { method: 'GET', signal: controller.signal });
-      if (!res.ok) {
-        this.options.logger.warn(
-          `cliVersionService: channel GET ${res.status} — skipping update check.`
+      const result = await this.options.process.run(
+        command,
+        ['version'],
+        this.options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+      );
+      // The CLI emits the update warning on stderr; stdout carries the
+      // version string. Search both so we stay robust to future CLI
+      // wiring changes.
+      const combined = `${result.stdout}\n${result.stderr}`;
+      const match = UPDATE_WARNING_RE.exec(combined);
+      if (!match) {
+        this.options.logger.info(
+          `cliVersionService: no update warning from \`${command} version\` — treating CLI as current.`
         );
         return undefined;
       }
-      const payload = (await res.json()) as VersionManifest | undefined;
-      const version = typeof payload?.version === 'string' ? payload.version : undefined;
-      if (!version) {
-        this.options.logger.warn(
-          'cliVersionService: channel payload missing `version`; skipping.'
-        );
-        return undefined;
-      }
-      this.options.logger.info(`cliVersionService: latest stable ${version}.`);
-      return version;
+      const installed = stripTrailingPeriod(match[1]);
+      const latest = stripTrailingPeriod(match[2]);
+      this.options.logger.info(
+        `cliVersionService: \`${command} version\` reports update available from ${installed} to ${latest}.`
+      );
+      return latest;
     } catch (err) {
-      // AbortError, offline, DNS failure — all non-fatal; we just
-      // don't surface an upgrade hint for this session.
+      // sf missing from PATH, timeout, spawn failure — all non-fatal;
+      // the dep tree's `builtin.sf-cli` row will already have flagged
+      // a missing CLI.
       const message = err instanceof Error ? err.message : String(err);
       this.options.logger.warn(`cliVersionService: probe failed (${message}).`);
       return undefined;
-    } finally {
-      clearTimeout(timer);
     }
   }
 
