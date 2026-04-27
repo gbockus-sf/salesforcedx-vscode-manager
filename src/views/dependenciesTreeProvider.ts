@@ -161,7 +161,12 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
     }
     if (node.check.remediationUrl) tooltipLines.push(node.check.remediationUrl);
     item.tooltip = tooltipLines.join('\n');
-    item.contextValue = node.check.remediationUrl ? 'check:withRemediationUrl' : 'check';
+    // Append `:sfCliUpdate` so the view/item/context menu can gate an
+    // "Upgrade Salesforce CLI" entry on the exact same boundary
+    // conditions the badge respects. Keeps the status bar, badge,
+    // and menu entry all in agreement.
+    const base = node.check.remediationUrl ? 'check:withRemediationUrl' : 'check';
+    item.contextValue = cliUpdateAvailable ? `${base}:sfCliUpdate` : base;
     return item;
   }
 
@@ -174,8 +179,23 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
    */
   private hasCliUpdate(check: DependencyCheck, status: DependencyStatus): boolean {
     if (check.id !== SF_CLI_CHECK_ID) return false;
+    if (status.state !== 'ok') return false;
     if (!status.version || !this.cliLatestVersion) return false;
     return compare(status.version, this.cliLatestVersion) < 0;
+  }
+
+  /**
+   * Returns the installed + latest versions of the Salesforce CLI
+   * when an upgrade is available; `undefined` otherwise. Used by
+   * the status-bar item + the row-level "Upgrade Salesforce CLI"
+   * action to render consistently with the badge.
+   */
+  getCliUpdateInfo(): { installed: string; latest: string } | undefined {
+    const status = this.statuses.get(SF_CLI_CHECK_ID);
+    if (!status || status.state !== 'ok' || !status.version) return undefined;
+    if (!this.cliLatestVersion) return undefined;
+    if (compare(status.version, this.cliLatestVersion) >= 0) return undefined;
+    return { installed: status.version, latest: this.cliLatestVersion };
   }
 
   async getChildren(parent?: DependenciesNode): Promise<DependenciesNode[]> {

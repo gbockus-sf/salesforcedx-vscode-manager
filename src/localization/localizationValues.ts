@@ -132,6 +132,9 @@ export const localizationValues: Record<LocalizationKeys, string> = {
   [LocalizationKeys.statusVsixText]: '$(package) VSIX: {0}',
   [LocalizationKeys.statusVsixTooltipActive]: '{0} extension(s) loaded from {1} — click to manage.',
   [LocalizationKeys.statusVsixTooltipIdle]: 'VSIX directory: {0} — no overrides active. Click to manage.',
+  [LocalizationKeys.statusCliUpdateText]: '$(arrow-circle-up) sf v{0}',
+  [LocalizationKeys.statusCliUpdateTooltip]: 'Salesforce CLI v{0} installed; v{1} available. Click to run `sf update`.',
+  [LocalizationKeys.upgradeCliTerminalName]: 'Salesforce CLI Update',
 
   [LocalizationKeys.validateGroupBadId]: 'Group id must start with a letter and contain only lowercase letters, digits, and dashes.',
   [LocalizationKeys.validateGroupMissingLabel]: 'Group label is required.',

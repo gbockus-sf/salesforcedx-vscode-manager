@@ -34,6 +34,7 @@
   "salesforcedx-vscode-manager.command.openInMarketplace.title": "Open in Marketplace",
   "salesforcedx-vscode-manager.command.removeVsixOverride.title": "Remove VSIX Override",
   "salesforcedx-vscode-manager.command.revealVsixFile.title": "Reveal VSIX File in Finder",
+  "salesforcedx-vscode-manager.command.upgradeCli.title": "Upgrade Salesforce CLI",
 
   "salesforcedx-vscode-manager.viewContainer.title": "Salesforce Extensions Manager",
   "salesforcedx-vscode-manager.view.groups.name": "Groups",
@@ -56,6 +57,7 @@
   "salesforcedx-vscode-manager.configuration.reloadAfterApply.prompt": "Show one consolidated reload prompt after a group apply instead of VSCode's per-extension reload banners.",
   "salesforcedx-vscode-manager.configuration.reloadAfterApply.never": "Never prompt; rely on VSCode's built-in per-extension reload banners.",
   "salesforcedx-vscode-manager.configuration.statusBar.showVsix.description": "Show the VSIX override indicator in the status bar when a vsix directory is set.",
+  "salesforcedx-vscode-manager.configuration.statusBar.showCliUpdate.description": "Show a status-bar indicator when the Salesforce CLI has a newer stable version available. Clicking it runs `sf update` in a dedicated terminal.",
   "salesforcedx-vscode-manager.configuration.updateCheck.description": "When the manager should probe the VSCode Marketplace for newer versions of managed extensions. Results are cached in memory for ~1 hour.",
   "salesforcedx-vscode-manager.configuration.updateCheck.onStartup": "Probe the Marketplace for newer versions of managed extensions shortly after activation.",
   "salesforcedx-vscode-manager.configuration.updateCheck.manual": "Only check when the user explicitly invokes the 'Check for Extension Updates' command or expands the tree after a refresh.",

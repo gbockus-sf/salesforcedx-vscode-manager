@@ -35,6 +35,7 @@ export const COMMANDS = {
   vsixMenu: 'sfdxManager.vsixMenu',
   removeVsixOverride: 'sfdxManager.removeVsixOverride',
   revealVsixFile: 'sfdxManager.revealVsixFile',
+  upgradeCli: 'sfdxManager.upgradeCli',
   showLog: 'sfdxManager.showLog',
   updateExtension: 'sfdxManager.updateExtension',
   updateAllSalesforce: 'sfdxManager.updateAllSalesforce',
@@ -59,6 +60,7 @@ export const SETTINGS = {
   vsixAutoInstall: 'vsixAutoInstall',
   statusBarShowGroup: 'statusBar.showGroup',
   statusBarShowVsix: 'statusBar.showVsix',
+  statusBarShowCliUpdate: 'statusBar.showCliUpdate',
   updateCheck: 'updateCheck',
   reloadAfterApply: 'reloadAfterApply'
 } as const;

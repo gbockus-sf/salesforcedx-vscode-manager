@@ -1,10 +1,12 @@
 import * as vscode from 'vscode';
+import { CliStatusBarItem } from '../../src/statusBar/cliStatusBarItem';
 import { GroupStatusBarItem } from '../../src/statusBar/groupStatusBarItem';
 import { VsixStatusBarItem } from '../../src/statusBar/vsixStatusBarItem';
 import type { GroupStore } from '../../src/groups/groupStore';
 import type { SettingsService } from '../../src/services/settingsService';
 import type { WorkspaceStateService } from '../../src/services/workspaceStateService';
 import type { VsixInstaller } from '../../src/vsix/vsixInstaller';
+import type { DependenciesTreeProvider } from '../../src/views/dependenciesTreeProvider';
 
 interface FakeItem {
   text: string;
@@ -114,5 +116,87 @@ describe('VsixStatusBarItem', () => {
     );
     expect(fake.text).toBe('$(package) VSIX: 0');
     expect(fake.backgroundColor).toBeUndefined();
+  });
+});
+
+const mkDepsTree = (
+  info: { installed: string; latest: string } | undefined
+): { tree: DependenciesTreeProvider; fire: () => void } => {
+  const listeners: (() => void)[] = [];
+  const tree = {
+    getCliUpdateInfo: jest.fn(() => info),
+    onDidChangeTreeData: (fn: () => void) => {
+      listeners.push(fn);
+      return { dispose: jest.fn() };
+    }
+  } as unknown as DependenciesTreeProvider;
+  return {
+    tree,
+    fire: () => listeners.forEach(l => l())
+  };
+};
+
+describe('CliStatusBarItem', () => {
+  let fake: FakeItem;
+  beforeEach(() => {
+    fake = newFakeItem();
+    (vscode.window.createStatusBarItem as jest.Mock).mockReturnValue(fake);
+  });
+
+  it('hides when the Dependencies tree reports no CLI update available', () => {
+    const { tree } = mkDepsTree(undefined);
+    new CliStatusBarItem(
+      mkSettings({ getStatusBarShowCliUpdate: jest.fn(() => true) }),
+      tree
+    );
+    expect(fake.hide).toHaveBeenCalled();
+    expect(fake.show).not.toHaveBeenCalled();
+  });
+
+  it('renders $(arrow-circle-up) sf vN.N.N when an update is available', () => {
+    const { tree } = mkDepsTree({ installed: '2.45.0', latest: '2.46.1' });
+    new CliStatusBarItem(
+      mkSettings({ getStatusBarShowCliUpdate: jest.fn(() => true) }),
+      tree
+    );
+    expect(fake.text).toBe('$(arrow-circle-up) sf v2.46.1');
+    expect(String(fake.tooltip)).toContain('v2.45.0');
+    expect(String(fake.tooltip)).toContain('v2.46.1');
+    expect(fake.show).toHaveBeenCalled();
+  });
+
+  it('stays hidden when statusBar.showCliUpdate is false even with an upgrade available', () => {
+    const { tree } = mkDepsTree({ installed: '2.45.0', latest: '2.46.1' });
+    new CliStatusBarItem(
+      mkSettings({ getStatusBarShowCliUpdate: jest.fn(() => false) }),
+      tree
+    );
+    expect(fake.hide).toHaveBeenCalled();
+  });
+
+  it('flips from hidden to shown when the tree fires an update', () => {
+    // Simulates the common flow: dep check hasn't run yet, so no
+    // info; then it runs and the tree event fires with a fresh
+    // info object. The status bar must react.
+    const state: { current: { installed: string; latest: string } | undefined } = {
+      current: undefined
+    };
+    const listeners: (() => void)[] = [];
+    const tree = {
+      getCliUpdateInfo: jest.fn(() => state.current),
+      onDidChangeTreeData: (fn: () => void) => {
+        listeners.push(fn);
+        return { dispose: jest.fn() };
+      }
+    } as unknown as DependenciesTreeProvider;
+    new CliStatusBarItem(
+      mkSettings({ getStatusBarShowCliUpdate: jest.fn(() => true) }),
+      tree
+    );
+    expect(fake.hide).toHaveBeenCalled();
+    state.current = { installed: '2.45.0', latest: '2.46.1' };
+    listeners.forEach(l => l());
+    expect(fake.show).toHaveBeenCalled();
+    expect(fake.text).toBe('$(arrow-circle-up) sf v2.46.1');
   });
 });

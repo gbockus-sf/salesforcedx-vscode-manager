@@ -164,6 +164,55 @@ describe('DependenciesTreeProvider', () => {
       });
       expect(String(item.description)).not.toContain('update →');
     });
+
+    it('appends :sfCliUpdate to the contextValue so menus can gate Upgrade action', () => {
+      // The inline "Upgrade" button in package.json matches `:sfCliUpdate`
+      // and is invisible until the update is actually pending.
+      const tree = new DependenciesTreeProvider(mkRegistry([]));
+      tree.setCliLatestVersion('2.46.1');
+      const item = tree.getTreeItem({
+        kind: 'check',
+        check: mkCheck({
+          id: 'builtin.sf-cli',
+          label: 'Salesforce CLI (sf)',
+          remediationUrl: 'https://developer.salesforce.com/tools/salesforcecli'
+        }),
+        status: { state: 'ok', version: '2.45.0' }
+      });
+      expect(item.contextValue).toContain(':sfCliUpdate');
+    });
+
+    it('getCliUpdateInfo returns installed + latest versions when an upgrade is pending', async () => {
+      // The status bar reads from this getter rather than re-deriving
+      // the comparison; keeping a single source of truth.
+      const checks = [mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' })];
+      const tree = new DependenciesTreeProvider(
+        mkRegistry(checks, { 'builtin.sf-cli': { state: 'ok', version: '2.45.0' } })
+      );
+      await tree.runChecks();
+      tree.setCliLatestVersion('2.46.1');
+      expect(tree.getCliUpdateInfo()).toEqual({ installed: '2.45.0', latest: '2.46.1' });
+    });
+
+    it('getCliUpdateInfo returns undefined when versions are at parity', async () => {
+      const checks = [mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' })];
+      const tree = new DependenciesTreeProvider(
+        mkRegistry(checks, { 'builtin.sf-cli': { state: 'ok', version: '2.46.1' } })
+      );
+      await tree.runChecks();
+      tree.setCliLatestVersion('2.46.1');
+      expect(tree.getCliUpdateInfo()).toBeUndefined();
+    });
+
+    it('getCliUpdateInfo returns undefined when the check is failing', async () => {
+      const checks = [mkCheck({ id: 'builtin.sf-cli', label: 'Salesforce CLI (sf)' })];
+      const tree = new DependenciesTreeProvider(
+        mkRegistry(checks, { 'builtin.sf-cli': { state: 'fail', detail: 'sf not found' } })
+      );
+      await tree.runChecks();
+      tree.setCliLatestVersion('2.46.1');
+      expect(tree.getCliUpdateInfo()).toBeUndefined();
+    });
   });
 });
 

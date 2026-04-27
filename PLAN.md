@@ -1257,5 +1257,14 @@ should be addressed before a real release.
   newer; any missing piece suppresses the badge to keep offline
   / first-run / fresh-install paths quiet. 298 → 308 tests (+10:
   six on `cliVersionService`, four on the new tree-badge paths).
-  Status-bar indicator and `sf update` command link left as a
-  follow-up sub-bullet.
+
+  Follow-up **shipped** — status-bar indicator and `sf update`
+  command link. New `CliStatusBarItem` left-aligned at priority
+  98 (after Group / VSIX), subscribes to the Dependencies tree's
+  `onDidChangeTreeData` so it stays in sync. Visible only when
+  `DependenciesTreeProvider.getCliUpdateInfo()` returns a pending
+  update AND the new `statusBar.showCliUpdate` setting is on
+  (default `true`). Click → `sfdxManager.upgradeCli` which opens
+  a dedicated terminal and runs `sf update`; same action is
+  also wired inline on the CLI dep row (gated by a new
+  `:sfCliUpdate` contextValue suffix). 308 → 317 tests (+9).

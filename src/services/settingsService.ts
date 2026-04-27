@@ -84,6 +84,10 @@ export class SettingsService {
     return this.config().get<boolean>(SETTINGS.statusBarShowVsix, true);
   }
 
+  getStatusBarShowCliUpdate(): boolean {
+    return this.config().get<boolean>(SETTINGS.statusBarShowCliUpdate, true);
+  }
+
   getUpdateCheck(): UpdateCheckMode {
     return this.config().get<UpdateCheckMode>(SETTINGS.updateCheck, 'manual');
   }

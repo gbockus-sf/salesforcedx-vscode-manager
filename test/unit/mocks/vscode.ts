@@ -21,7 +21,12 @@ export const window = {
       _options: unknown,
       task: (progress: { report: (value: unknown) => void }) => unknown
     ) => task({ report: () => undefined })
-  )
+  ),
+  createTerminal: jest.fn(() => ({
+    show: jest.fn(),
+    sendText: jest.fn(),
+    dispose: jest.fn()
+  }))
 };
 
 export const commands = {

@@ -145,6 +145,9 @@ export enum LocalizationKeys {
   statusVsixText = 'statusVsixText',
   statusVsixTooltipActive = 'statusVsixTooltipActive',
   statusVsixTooltipIdle = 'statusVsixTooltipIdle',
+  statusCliUpdateText = 'statusCliUpdateText',
+  statusCliUpdateTooltip = 'statusCliUpdateTooltip',
+  upgradeCliTerminalName = 'upgradeCliTerminalName',
 
   // group validation
   validateGroupBadId = 'validateGroupBadId',

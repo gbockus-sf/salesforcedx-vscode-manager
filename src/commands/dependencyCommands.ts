@@ -79,6 +79,26 @@ export const registerDependencyCommands = (
       const url = arg?.check?.remediationUrl;
       if (!url) return;
       await vscode.env.openExternal(vscode.Uri.parse(url));
+    }),
+
+    vscode.commands.registerCommand(COMMANDS.upgradeCli, async () => {
+      // Run `sf update` inside a dedicated terminal so the user sees
+      // progress output as it happens. We don't try to infer the
+      // install strategy (npm / brew / installer) — `sf update` is
+      // the official self-upgrade path for most distributions, and
+      // if the user's setup needs something else the terminal
+      // output will say so. After the command lands we kick the
+      // dep check so the badge clears without a window reload.
+      const terminal = vscode.window.createTerminal({
+        name: getLocalization(LocalizationKeys.upgradeCliTerminalName)
+      });
+      terminal.show();
+      terminal.sendText('sf update');
+      deps.logger.info('upgradeCli: launched `sf update` in a dedicated terminal.');
+      // `sf update` is fire-and-forget — the user needs to kick off
+      // the dep re-check when the terminal finishes. We don't auto-
+      // re-run here because polling for terminal exit is unreliable
+      // and the button is a one-liner in the palette.
     })
   );
 };

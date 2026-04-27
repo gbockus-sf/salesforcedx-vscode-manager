@@ -53,7 +53,8 @@
       { "command": "sfdxManager.uninstallExtension", "title": "%salesforcedx-vscode-manager.command.uninstallExtension.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
       { "command": "sfdxManager.openInMarketplace", "title": "%salesforcedx-vscode-manager.command.openInMarketplace.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(link-external)" },
       { "command": "sfdxManager.removeVsixOverride", "title": "%salesforcedx-vscode-manager.command.removeVsixOverride.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(trash)" },
-      { "command": "sfdxManager.revealVsixFile", "title": "%salesforcedx-vscode-manager.command.revealVsixFile.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(folder-opened)" }
+      { "command": "sfdxManager.revealVsixFile", "title": "%salesforcedx-vscode-manager.command.revealVsixFile.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(folder-opened)" },
+      { "command": "sfdxManager.upgradeCli", "title": "%salesforcedx-vscode-manager.command.upgradeCli.title%", "category": "%salesforcedx-vscode-manager.commandCategory%", "icon": "$(arrow-circle-up)" }
     ],
     "menus": {
       "commandPalette": [
@@ -97,7 +98,8 @@
         { "command": "sfdxManager.revealVsixFile", "when": "view == sfdxManager.vsix && viewItem == vsix:override", "group": "inline@1" },
         { "command": "sfdxManager.removeVsixOverride", "when": "view == sfdxManager.vsix && !sfdxManager.anyBusy && viewItem == vsix:override", "group": "inline@2" },
         { "command": "sfdxManager.runDependencyCheck", "when": "view == sfdxManager.dependencies && viewItem =~ /^check/", "group": "inline" },
-        { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" }
+        { "command": "sfdxManager.openRemediationUrl", "when": "view == sfdxManager.dependencies && viewItem == check:withRemediationUrl", "group": "inline" },
+        { "command": "sfdxManager.upgradeCli", "when": "view == sfdxManager.dependencies && viewItem =~ /:sfCliUpdate/", "group": "inline@2" }
       ]
     },
     "viewsContainers": {
@@ -211,6 +213,11 @@
           "type": "boolean",
           "default": true,
           "description": "%salesforcedx-vscode-manager.configuration.statusBar.showVsix.description%"
+        },
+        "salesforcedx-vscode-manager.statusBar.showCliUpdate": {
+          "type": "boolean",
+          "default": true,
+          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showCliUpdate.description%"
         },
         "salesforcedx-vscode-manager.updateCheck": {
           "type": "string",

@@ -29,6 +29,7 @@ import { TelemetryService } from './services/telemetryService';
 import { WorkspaceStateService } from './services/workspaceStateService';
 import { BusyState } from './util/busyState';
 import { Logger } from './util/logger';
+import { CliStatusBarItem } from './statusBar/cliStatusBarItem';
 import { GroupStatusBarItem } from './statusBar/groupStatusBarItem';
 import { VsixStatusBarItem } from './statusBar/vsixStatusBarItem';
 import { VsixInstaller } from './vsix/vsixInstaller';
@@ -138,7 +139,8 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
 
   const groupStatusBar = new GroupStatusBarItem(store, workspaceState, settings, busy);
   const vsixStatusBar = new VsixStatusBarItem(settings, installer, busy);
-  context.subscriptions.push(groupStatusBar, vsixStatusBar);
+  const cliStatusBar = new CliStatusBarItem(settings, dependenciesTree);
+  context.subscriptions.push(groupStatusBar, vsixStatusBar, cliStatusBar);
 
   /**
    * Keep the `sfdxManager.hasVsixOverrides` context key in sync with
@@ -245,6 +247,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
       dependenciesTree.refresh();
       groupStatusBar.update();
       vsixStatusBar.update();
+      cliStatusBar.update();
     })
   );
 

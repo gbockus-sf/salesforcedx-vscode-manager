@@ -129,10 +129,20 @@ else logs to the output channel.
   _Expected:_ external URL opens in browser. No toast.
 - [ ] **Salesforce CLI update badge.** Install an old `sf` (or temporarily shim it) and run the dep check.
   _Expected:_ the Salesforce CLI row shows an `$(arrow-circle-up)` icon and its description reads `v<installed> · update → v<latest>`. Tooltip says "Run `sf update`…". No toast.
+- [ ] **CLI status-bar indicator.** Same setup as above.
+  _Expected:_ a new `$(arrow-circle-up) sf v<latest>` item appears in the left status bar with a warning-colored background. Tooltip says "Salesforce CLI v<installed> installed; v<latest> available."
+- [ ] **Click to upgrade from status bar.** Click the new status-bar item.
+  _Expected:_ a terminal named "Salesforce CLI Update" opens and `sf update` runs in it. No toast.
+- [ ] **Click to upgrade from Dependencies tree row.** Click the inline `$(arrow-circle-up)` on the Salesforce CLI row.
+  _Expected:_ same terminal + `sf update` behavior.
+- [ ] **Palette `SFDX Manager: Upgrade Salesforce CLI`.** From the palette.
+  _Expected:_ same terminal + `sf update` behavior.
+- [ ] **Status-bar setting off.** Set `salesforcedx-vscode-manager.statusBar.showCliUpdate` to `false` with an update pending.
+  _Expected:_ status-bar item disappears. Tree badge + inline upgrade button stay.
 - [ ] **No CLI badge when up-to-date.** With a current `sf`, run the dep check.
-  _Expected:_ row is plain green. No update arrow.
+  _Expected:_ row is plain green. No update arrow. No status-bar item.
 - [ ] **No CLI badge offline.** Disconnect Wi-Fi, reload window, run the dep check.
-  _Expected:_ row shows the installed version but no badge (the channel probe fails quietly).
+  _Expected:_ row shows the installed version but no badge (the channel probe fails quietly). No status-bar item.
 
 ---
 
