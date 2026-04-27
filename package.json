@@ -185,8 +185,7 @@
             "default": [
               "redhat.vscode-xml",
               "dbaeumer.vscode-eslint",
-              "esbenp.prettier-vscode",
-              "salesforce.lightning-design-system-vscode"
+              "esbenp.prettier-vscode"
             ],
             "description": "%salesforcedx-vscode-manager.configuration.thirdPartyExtensionIds.description%"
           }

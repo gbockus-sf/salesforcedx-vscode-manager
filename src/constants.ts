@@ -82,6 +82,5 @@ export const SALESFORCE_PUBLISHER = 'salesforce';
 export const DEFAULT_THIRD_PARTY_EXTENSION_IDS: readonly string[] = [
   'redhat.vscode-xml',
   'dbaeumer.vscode-eslint',
-  'esbenp.prettier-vscode',
-  'salesforce.lightning-design-system-vscode'
+  'esbenp.prettier-vscode'
 ];

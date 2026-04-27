@@ -22,7 +22,7 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
   {
     id: 'lightning',
     label: 'Lightning',
-    description: 'Lightning / LWC development — Aura, LWC, design system, linting.',
+    description: 'Lightning / LWC development — Aura, LWC, SLDS, linting.',
     extensions: [
       'salesforce.salesforcedx-vscode-core',
       'salesforce.salesforcedx-vscode-services',
@@ -30,7 +30,7 @@ export const BUILT_IN_GROUPS: readonly Group[] = [
       'salesforce.salesforcedx-vscode-lwc',
       'dbaeumer.vscode-eslint',
       'esbenp.prettier-vscode',
-      'salesforce.lightning-design-system-vscode'
+      'salesforce.salesforce-vscode-slds'
     ],
     builtIn: true
   },
