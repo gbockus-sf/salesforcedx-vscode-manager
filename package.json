@@ -142,96 +142,118 @@
         "contents": "%salesforcedx-vscode-manager.viewsWelcome.dependencies%"
       }
     ],
-    "configuration": {
-      "title": "%salesforcedx-vscode-manager.configuration.title%",
-      "properties": {
-        "salesforcedx-vscode-manager.groups": {
-          "type": "object",
-          "default": {},
-          "description": "%salesforcedx-vscode-manager.configuration.groups.description%"
-        },
-        "salesforcedx-vscode-manager.applyScope": {
-          "type": "string",
-          "enum": ["disableOthers", "enableOnly", "ask"],
-          "default": "disableOthers",
-          "description": "%salesforcedx-vscode-manager.configuration.applyScope.description%"
-        },
-        "salesforcedx-vscode-manager.backend": {
-          "type": "string",
-          "enum": ["codeCli", "profiles"],
-          "enumDescriptions": [
-            "%salesforcedx-vscode-manager.configuration.backend.codeCli%",
-            "%salesforcedx-vscode-manager.configuration.backend.profiles%"
-          ],
-          "default": "codeCli",
-          "description": "%salesforcedx-vscode-manager.configuration.backend.description%"
-        },
-        "salesforcedx-vscode-manager.autoRunDependencyChecks": {
-          "type": "boolean",
-          "default": false,
-          "description": "%salesforcedx-vscode-manager.configuration.autoRunDependencyChecks.description%"
-        },
-        "salesforcedx-vscode-manager.thirdPartyExtensionIds": {
-          "type": "array",
-          "items": { "type": "string" },
-          "default": [
-            "redhat.vscode-xml",
-            "dbaeumer.vscode-eslint",
-            "esbenp.prettier-vscode",
-            "salesforce.lightning-design-system-vscode"
-          ],
-          "description": "%salesforcedx-vscode-manager.configuration.thirdPartyExtensionIds.description%"
-        },
-        "salesforcedx-vscode-manager.vsixDirectory": {
-          "type": "string",
-          "default": "",
-          "scope": "machine-overridable",
-          "description": "%salesforcedx-vscode-manager.configuration.vsixDirectory.description%"
-        },
-        "salesforcedx-vscode-manager.vsixAutoInstall": {
-          "type": "boolean",
-          "default": true,
-          "description": "%salesforcedx-vscode-manager.configuration.vsixAutoInstall.description%"
-        },
-        "salesforcedx-vscode-manager.statusBar.showGroup": {
-          "type": "boolean",
-          "default": true,
-          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showGroup.description%"
-        },
-        "salesforcedx-vscode-manager.reloadAfterApply": {
-          "type": "string",
-          "enum": ["auto", "prompt", "never"],
-          "enumDescriptions": [
-            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.auto%",
-            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.prompt%",
-            "%salesforcedx-vscode-manager.configuration.reloadAfterApply.never%"
-          ],
-          "default": "prompt",
-          "description": "%salesforcedx-vscode-manager.configuration.reloadAfterApply.description%"
-        },
-        "salesforcedx-vscode-manager.statusBar.showVsix": {
-          "type": "boolean",
-          "default": true,
-          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showVsix.description%"
-        },
-        "salesforcedx-vscode-manager.statusBar.showCliUpdate": {
-          "type": "boolean",
-          "default": true,
-          "description": "%salesforcedx-vscode-manager.configuration.statusBar.showCliUpdate.description%"
-        },
-        "salesforcedx-vscode-manager.updateCheck": {
-          "type": "string",
-          "enum": ["onStartup", "manual", "never"],
-          "enumDescriptions": [
-            "%salesforcedx-vscode-manager.configuration.updateCheck.onStartup%",
-            "%salesforcedx-vscode-manager.configuration.updateCheck.manual%",
-            "%salesforcedx-vscode-manager.configuration.updateCheck.never%"
-          ],
-          "default": "manual",
-          "description": "%salesforcedx-vscode-manager.configuration.updateCheck.description%"
+    "configuration": [
+      {
+        "title": "%salesforcedx-vscode-manager.configuration.section.groups%",
+        "properties": {
+          "salesforcedx-vscode-manager.groups": {
+            "type": "object",
+            "default": {},
+            "description": "%salesforcedx-vscode-manager.configuration.groups.description%"
+          },
+          "salesforcedx-vscode-manager.applyScope": {
+            "type": "string",
+            "enum": ["disableOthers", "enableOnly", "ask"],
+            "default": "disableOthers",
+            "description": "%salesforcedx-vscode-manager.configuration.applyScope.description%"
+          },
+          "salesforcedx-vscode-manager.backend": {
+            "type": "string",
+            "enum": ["codeCli", "profiles"],
+            "enumDescriptions": [
+              "%salesforcedx-vscode-manager.configuration.backend.codeCli%",
+              "%salesforcedx-vscode-manager.configuration.backend.profiles%"
+            ],
+            "default": "codeCli",
+            "description": "%salesforcedx-vscode-manager.configuration.backend.description%"
+          },
+          "salesforcedx-vscode-manager.reloadAfterApply": {
+            "type": "string",
+            "enum": ["auto", "prompt", "never"],
+            "enumDescriptions": [
+              "%salesforcedx-vscode-manager.configuration.reloadAfterApply.auto%",
+              "%salesforcedx-vscode-manager.configuration.reloadAfterApply.prompt%",
+              "%salesforcedx-vscode-manager.configuration.reloadAfterApply.never%"
+            ],
+            "default": "prompt",
+            "description": "%salesforcedx-vscode-manager.configuration.reloadAfterApply.description%"
+          },
+          "salesforcedx-vscode-manager.thirdPartyExtensionIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": [
+              "redhat.vscode-xml",
+              "dbaeumer.vscode-eslint",
+              "esbenp.prettier-vscode",
+              "salesforce.lightning-design-system-vscode"
+            ],
+            "description": "%salesforcedx-vscode-manager.configuration.thirdPartyExtensionIds.description%"
+          }
+        }
+      },
+      {
+        "title": "%salesforcedx-vscode-manager.configuration.section.vsix%",
+        "properties": {
+          "salesforcedx-vscode-manager.vsixDirectory": {
+            "type": "string",
+            "default": "",
+            "scope": "machine-overridable",
+            "description": "%salesforcedx-vscode-manager.configuration.vsixDirectory.description%"
+          },
+          "salesforcedx-vscode-manager.vsixAutoInstall": {
+            "type": "boolean",
+            "default": true,
+            "description": "%salesforcedx-vscode-manager.configuration.vsixAutoInstall.description%"
+          }
+        }
+      },
+      {
+        "title": "%salesforcedx-vscode-manager.configuration.section.dependencies%",
+        "properties": {
+          "salesforcedx-vscode-manager.autoRunDependencyChecks": {
+            "type": "boolean",
+            "default": false,
+            "description": "%salesforcedx-vscode-manager.configuration.autoRunDependencyChecks.description%"
+          }
+        }
+      },
+      {
+        "title": "%salesforcedx-vscode-manager.configuration.section.marketplace%",
+        "properties": {
+          "salesforcedx-vscode-manager.updateCheck": {
+            "type": "string",
+            "enum": ["onStartup", "manual", "never"],
+            "enumDescriptions": [
+              "%salesforcedx-vscode-manager.configuration.updateCheck.onStartup%",
+              "%salesforcedx-vscode-manager.configuration.updateCheck.manual%",
+              "%salesforcedx-vscode-manager.configuration.updateCheck.never%"
+            ],
+            "default": "manual",
+            "description": "%salesforcedx-vscode-manager.configuration.updateCheck.description%"
+          }
+        }
+      },
+      {
+        "title": "%salesforcedx-vscode-manager.configuration.section.statusBar%",
+        "properties": {
+          "salesforcedx-vscode-manager.statusBar.showGroup": {
+            "type": "boolean",
+            "default": true,
+            "description": "%salesforcedx-vscode-manager.configuration.statusBar.showGroup.description%"
+          },
+          "salesforcedx-vscode-manager.statusBar.showVsix": {
+            "type": "boolean",
+            "default": true,
+            "description": "%salesforcedx-vscode-manager.configuration.statusBar.showVsix.description%"
+          },
+          "salesforcedx-vscode-manager.statusBar.showCliUpdate": {
+            "type": "boolean",
+            "default": true,
+            "description": "%salesforcedx-vscode-manager.configuration.statusBar.showCliUpdate.description%"
+          }
         }
       }
-    },
+    ],
     "keybindings": [
       {
         "command": "sfdxManager.applyGroupQuickPick",

@@ -41,7 +41,11 @@
   "salesforcedx-vscode-manager.view.vsix.name": "VSIX Overrides",
   "salesforcedx-vscode-manager.view.dependencies.name": "Dependencies",
 
-  "salesforcedx-vscode-manager.configuration.title": "Salesforce Extensions Manager",
+  "salesforcedx-vscode-manager.configuration.section.groups": "Salesforce Extensions Manager › Groups",
+  "salesforcedx-vscode-manager.configuration.section.vsix": "Salesforce Extensions Manager › VSIX Overrides",
+  "salesforcedx-vscode-manager.configuration.section.dependencies": "Salesforce Extensions Manager › Dependencies",
+  "salesforcedx-vscode-manager.configuration.section.marketplace": "Salesforce Extensions Manager › Marketplace",
+  "salesforcedx-vscode-manager.configuration.section.statusBar": "Salesforce Extensions Manager › Status Bar",
   "salesforcedx-vscode-manager.configuration.groups.description": "User-defined extension groups (merged with built-ins by id).",
   "salesforcedx-vscode-manager.configuration.applyScope.description": "What to do with managed extensions not in the applied group.",
   "salesforcedx-vscode-manager.configuration.backend.description": "How apply-group changes workspace extension state.",
