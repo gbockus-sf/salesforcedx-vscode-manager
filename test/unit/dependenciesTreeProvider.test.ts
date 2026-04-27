@@ -19,7 +19,9 @@ const mkRegistry = (
 ): DependencyRegistry => ({
   collect: jest.fn(async () => checks),
   runOne: jest.fn(async (id: string) => statuses[id] ?? { state: 'unknown' }),
-  runAll: jest.fn(async () => new Map(Object.entries(statuses)))
+  runAll: jest.fn(async () => new Map(Object.entries(statuses))),
+  clearCache: jest.fn(),
+  setIsInstalledLookup: jest.fn()
 } as unknown as DependencyRegistry);
 
 describe('DependenciesTreeProvider', () => {

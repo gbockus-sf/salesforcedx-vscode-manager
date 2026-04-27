@@ -57,6 +57,13 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
 
   const runners = new DependencyRunners(proc);
   const registry = new DependencyRegistry(runners);
+  // Filter manifest / shim dep declarations by whether the extension is
+  // still installed on disk. Without this, uninstalling Apex via a
+  // Lightning-group apply leaves the Java check in the Dependencies
+  // view — `vscode.extensions.all` is a startup snapshot and still
+  // reports Apex as present. `ExtensionService.isInstalled` consults
+  // disk so we get the authoritative answer mid-session.
+  registry.setIsInstalledLookup(id => extensions.isInstalled(id));
 
   let scanner = new VsixScanner(settings.getVsixDirectory());
   let installer = new VsixInstaller(scanner, codeCli, workspaceState, logger);

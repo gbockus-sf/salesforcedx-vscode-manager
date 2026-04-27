@@ -271,4 +271,52 @@ describe('DependencyRegistry', () => {
       expect(git?.ownerExtensionIds).toBeUndefined();
     });
   });
+
+  describe('isInstalled lookup', () => {
+    it('drops shim entries for extensions that have been uninstalled mid-session', async () => {
+      // Regression: applying the Lightning group uninstalls Apex, but
+      // vscode.extensions.all still lists it (startup snapshot). The
+      // injected isInstalled lookup reads disk state and reports the
+      // true answer, so the shim-contributed Java dep disappears.
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeExt('salesforce.salesforcedx-vscode-apex'),
+        makeExt('salesforce.salesforcedx-vscode-core')
+      ];
+      const registry = new DependencyRegistry(mkRunners());
+      registry.setIsInstalledLookup(id => id !== 'salesforce.salesforcedx-vscode-apex');
+      const checks = await registry.collect();
+      expect(checks.find(c => c.id === 'apex.java')).toBeUndefined();
+      // Core is still installed → its sf-cli shim is still there.
+      expect(checks.find(c => c.label === 'Salesforce CLI (sf)')).toBeDefined();
+    });
+
+    it('drops manifest-declared deps for extensions that have been uninstalled', async () => {
+      const declared: DependencyCheck[] = [
+        {
+          id: 'vibes.custom',
+          label: 'Vibes Custom',
+          category: 'per-extension',
+          check: { type: 'file', path: '/tmp/vibes' }
+        }
+      ];
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeExt('salesforce.salesforcedx-einstein-gpt', { salesforceDependencies: declared })
+      ];
+      const registry = new DependencyRegistry(mkRunners());
+      registry.setIsInstalledLookup(() => false);
+      const checks = await registry.collect();
+      expect(checks.find(c => c.id === 'vibes.custom')).toBeUndefined();
+    });
+
+    it('preserves legacy behavior when no lookup is wired', async () => {
+      // Tests + bare environments that don't plug the hook keep
+      // seeing every dep, same as before.
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeExt('salesforce.salesforcedx-vscode-apex')
+      ];
+      const registry = new DependencyRegistry(mkRunners());
+      const checks = await registry.collect();
+      expect(checks.find(c => c.id === 'apex.java')).toBeDefined();
+    });
+  });
 });

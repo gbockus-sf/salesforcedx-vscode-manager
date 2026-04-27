@@ -93,8 +93,28 @@ const fingerprint = (check: CheckDefinition): string => {
 
 export class DependencyRegistry {
   private cache: DependencyCheck[] | undefined;
+  private isInstalledLookup: ((id: string) => boolean) | undefined;
 
   constructor(private readonly runners: DependencyRunners) {}
+
+  /**
+   * Optional hook that lets the registry skip manifest declarations
+   * and shim entries for extensions that were uninstalled mid-
+   * session. `vscode.extensions.all` is a snapshot taken at window
+   * startup — it still lists extensions we've uninstalled via our
+   * own commands, which would otherwise leak their `salesforceDep-
+   * endencies` + shim entries into the Dependencies view.
+   *
+   * Unset → preserve current behavior (walk every snapshot entry).
+   */
+  setIsInstalledLookup(fn: (id: string) => boolean): void {
+    this.isInstalledLookup = fn;
+  }
+
+  /** Drop the in-memory snapshot so the next `collect()` rebuilds. */
+  clearCache(): void {
+    this.cache = undefined;
+  }
 
   /**
    * Scans every installed extension's `packageJSON.salesforceDependencies`
@@ -147,12 +167,22 @@ export class DependencyRegistry {
     // 1. Built-ins (highest precedence).
     for (const b of BUILT_IN_CHECKS) merge(b);
 
+    // `vscode.extensions.all` is a snapshot taken at window startup; it
+    // still lists extensions we've uninstalled via our own commands
+    // mid-session. The injected lookup (if present) consults disk
+    // state for the authoritative answer. Without it we fall back to
+    // "include everything" so tests and bare-bones environments still
+    // see the full list.
+    const isLive = (id: string): boolean =>
+      this.isInstalledLookup ? this.isInstalledLookup(id) : true;
+
     // 2. Manifest declarations, in extension iteration order. We walk the
     //    manifests first so we know which ext ids opted into the contract
     //    and can skip their shim entries below. Within the same precedence
     //    tier, the first-seen declaration wins for display metadata.
     const declared = new Set<string>();
     for (const ext of vscode.extensions.all) {
+      if (!isLive(ext.id)) continue;
       const pkg = ext.packageJSON as ManifestWithDeps | undefined;
       const deps = pkg?.salesforceDependencies;
       if (Array.isArray(deps) && deps.length > 0) {
@@ -161,8 +191,9 @@ export class DependencyRegistry {
     }
 
     // 3. Shim catalog (second-highest precedence) — only for extensions that
-    //    did NOT declare their own contract.
+    //    did NOT declare their own contract AND are still installed.
     for (const ext of vscode.extensions.all) {
+      if (!isLive(ext.id)) continue;
       if (declared.has(ext.id)) continue;
       const shims = shimCatalog[ext.id];
       if (!shims) continue;
@@ -173,6 +204,7 @@ export class DependencyRegistry {
     //    built-in or shim with the same fingerprint keeps its id/label but
     //    the manifest's owner is added to `ownerExtensionIds`.
     for (const ext of vscode.extensions.all) {
+      if (!isLive(ext.id)) continue;
       const pkg = ext.packageJSON as ManifestWithDeps | undefined;
       const deps = pkg?.salesforceDependencies;
       if (!Array.isArray(deps) || deps.length === 0) continue;

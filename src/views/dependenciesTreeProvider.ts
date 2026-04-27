@@ -79,7 +79,17 @@ export class DependenciesTreeProvider implements vscode.TreeDataProvider<Depende
     if (this.running) return this.statuses;
     this.running = true;
     try {
+      // Clear the cached check list so an extension that got uninstalled
+      // mid-session (e.g. a Lightning apply that removed Apex) stops
+      // contributing its shim/manifest deps on the very next run.
+      this.registry.clearCache();
       this.statuses = await this.registry.runAll();
+      // Drop statuses for checks that are no longer in the collected
+      // set so the tree doesn't render orphaned rows.
+      const live = new Set((await this.registry.collect()).map(c => c.id));
+      for (const id of Array.from(this.statuses.keys())) {
+        if (!live.has(id)) this.statuses.delete(id);
+      }
       this.refresh();
       return this.statuses;
     } finally {
