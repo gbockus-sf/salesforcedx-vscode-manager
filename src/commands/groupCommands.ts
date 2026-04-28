@@ -85,7 +85,11 @@ const runApply = async (group: Group, deps: Deps): Promise<void> => {
   }
   const scope = await resolveScope(group, deps.settings, deps.workspaceState);
   if (!scope) return;
-  const managedIds = deps.extensions.managed().map(e => e.id);
+  // Use `managedIds()` not `managed().map(...)` — the former augments
+  // from disk so mid-session installs (e.g. a React apply done
+  // earlier in the window) are included in the candidate pool AND in
+  // the outside-candidate set that anchors the blocker walk.
+  const managedIds = deps.extensions.managedIds();
   deps.logger.info(
     `Applying "${group.label}" (scope=${scope}). Members=${group.extensions.length}, managedIds=${managedIds.length}`
   );

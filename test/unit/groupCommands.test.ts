@@ -56,6 +56,7 @@ const mkLogger = (): Logger =>
 const mkExtensions = (): ExtensionService =>
   ({
     managed: jest.fn(() => [{ id: 'salesforce.a' } as unknown as { id: string }]),
+    managedIds: jest.fn(() => ['salesforce.a']),
     showManualToggleHint: jest.fn(async () => undefined)
   } as unknown as ExtensionService);
 

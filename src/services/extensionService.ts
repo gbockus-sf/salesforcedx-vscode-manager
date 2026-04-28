@@ -189,6 +189,35 @@ export class ExtensionService {
     });
   }
 
+  /**
+   * Returns every extension id the manager considers managed, combining
+   * the runtime `managed()` list with disk-installed ids. The disk
+   * augmentation matters because `vscode.extensions.all` is a snapshot
+   * captured at window startup — it misses extensions installed
+   * mid-session (e.g. a React group apply that pulled in Agentforce
+   * Vibes). Without disk augmentation, those ids aren't in `managedIds`,
+   * so a subsequent Lightning apply can't treat them as candidates for
+   * uninstall AND can't recognize them as outside-candidate blockers
+   * either — producing the wrong dep-chain analysis.
+   *
+   * Only Salesforce-published ids (and user-configured third-party ids)
+   * are considered, matching `managed()`'s publisher filter.
+   */
+  managedIds(): string[] {
+    const ids = new Set<string>();
+    for (const ext of this.managed()) ids.add(normalizeId(ext.id));
+    const thirdParty = new Set(this.settings.getThirdPartyExtensionIds().map(normalizeId));
+    const publisher = normalizeId(SALESFORCE_PUBLISHER);
+    const selfId = normalizeId(EXTENSION_ID);
+    for (const raw of this.getDiskInstalledIds()) {
+      const id = normalizeId(raw);
+      if (id === selfId) continue;
+      const extPublisher = id.split('.')[0];
+      if (extPublisher === publisher || thirdParty.has(id)) ids.add(id);
+    }
+    return [...ids];
+  }
+
   isInstalled(id: string): boolean {
     // `vscode.extensions.getExtension` uses a snapshot captured at window
     // startup and does NOT reflect mid-session `code --uninstall-extension`

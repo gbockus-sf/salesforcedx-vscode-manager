@@ -111,7 +111,7 @@ export const activate = async (context: vscode.ExtensionContext): Promise<void> 
    */
   const vsixScannerIdLookup = (): string[] => {
     const ids = new Set<string>();
-    for (const ext of extensions.managed()) ids.add(ext.id);
+    for (const id of extensions.managedIds()) ids.add(id);
     for (const group of store.list()) for (const id of group.extensions) ids.add(id);
     for (const entry of publisherCatalog.current()) ids.add(entry.extensionId);
     return [...ids];

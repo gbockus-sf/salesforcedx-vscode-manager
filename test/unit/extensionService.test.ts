@@ -68,6 +68,59 @@ describe('ExtensionService', () => {
     ]);
   });
 
+  describe('managedIds() (runtime + disk augmentation)', () => {
+    // Same real-tmp-dir pattern the disk-backed graph tests use.
+    let tmp: string;
+    const saved = process.env.VSCODE_EXTENSIONS;
+
+    beforeEach(() => {
+      tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sfdx-mgr-managed-'));
+      process.env.VSCODE_EXTENSIONS = tmp;
+    });
+    afterEach(() => {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      if (saved === undefined) delete process.env.VSCODE_EXTENSIONS;
+      else process.env.VSCODE_EXTENSIONS = saved;
+    });
+
+    it('includes salesforce ids found on disk even when vscode.extensions.all misses them', () => {
+      // Regression: apply React installed Agentforce Vibes mid-session.
+      // vscode.extensions.all is a startup snapshot so it still doesn't
+      // list vibes. Without disk augmentation, a subsequent Lightning
+      // apply couldn't treat vibes as an outside-candidate anchor and
+      // the blocker chain miscomputed.
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [
+        makeExt('salesforce.salesforcedx-vscode-core')
+      ];
+      fs.mkdirSync(path.join(tmp, 'salesforce.salesforcedx-einstein-gpt-3.34.0'));
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect(svc.managedIds().sort()).toEqual(
+        [
+          'salesforce.salesforcedx-einstein-gpt',
+          'salesforce.salesforcedx-vscode-core'
+        ].sort()
+      );
+    });
+
+    it('still filters to salesforce publisher + allowlisted third parties', () => {
+      (vscode.extensions as unknown as { all: vscode.Extension<unknown>[] }).all = [];
+      fs.mkdirSync(path.join(tmp, 'salesforce.salesforcedx-vscode-core-66.8.0'));
+      fs.mkdirSync(path.join(tmp, 'redhat.vscode-xml-0.29.2'));
+      fs.mkdirSync(path.join(tmp, 'someone.unrelated-1.0.0'));
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      const ids = svc.managedIds().sort();
+      expect(ids).toContain('salesforce.salesforcedx-vscode-core');
+      expect(ids).toContain('redhat.vscode-xml');
+      expect(ids).not.toContain('someone.unrelated');
+    });
+
+    it('does not include the manager itself', () => {
+      fs.mkdirSync(path.join(tmp, 'salesforce.salesforcedx-vscode-manager-0.1.0'));
+      const svc = new ExtensionService(mkSettings(), mkCodeCli(), mkLogger());
+      expect(svc.managedIds()).not.toContain('salesforce.salesforcedx-vscode-manager');
+    });
+  });
+
   it('enable() is a no-op when the extension is already installed', async () => {
     (vscode.extensions.getExtension as jest.Mock).mockReturnValue(makeExt('salesforce.foo'));
     const cli = mkCodeCli();
